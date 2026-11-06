@@ -388,6 +388,19 @@ async function rateScreen() {
 }
 
 
+// An admin with an empty workspace is offered sample people and weeks, so every screen has something to show.
+function demoNudge() {
+  const main = $('#main');
+  if (!main || !isAdmin() || state.me.reports > 0 || sessionStorage.getItem('demo-nudge-off')) return;
+  const box = document.createElement('div');
+  box.className = 'card demo-card nudge';
+  box.innerHTML = '<div><h3>Want to see it with data?</h3><p class="small muted">Add a few labelled demo people and seven weeks of ranked, rated work. It takes a second and you can remove it with one click on the People page.</p></div><div class="actions"><button class="primary" id="nudgeGo">Load demo data</button><button class="ghost" id="nudgeNo">Not now</button></div>';
+  const hello = main.querySelector('.hello');
+  (hello ? hello.after(box) : main.prepend(box));
+  $('#nudgeNo').onclick = () => { try { sessionStorage.setItem('demo-nudge-off', '1'); } catch { /* fine */ } box.remove(); };
+  $('#nudgeGo').onclick = (e) => run(e.currentTarget, async () => { await api('POST', '/api/demo', {}, { idem: idem() }); await loadMe(); toast('Demo data loaded. Open Team to look around.'); location.hash = '#/team'; });
+}
+
 // ---------- My profile ----------
 async function profileScreen() {
   const u = state.me.user;
@@ -946,6 +959,7 @@ async function route() {
     if (!state.me) return authScreen(page === 'signup' ? 'signup' : 'signin', params.reset ? { notice: 'Password updated. Sign in with your new password.' } : {});
     const screens = { week: weekScreen, rate: rateScreen, team: teamScreen, score: scoreScreen, coins: coinsScreen, disputes: disputesScreen, incidents: incidentsScreen, people: peopleScreen, integrations: integrationsScreen, settings: settingsScreen, profile: profileScreen, audit: auditScreen, how: howScreen };
     await (screens[page] || weekScreen)(params);
+    if ((screens[page] || weekScreen) === weekScreen && !params.user) demoNudge();
     window.scrollTo(0, 0);
   } catch (e) {
     if (state.me) layout(page, `<div class="card"><p class="err">${esc(e.message)}</p></div>`);
