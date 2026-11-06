@@ -85,6 +85,7 @@ Names only. Values go in `.env` (git-ignored) or the host's environment settings
 | `M91_SEND_LINK`, `M91_BLOCKER_ESCALATION_HOURS` | Phone alerts (the link can also be set per workspace) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Password reset emails |
 | `GEMINI_API_KEY` | Ask Cairn, the AI helper (explains scores, never scores anyone) |
+| `ENABLE_DEMO_DATA` | Set to `1` only in a demo or development copy. Switches on the demo data routes |
 | `RECOVERY_KEY` | Optional break glass reset for whoever runs the server (12 or more characters) |
 
 ## Design
@@ -93,4 +94,4 @@ Every visual decision is recorded in [`docs/design-decisions.md`](docs/design-de
 
 ## Demo data
 
-Admins can load labelled demo people and seven weeks of ranked, rated work from **People → Load demo data** (or the banner on an empty My Week), and remove it again in one click.
+Not part of the product screens. For development and demos only: set `ENABLE_DEMO_DATA=1` and an admin can `POST /api/demo` to load 12 labelled people with seven weeks of ranked, rated work, and `DELETE /api/demo` to remove them. Without the setting those routes return 404.

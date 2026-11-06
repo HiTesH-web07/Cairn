@@ -469,7 +469,10 @@ test('unknown addresses get the branded 404 page, API misses stay JSON, real pag
   const idx = await (await fetch(base + '/')).text(); assert.match(idx, /og:image/);
 });
 
-test('demo data: twelve labelled people across four teams, scored weeks, removable in one go', async () => {
+test('demo data: off by default; when switched on, twelve labelled people across four teams, removable in one go', async () => {
+  const off = client(); await off('POST', '/api/auth/signup', { company: 'NoDemoCo', name: 'Nia', email: 'nia@nodemo.test', password: PW, timezone: 'UTC' });
+  assert.equal((await off('POST', '/api/demo', {}, { 'idempotency-key': 'd0' })).status, 404); // not available unless ENABLE_DEMO_DATA=1
+  process.env.ENABLE_DEMO_DATA = '1';
   const c = client();
   assert.equal((await c('POST', '/api/auth/signup', { company: 'DemoCo', name: 'Dana Demo', email: 'dana@democo.test', password: PW, timezone: 'UTC' })).status, 200);
   const r = await c('POST', '/api/demo', {}, { 'idempotency-key': 'demo-1' });
@@ -481,4 +484,5 @@ test('demo data: twelve labelled people across four teams, scored weeks, removab
   assert.ok(team.some((p) => p.score !== null), 'some people have scored weeks');
   const gone = await c('DELETE', '/api/demo'); assert.equal(gone.body.removed, 12);
   assert.equal((await c('GET', '/api/team')).body.people.filter((p) => /\(demo\)/.test(p.name)).length, 0);
+  delete process.env.ENABLE_DEMO_DATA;
 });

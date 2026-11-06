@@ -444,19 +444,6 @@ async function rateScreen() {
 }
 
 
-// An admin with an empty workspace is offered sample people and weeks, so every screen has something to show.
-function demoNudge() {
-  const main = $('#main');
-  if (!main || !isAdmin() || state.me.reports > 0 || sessionStorage.getItem('demo-nudge-off')) return;
-  const box = document.createElement('div');
-  box.className = 'card demo-card nudge';
-  box.innerHTML = '<div><h3>Want to see it with data?</h3><p class="small muted">Add a few labelled demo people and seven weeks of ranked, rated work. It takes a second and you can remove it with one click on the People page.</p></div><div class="actions"><button class="primary" id="nudgeGo">Load demo data</button><button class="ghost" id="nudgeNo">Not now</button></div>';
-  const hello = main.querySelector('.hello');
-  (hello ? hello.after(box) : main.prepend(box));
-  $('#nudgeNo').onclick = () => { try { sessionStorage.setItem('demo-nudge-off', '1'); } catch { /* fine */ } box.remove(); };
-  $('#nudgeGo').onclick = (e) => run(e.currentTarget, async () => { await api('POST', '/api/demo', {}, { idem: idem() }); await loadMe(); toast('Demo data loaded. Open Team to look around.'); location.hash = '#/team'; });
-}
-
 // ---------- My profile ----------
 async function profileScreen() {
   const u = state.me.user;
@@ -597,7 +584,7 @@ async function incidentsScreen() {
 
 // ---------- People ----------
 async function peopleScreen() {
-  const [p, dir, former, demo] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory'), api('GET', '/api/people/former'), isAdmin() ? api('GET', '/api/demo') : Promise.resolve({ loaded: false })]);
+  const [p, dir, former] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory'), api('GET', '/api/people/former')]);
   const byId = Object.fromEntries(dir.people.map((x) => [x.id, x.name]));
   const admin = isAdmin();
   const adder = canAddPeople();
@@ -617,16 +604,10 @@ async function peopleScreen() {
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${adder ? '<th></th>' : ''}</tr></thead><tbody>
     ${team.map((u) => `<tr><td><div class="who">${UI.avatar(u.name, '', u.avatar)}<div><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
       <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${adder ? `<td><div class="actions">${rowActs(u)}</div></td>` : ''}</tr>`).join('')}</tbody></table></div>
-    ${admin ? `<div class="card demo-card"><div><h3>Sample data</h3><p class="small muted">${demo.loaded ? 'Demo people and six weeks of ranked, rated work are loaded (their names end in “(demo)”). Open Team or Scorecard to look around. Remove them any time.' : 'Fill this workspace with a few labelled demo people and six weeks of ranked, rated work, so you can try the screens, Slack messages and phone alerts. Remove it with one click.'}</p></div><div class="actions"><button class="${demo.loaded ? 'ghost danger' : 'primary'}" id="demoBtn">${demo.loaded ? 'Remove demo data' : 'Load demo data'}</button></div></div>` : ''}
     ${former.people.length ? `<h2>Former people</h2><p class="small muted">They cannot sign in. Their past weeks, ratings and coins stay on record.</p><div class="card tablewrap"><table><tbody>
       ${former.people.map((u) => `<tr><td><div class="who">${UI.avatar(u.name, '', u.avatar)}<div>${esc(u.name)}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
     <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit, then Reports to.</p>`);
   const managerOptions = (sel, exclude) => (admin ? dir.people : team).filter((x) => x.id !== exclude).map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
-  const demoBtn = $('#demoBtn');
-  if (demoBtn) demoBtn.onclick = () => run(demoBtn, async () => {
-    if (demo.loaded) { if (!confirm('Remove all demo people and their weeks?')) return; await api('DELETE', '/api/demo'); toast('Demo data removed'); } else { await api('POST', '/api/demo', {}, { idem: idem() }); toast('Demo data loaded. Open Team to look around.'); }
-    peopleScreen();
-  });
   $('#main').addEventListener('click', (e) => {
     const rpw = e.target.closest('[data-resetpw]');
     if (rpw) return run(rpw, async () => {
@@ -1084,7 +1065,6 @@ async function route() {
     if (!state.me) return authScreen(page === 'signup' ? 'signup' : 'signin', params.reset ? { notice: 'Password updated. Sign in with your new password.' } : {});
     const screens = { week: weekScreen, rate: rateScreen, team: teamScreen, score: scoreScreen, coins: coinsScreen, disputes: disputesScreen, incidents: incidentsScreen, people: peopleScreen, integrations: integrationsScreen, settings: settingsScreen, profile: profileScreen, audit: auditScreen, how: howScreen };
     await (screens[page] || weekScreen)(params);
-    if ((screens[page] || weekScreen) === weekScreen && !params.user) demoNudge();
     window.scrollTo(0, 0);
   } catch (e) {
     if (state.me) layout(page, `<div class="card"><p class="err">${esc(e.message)}</p></div>`);

@@ -661,11 +661,12 @@ const DEMO_WORK = {
 };
 const DEMO_QUALITY = ['done_well', 'done_well', 'needs_fixes', 'done_well', 'done_well', 'redo', 'done_well', 'needs_fixes', 'done_well', 'done_well'];
 
-app.get('/api/demo', auth, adminOnly, wrap((req) => ({
+const demoOn = (req, res, next) => (process.env.ENABLE_DEMO_DATA === '1' ? next() : res.status(404).json({ error: 'Not found' })); // off unless ENABLE_DEMO_DATA=1
+app.get('/api/demo', demoOn, auth, adminOnly, wrap((req) => ({
   loaded: db.prepare('SELECT COUNT(*) c FROM users WHERE workspace_id = ? AND email LIKE ?').get(req.ws.id, `%${DEMO_DOMAIN}`).c > 0
 })));
 
-app.post('/api/demo', auth, adminOnly, idempotent, wrap((req, res) => {
+app.post('/api/demo', demoOn, auth, adminOnly, idempotent, wrap((req, res) => {
   if (db.prepare('SELECT 1 FROM users WHERE workspace_id = ? AND email LIKE ?').get(req.ws.id, `%${DEMO_DOMAIN}`)) throw bad('Demo data is already loaded');
   const ws = req.ws; const owner = req.user; const cur = currentWeek(ws);
   const ids = { owner: owner.id };
@@ -709,7 +710,7 @@ app.post('/api/demo', auth, adminOnly, idempotent, wrap((req, res) => {
   return { ok: true, people: DEMO_PEOPLE.length };
 }));
 
-app.delete('/api/demo', auth, adminOnly, wrap((req) => {
+app.delete('/api/demo', demoOn, auth, adminOnly, wrap((req) => {
   const demo = db.prepare('SELECT id FROM users WHERE workspace_id = ? AND email LIKE ?').all(req.ws.id, `%${DEMO_DOMAIN}`).map((u) => u.id);
   if (!demo.length) return { ok: true, removed: 0 };
   const ph = demo.map(() => '?').join(',');
