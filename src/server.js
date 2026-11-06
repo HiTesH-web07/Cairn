@@ -1059,7 +1059,8 @@ app.post('/api/m91/callback/:wsId', async (req, res) => {
       const a = await m91.read(alerts.linkOf(ws), customId);
       const hint = body.response && body.response.by && body.response.by.name;
       alerts.apply(ws, inc, a, hint);
-      if (a.status === 'RESOLVED' || body.event === 'closed') db.prepare("UPDATE incidents SET status = 'closed', closed_at = COALESCE(closed_at, ?) WHERE id = ? AND status != 'closed'").run(now(), inc.id);
+      // Closed in M91 without an answer: counts as "Seen". Kept until the problem clears so it does not ring again.
+      if ((a.status === 'RESOLVED' || body.event === 'closed') && !a.decision) db.prepare("UPDATE incidents SET status = 'dismissed', acknowledged_at = COALESCE(acknowledged_at, ?) WHERE id = ? AND status = 'open'").run(now(), inc.id);
       await alerts.sweep(getWs(ws.id), { raise: false });
     }
     if (key) db.prepare('INSERT OR IGNORE INTO m91_callbacks VALUES (?,?)').run(key, now());

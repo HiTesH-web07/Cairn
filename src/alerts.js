@@ -146,7 +146,8 @@ function init(ctx) {
     const report = { raised: 0, closed: 0, answered: 0, errors: [] };
     const live = raise ? conditions(ws) : null;
     const liveIds = live ? new Set(live.map((c) => c.customId)) : null;
-    const open = db.prepare("SELECT * FROM incidents WHERE workspace_id = ? AND status IN ('open','answered')").all(ws.id);
+    // 'dismissed' = closed in M91 without a button: treated as "Seen", never re-rung while the same problem lasts.
+    const open = db.prepare("SELECT * FROM incidents WHERE workspace_id = ? AND status IN ('open','answered','dismissed')").all(ws.id);
     for (const inc of open) {
       try {
         const stillTrue = liveIds ? liveIds.has(inc.custom_id) : isStillTrue(ws, inc);
@@ -156,9 +157,13 @@ function init(ctx) {
           report.closed += 1;
           continue;
         }
-        if (!inc.decision_label) {
+        if (!inc.decision_label && inc.status !== 'dismissed') {
           const a = await m91.read(link, inc.custom_id);
           if (apply(ws, inc, a)) report.answered += 1;
+          else if (a.status === 'RESOLVED') {
+            db.prepare("UPDATE incidents SET status = 'dismissed', acknowledged_at = COALESCE(acknowledged_at, ?) WHERE id = ?").run(a.resolvedAt || now(), inc.id);
+            audit(ws.id, null, 'alert.dismissed', 'incident', inc.id, { kind: inc.kind });
+          }
           if (inc.kind === 'blocker' && a.decision && a.decision.label === 'Blocked by others') {
             await m91.close(link, inc.custom_id);
             db.prepare("UPDATE incidents SET status = 'closed', closed_at = ? WHERE id = ?").run(now(), inc.id);
@@ -168,7 +173,7 @@ function init(ctx) {
       } catch (e) { report.errors.push(`${inc.kind}: ${e.code || e.message}`); }
     }
     if (live) {
-      const known = new Set(db.prepare("SELECT custom_id FROM incidents WHERE workspace_id = ? AND status IN ('open','answered')").all(ws.id).map((r) => r.custom_id));
+      const known = new Set(db.prepare("SELECT custom_id FROM incidents WHERE workspace_id = ? AND status IN ('open','answered','dismissed')").all(ws.id).map((r) => r.custom_id));
       for (const c of live) {
         if (known.has(c.customId)) continue;
         try {

@@ -396,7 +396,7 @@ async function disputesScreen() {
 // ---------- Incidents ----------
 async function incidentsScreen() {
   const [r, setup] = await Promise.all([api('GET', '/api/incidents'), api('GET', '/api/alerts/setup')]);
-  const st = { open: ['warn', 'Waiting'], answered: ['good', 'Answered'], closed: ['', 'Closed'] };
+  const st = { open: ['warn', 'Waiting'], answered: ['good', 'Answered'], dismissed: ['', 'Closed on phone'], closed: ['', 'Solved'] };
   layout('incidents', `<h1>Incidents</h1>
     ${setup.configured ? `<p class="muted">Phone alerts go to <b>${esc(setup.channel)}</b>.</p>` : `<div class="notice warn">Phone alerts are not set up, so nobody is rung. ${isAdmin() ? '<a href="#/settings">Set them up in Settings</a>.' : 'Ask an admin to set them up.'}</div>`}
     <h2>Phone alerts</h2><div class="card tablewrap"><table><thead><tr><th>When</th><th>Alert</th><th>Status</th><th>Answer</th></tr></thead><tbody>
@@ -628,6 +628,7 @@ async function phoneAlertsCard() {
         await new Promise((res) => setTimeout(res, 3000));
         const s = await api('GET', `/api/alerts/test/${encodeURIComponent(r.alertId)}`);
         if (s.answered || s.responses) { out.textContent = `✓ Answered on a phone${s.answered ? `: "${s.answered}"` : ''}. Phone alerts work.`; return; }
+        if (s.status === 'RESOLVED') { out.textContent = '✓ Closed on a phone. Phone alerts work.'; return; }
       }
       out.textContent = 'No answer yet. Check that a phone in the channel rang.';
     } catch (e) { out.textContent = e.message; }

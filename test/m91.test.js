@@ -161,6 +161,24 @@ test('phone alerts: setup, every moment, answers, closing and re-arming', async 
   assert.equal(db.prepare('SELECT status FROM items WHERE id = ?').get(it).status, 'blocked_external');
   assert.ok(m.closed.includes(`blocker-${bl2}`));
 
+  // Closed on the phone without a button: counts as Seen, does not ring again while the problem lasts, closes when solved
+  const bl4 = (await riya.c('POST', `/api/items/${it2}/block`, { description: 'Need review' })).body.id;
+  db.prepare("UPDATE items SET rank = 2 WHERE id = ?").run(it2);
+  db.prepare('UPDATE blockers SET raised_at = ? WHERE id = ?').run(ago(5), bl4);
+  await hourly();
+  const a4 = [...m.alerts.values()].find((x) => x.customId === `blocker-${bl4}`);
+  assert.ok(a4);
+  a4.status = 'RESOLVED'; // the person closed it in M91
+  await hourly();
+  assert.equal(db.prepare('SELECT status FROM incidents WHERE custom_id = ?').get(`blocker-${bl4}`).status, 'dismissed');
+  const count = m.sent.length;
+  await hourly();
+  await hourly();
+  assert.equal(m.sent.length, count, 'not rung again while the same problem lasts');
+  await riya.c('POST', `/api/blockers/${bl4}/resolve`, {});
+  await new Promise((r) => setTimeout(r, 200));
+  assert.equal(db.prepare('SELECT status FROM incidents WHERE custom_id = ?').get(`blocker-${bl4}`).status, 'closed');
+
   // ---- Moment 2: delivered work waiting for its rating ----
   await riya.c('POST', `/api/items/${it2}/deliver`, { proof_note: 'Published' });
   db.prepare('UPDATE items SET delivered_at = ? WHERE id = ?').run(ago(60), it2);
