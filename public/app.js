@@ -107,7 +107,7 @@ function layout(active, inner) {
     : `<a href="#/${n[0]}" class="${n[0] === active ? 'on' : ''}">${UI.icon(n[0])}<span>${n[1]}</span>${n[0] === 'rate' && state.pending ? `<span class="badge">${state.pending}</span>` : ''}</a>`)).join('');
   $('#app').innerHTML = `<div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b></div>
   <div class="shell"><nav class="side" id="side"><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
-  <div class="ws"><b>${esc(state.me.workspace.name)}</b>${esc(state.me.user.name)}</div>${links}
+  <div class="ws"><b>${esc(state.me.workspace.name)}</b><span>${esc(state.me.user.name)}</span></div>${links}
   <div class="sep"></div><a href="#" id="signout">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}<span>Sign out</span></a></nav><main id="main">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
   $('#side').addEventListener('click', (e) => { if (e.target.closest('a[href^="#/"]')) $('#side').classList.remove('open'); });
@@ -130,11 +130,16 @@ function authScreen(mode, extra = {}) {
     <label>Your name</label><input name="name" required maxlength="120">
     <label>Choose a password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">`;
   if (window.Home) window.Home.destroy();
-  $('#app').innerHTML = `<div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
-    <p class="muted">${UI.brand.tagline} Measure the value of work, not the number of tasks.</p>
+  const titles = { signin: ['Welcome <em>back</em>', 'Sign in to your workspace.'], signup: ['Start a <em>workspace</em>', 'Two minutes: your company, your team, this week.'], join: ['You are <em>invited</em>', 'Set a password to join.'] };
+  $('#app').innerHTML = `<div class="auth-split"><aside class="auth-art"><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
+    <div><h2>Measure what <em>mattered</em>.</h2><p>Each week, a few ranked priorities. Delivered with proof, rated by the people who used the work. Task count never counts.</p>
+    <div class="mini-stack" aria-hidden="true"><i style="--w:100%;--k:0"></i><i style="--w:71%;--k:1"></i><i style="--w:57%;--k:2"></i><i style="--w:34%;--k:3"></i><i style="--w:23%;--k:4"></i></div></div>
+    <span class="eyebrow" style="color:#8d8773">No screenshots · No time tracking</span></aside>
+    <div class="auth-form"><div class="box"><a class="back" href="#/home">← Back to home</a>
+    <h1>${titles[mode][0]}</h1><p class="muted">${titles[mode][1]}</p>
     ${mode === 'join' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
     <form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : signin}<p class="err" id="autherr"></p>
-    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : 'Sign in'}</button></form></div>`;
+    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : 'Sign in'}</button></form></div></div></div>`;
   $('#authform').onsubmit = async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
@@ -199,14 +204,14 @@ async function weekScreen(params) {
       </div><div class="actions">${acts.join('')}</div></div>`;
   };
 
-  layout('week', `<div class="hello">${UI.cairn()}<div class="who">${w.isSelf ? '' : UI.avatar(w.person.name, 'lg')}<div><h1>${w.isSelf ? `${greet}, ${esc(state.me.user.name.split(' ')[0])}` : who}</h1><p>${w.isSelf ? 'My Week · ' : ''}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div></div>
-    <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a></div></div>
+  layout('week', `${UI.head(`${w.isSelf ? 'My Week · ' : 'Week · '}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}`, w.isSelf ? `${greet}, <em>${esc(state.me.user.name.split(' ')[0])}</em>` : `${esc(w.person.name)}'s week`, `<a class="btn" href="${nav(-7)}">← Prev</a><a class="btn" href="${nav(7)}">Next →</a>`)}
     <div class="grid">
-      <div class="tile has-ring"><div><span class="tile-ico t-acc">${UI.icon('score')}</span><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
-      <div class="tile"><span class="tile-ico t-good">${UI.icon('check')}</span><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
-      <div class="tile"><span class="tile-ico t-warn">${UI.icon('coins')}</span><div class="k">Coins received</div><div class="v">${w.coins}</div><div class="s">shown beside the score, never added</div></div>
-      <div class="tile"><span class="tile-ico t-teal">${UI.icon('link')}</span><div class="k">Alignment</div><div class="v">${w.alignment === null ? '–' : `${w.alignment}%`}</div><div class="s">of priority weight linked upward</div></div>
+      <div class="tile"><div><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div></div>
+      <div class="tile"><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
+      <div class="tile"><div class="k">Coins received</div><div class="v">${w.coins}</div><div class="s">shown beside the score, never added</div></div>
+      <div class="tile"><div class="k">Alignment</div><div class="v">${w.alignment === null ? '–' : `${w.alignment}%`}</div><div class="s">of priority weight linked upward</div></div>
     </div>
+    <div class="card"><div class="row spread" style="margin-bottom:.6rem"><h2 style="margin:0">The stack</h2><span class="lab">each slab is as wide as its weight</span></div>${UI.stack(ranked, state.me.settings)}</div>
     <div class="card"><div class="row spread"><h2 style="margin:0">Ranked priorities ${w.locked ? '<span class="pill good">🔒 Locked</span>' : '<span class="pill warn">Not locked yet</span>'}</h2>
       <div class="row">${w.canRank ? `<button class="primary" id="rankbtn">${w.locked ? 'Change ranking' : 'Rank this week'}</button>${!w.locked && ranked.length ? '<button id="lockbtn">Lock week</button>' : ''}` : ''}</div></div>
       ${ranked.length ? ranked.map(itemRow).join('') : UI.empty('Nothing ranked yet', w.canRank ? 'Add work below, then rank the top items. The first one counts the most.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.')}</div>
@@ -308,7 +313,7 @@ function rankEditor(w, people, reload) {
 async function rateScreen() {
   const r = await api('GET', '/api/ratings/pending');
   state.pending = r.items.length;
-  layout('rate', `<h1>Rate Work</h1><p class="muted">Rate the result, not the person. Needs fixes and Redo need a note.</p>
+  layout('rate', `${UI.head('Rate the result, not the person · Needs fixes and Redo need a note', 'Rate <em>work</em>')}
     ${r.items.length ? r.items.map((it) => `<div class="card" data-id="${esc(it.id)}"><div class="who" style="align-items:flex-start">${UI.avatar(it.owner.name, 'lg')}<div style="flex:1"><div class="row spread"><div><h3>${esc(it.title)}</h3>
       <p class="small muted">${esc(it.owner.name)}${it.owner.level ? ` · ${esc(it.owner.level)}` : ''} · ${it.rank ? `ranked #${it.rank} (${it.weight}%)` : 'not ranked'}${it.stretch ? ' · ⭐ Stretch' : ''} · you are the ${it.as === 'primary' ? 'main' : 'second'} rater</p></div></div>
       ${it.details ? `<p class="small">${esc(it.details)}</p>` : ''}
@@ -332,8 +337,7 @@ async function rateScreen() {
 async function teamScreen(params) {
   const t = await api('GET', `/api/team${params.week ? `?week=${encodeURIComponent(params.week)}` : ''}`);
   const nav = (n) => `#/team?week=${addDays(t.week, n)}`;
-  layout('team', `<div class="row spread"><div><h1>Team</h1><p class="muted">${fmtWeek(t.week)} · each person against their own ranked priorities</p></div>
-    <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a></div></div>
+  layout('team', `${UI.head(`${fmtWeek(t.week)} · each person against their own list`, 'Team', `<a class="btn" href="${nav(-7)}">← Prev</a><a class="btn" href="${nav(7)}">Next →</a>`)}
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Level</th><th>Department</th><th class="num">Score</th><th class="num">Quality</th><th class="num">Coins</th><th class="num">Alignment</th><th>Flags</th></tr></thead><tbody>
     ${t.people.map((p) => `<tr><td><div class="who">${UI.avatar(p.name)}<a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></div></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
       <td class="num"><b>${scoreText(p.score)}</b>${p.score === null ? '' : `<span class="sbar"><i style="width:${p.score}%"></i></span>`}${p.pending ? ` <span class="pill">${p.pending} unrated</span>` : ''}</td><td class="num">${p.qualityPct === null ? '–' : `${p.qualityPct}%`}</td>
@@ -352,13 +356,14 @@ async function scoreScreen(params) {
   const s = await api('GET', `/api/scorecard${params.user ? `?user=${encodeURIComponent(params.user)}` : ''}`);
   const c = s.current;
   const rated = c.quality.done_well + c.quality.needs_fixes + c.quality.redo;
-  layout('score', `<h1>${esc(s.person.name)} · Scorecard</h1><p class="muted">${fmtWeek(s.week)}${s.person.level ? ` · ${esc(s.person.level)}` : ''}</p>
+  layout('score', `${UI.head(`${esc(s.person.name)} · ${fmtWeek(s.week)}${s.person.level ? ` · ${esc(s.person.level)}` : ''}`, 'Score<em>card</em>')}
     <div class="grid">
-      <div class="tile has-ring"><div><div class="k">1. Did what mattered most?</div><div class="v">${scoreText(c.score)}</div><div class="s">priority score out of 100${c.pending ? ` · ${c.pending} waiting for rating` : ''}</div></div>${UI.ring(c.score)}</div>
+      <div class="tile"><div><div class="k">1. Did what mattered most?</div><div class="v">${scoreText(c.score)}</div><div class="s">priority score out of 100${c.pending ? ` · ${c.pending} waiting for rating` : ''}</div></div></div>
       <div class="tile"><div class="k">2. Was it done well?</div><div class="v">${rated ? `${c.quality.done_well}/${rated}` : '–'}</div><div class="s">rated Done well</div></div>
       <div class="tile"><div class="k">3. Did others value it?</div><div class="v">🪙 ${c.coins}</div><div class="s">coins from colleagues</div></div>
       <div class="tile"><div class="k">Alignment</div><div class="v">${c.alignment === null ? '–' : `${c.alignment}%`}</div><div class="s">linked to the level above</div></div>
     </div>
+    <div class="card"><div class="row spread" style="margin-bottom:.6rem"><h2 style="margin:0">The stack</h2><span class="lab">this week</span></div>${UI.stack(c.breakdown.map((b) => ({ rank: b.rank, title: `#${b.rank}`, status: b.status, mult: b.multiplier })), state.me.settings)}</div>
     <div class="card"><h3>Last 5 weeks</h3><div class="bars">${s.trend.map((t) => `<div><span style="height:${t.score || 0}px"></span>${scoreText(t.score)}<br>${esc(t.week.slice(5))}</div>`).join('')}</div></div>
     <div class="card"><h3>What was delivered this week</h3>${s.changed.length ? `<ul>${s.changed.map((x) => `<li>${x.rank ? `#${x.rank} ` : ''}${esc(x.title)} ${x.proof_url ? `· <a href="${esc(x.proof_url)}" target="_blank" rel="noopener noreferrer">proof</a>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Nothing delivered yet.</p>'}</div>
     <div class="card"><h3>Why colleagues gave coins</h3>${s.coinNotes.length ? `<ul>${s.coinNotes.map((n) => `<li>🪙 ${n.coins} from ${esc(n.from_name)}: "${esc(n.reason)}"</li>`).join('')}</ul>` : '<p class="muted">None this week.</p>'}</div>
@@ -368,7 +373,7 @@ async function scoreScreen(params) {
 // ---------- Coins ----------
 async function coinsScreen() {
   const [c, dir] = await Promise.all([api('GET', '/api/coins'), api('GET', '/api/directory')]);
-  layout('coins', `<h1>Coins</h1><p class="muted">Thank people whose work helped you. You have <b>${c.remaining}</b> left this week, at most ${c.maxPerPerson} to one person.</p>
+  layout('coins', `${UI.head(`${c.remaining} left this week · at most ${c.maxPerPerson} to one person`, 'Coins')}<p class="muted">Thank people whose work helped you. Coins sit beside the score and are never added to it.</p>
     <form class="card form" id="coinform"><label>To</label><select name="to_id" required>${dir.people.filter((p) => p.id !== state.me.user.id).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${p.department ? ` · ${esc(p.department)}` : ''}</option>`).join('')}</select>
       <label>Coins</label><input name="coins" type="number" min="1" max="${c.maxPerPerson}" value="1" required><label>What did they do for you?</label><input name="reason" required maxlength="300">
       <p class="err" id="coinerr"></p><button class="primary">Give coins</button></form>
@@ -385,7 +390,7 @@ async function coinsScreen() {
 // ---------- Disputes ----------
 async function disputesScreen() {
   const d = await api('GET', '/api/disputes');
-  layout('disputes', `<h1>Disputes</h1><p class="muted">A disputed rating goes to the rater's manager. The original rating and the decision are both kept.</p>
+  layout('disputes', `${UI.head('Ratings under review', 'Disputes')}<p class="muted">A disputed rating goes to the rater's manager. The original rating and the decision are both kept.</p>
     ${d.disputes.length ? d.disputes.map((x) => `<div class="card"><div class="row spread"><h3>${esc(x.title)}</h3><span class="pill ${x.status === 'open' ? 'warn' : 'good'}">${esc(x.status)}</span></div>
       <p class="small muted">${esc(x.owner_name)} disputes ${esc(x.rater_name)}'s rating "${QUALITY[x.original_quality]}" · ${fmtTime(x.created_at)}</p><p>"${esc(x.reason)}"</p>
       ${x.status !== 'open' ? `<p class="small">Decision: ${x.status === 'changed' ? `changed to ${QUALITY[x.new_quality]}` : 'rating kept'} · "${esc(x.resolution_note)}"</p>` : ''}
@@ -403,7 +408,7 @@ async function disputesScreen() {
 async function incidentsScreen() {
   const [r, setup] = await Promise.all([api('GET', '/api/incidents'), api('GET', '/api/alerts/setup')]);
   const st = { open: ['warn', 'Waiting'], answered: ['good', 'Answered'], dismissed: ['', 'Closed on phone'], closed: ['', 'Solved'] };
-  layout('incidents', `<h1>Incidents</h1>
+  layout('incidents', `${UI.head('Phone alerts and blocked work', 'Incidents')}
     ${setup.configured ? `<p class="muted">Phone alerts go to <b>${esc(setup.channel)}</b>.</p>` : `<div class="notice warn">Phone alerts are not set up, so nobody is rung. ${isAdmin() ? '<a href="#/settings">Set them up in Settings</a>.' : 'Ask an admin to set them up.'}</div>`}
     <h2>Phone alerts</h2><div class="card tablewrap"><table><thead><tr><th>When</th><th>Alert</th><th>Status</th><th>Answer</th></tr></thead><tbody>
     ${r.incidents.map((i) => `<tr><td class="small">${fmtTime(i.raised_at)}</td><td>${esc(i.title)}<div class="small muted">${esc(i.severity)} · reached ${i.delivered ?? '?'} phone(s)</div></td>
@@ -429,7 +434,7 @@ async function peopleScreen() {
     a.push(`<button class="ghost danger" data-off="${esc(u.id)}">Left the company</button>`);
     return a.join(' ');
   };
-  layout('people', `<div class="row spread"><h1>People</h1><div class="row">${adder ? '<button id="importp">Import (CSV)</button><button id="importl">Import leave (CSV)</button><button class="primary" id="invite">+ Add person</button>' : ''}</div></div>
+  layout('people', `${UI.head('Who is in the workspace', 'People', adder ? '<button id="importp">Import (CSV)</button><button id="importl">Import leave (CSV)</button><button class="primary" id="invite">+ Add person</button>' : '')}
     <p class="small muted">${admin ? `Add your managers and TLs; ${state.me.settings.managersAddTeam ? 'each of them adds and looks after their own team' : 'only admins add people in this workspace'}. People come from: <b>${src === 'keka' ? 'Keka sync' : src === 'csv' ? 'CSV upload' : 'invite links'}</b> · <a href="#/settings">Settings</a>`
       : adder ? 'Add the people in your team. You can update, move within your team, or mark people who left.' : 'Ask your manager or an admin to add or change people.'}</p>
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${adder ? '<th></th>' : ''}</tr></thead><tbody>
@@ -591,7 +596,7 @@ async function integrationsScreen() {
   const asked = [...new Set(ke.requested.map((f) => fieldWords[f]).filter(Boolean))];
   const runRow = (r) => `<tr><td class="small">${fmtTime(r.started_at)}<div class="muted">${r.trigger}${r.dry_run ? ' · preview' : ''}</div></td><td>${r.status === 'ok' ? `<span class="pill good">ok</span>` : r.status === 'failed' ? '<span class="pill bad">failed</span>' : '<span class="pill">running</span>'}</td>
     <td class="small">${r.summary ? `${r.summary.created} new · ${r.summary.updated} updated · ${r.summary.moved} moved · ${r.summary.offboarded} left` : esc(r.error || '')}</td></tr>`;
-  layout('integrations', `<h1>Integrations</h1><p class="muted">Nothing here is shown as working until a real test has succeeded.</p>
+  layout('integrations', `${UI.head('Slack · Keka · phone alerts', 'Integra<em>tions</em>')}<p class="muted">Nothing here is shown as working until a real test has succeeded.</p>
     ${s.viasocket.keysPresent ? '' : '<div class="notice warn">The viaSocket keys are missing on the server, so connecting is switched off.</div>'}<p class="err" id="connectErr"></p>
 
     <div class="card"><div class="row spread"><h2 style="margin:0">Slack</h2>${pill(sl)}</div>
@@ -669,7 +674,7 @@ async function settingsScreen() {
   const s = state.me.settings;
   const ws = state.me.workspace;
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  layout('settings', `<h1>Settings</h1><form class="card form" id="sform">
+  layout('settings', `${UI.head('Workspace · how scoring works here', 'Settings')}<form class="card form" id="sform">
     <label>Company name</label><input name="name" value="${esc(ws.name)}" required>
     <label>Time zone</label><input name="timezone" value="${esc(ws.timezone)}">
     <label>Only allow emails from this domain</label><input name="allowed_domain" value="${esc(ws.allowed_domain || '')}" placeholder="yourcompany.com">
@@ -764,7 +769,7 @@ async function phoneAlertsCard() {
 // ---------- History log ----------
 async function auditScreen() {
   const a = await api('GET', '/api/audit');
-  layout('audit', `<h1>History log</h1><p class="muted">${isAdmin() ? 'Every change in the workspace.' : 'Your own changes.'} Entries can never be edited or deleted.</p>
+  layout('audit', `${UI.head('Append-only', 'History log')}<p class="muted">${isAdmin() ? 'Every change in the workspace.' : 'Your own changes.'} Entries can never be edited or deleted.</p>
     <div class="card tablewrap"><table><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead><tbody>
     ${a.entries.map((x) => `<tr><td class="small">${fmtTime(x.created_at)}</td><td>${esc(x.actor || '')}</td><td><code>${esc(x.action)}</code>${x.action === 'stack.changed_after_lock' && x.detail_json ? ` · reason: ${esc((JSON.parse(x.detail_json).reason) || '')}` : ''}</td></tr>`).join('')}</tbody></table></div>`);
 }
@@ -772,7 +777,7 @@ async function auditScreen() {
 // ---------- How we score ----------
 function howScreen() {
   const s = state.me.settings;
-  layout('how', `<h1>How we score</h1><p class="muted">Generated from ${esc(state.me.workspace.name)}'s live settings.</p>
+  layout('how', `${UI.head('The rules, in the open', 'How we <em>score</em>')}<p class="muted">Generated from ${esc(state.me.workspace.name)}'s live settings.</p>
     <div class="card"><h3>The idea</h3><p>Every week, your manager ranks your top ${s.rankWeights.length} pieces of work. You are measured on delivering the most important ones, and on how well they were done. <b>The number of tasks never counts.</b></p></div>
     <div class="card"><h3>1. Priority score (out of 100)</h3><table><thead><tr><th>Rank</th><th class="num">Weight</th></tr></thead><tbody>${s.rankWeights.map((w, i) => `<tr><td>#${i + 1}</td><td class="num">${w}%</td></tr>`).join('')}</tbody></table>
       <p>Score = sum of (weight × quality) for delivered priorities, divided by the weight of what was ranked. Each person's #1 is their most important work, so an intern and a senior are both scored out of 100.</p>
