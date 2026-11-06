@@ -155,7 +155,7 @@ function currentUser(req) {
 
 // CSRF: every state-changing API call must come from our own page (custom header, SameSite cookie).
 app.use('/api', (req, res, next) => {
-  if (req.method !== 'GET' && req.get('x-requested-with') !== 'impact') return next(forbidden('Missing request header'));
+  if (req.method !== 'GET' && !req.path.startsWith('/m91/callback/') && req.get('x-requested-with') !== 'impact') return next(forbidden('Missing request header'));
   next();
 });
 
@@ -175,6 +175,8 @@ function auth(req, res, next) {
   req.user = u;
   req.ws = getWs(u.workspace_id);
   req.settings = settingsOf(req.ws);
+  // After any change, close phone alerts whose condition just cleared (never raises; the hourly sweep does that).
+  if (req.method !== 'GET') res.on('finish', () => { if (res.statusCode < 300 && req.ws.m91_link) setImmediate(() => alerts.sweep(getWs(req.ws.id), { raise: false }).catch(() => {})); });
   next();
 }
 const adminOnly = (req, res, next) => (isAdmin(req.user) ? next() : next(forbidden('Only admins can do this')));
@@ -573,7 +575,7 @@ function computeWeek(ws, settings, userId, week) {
 
 function itemView(it, actor) {
   const ratings = (it.ratings || ratingsFor(it.id)).map((r) => ({ id: r.id, rater: r.rater_name, rater_id: r.rater_id, role: r.rater_role, quality: r.quality, note: r.note, at: r.created_at }));
-  const blockers = db.prepare('SELECT id, description, raised_at, resolved_at, escalated FROM blockers WHERE item_id = ? ORDER BY raised_at').all(it.id);
+  const blockers = db.prepare('SELECT id, description, raised_at, resolved_at, escalated, claimed_by FROM blockers WHERE item_id = ? ORDER BY raised_at').all(it.id);
   return { ...it, stretch: !!it.stretch, ratings, blockers, mine: it.user_id === actor.id };
 }
 
@@ -985,18 +987,102 @@ app.get('/api/incidents', auth, wrap((req) => ({
     WHERE b.workspace_id = ? AND b.resolved_at IS NULL AND i.rank IS NOT NULL AND i.rank <= ? AND b.raised_at <= ?`).all(req.ws.id, req.settings.secondRaterRanks, new Date(Date.now() - req.settings.blockerEscalationHours * 3600e3).toISOString())
 })));
 
+// ---------- phone alerts (M91) ----------
+const m91 = require('./m91');
+const alerts = require('./alerts').init({ db, now, audit, userIn, currentWeek, localDate, settingsOf });
+const m91Error = (e) => {
+  if (e.code === 'CHANNEL_EMPTY') return 'Nobody in that channel can be reached yet: everyone needs the M91 app installed and the invite accepted.';
+  if (e.status === 401) return 'That link is wrong or was deleted. Copy it again from the M91 app.';
+  if (e.code === 'NETWORK') return 'Could not reach M91 right now. Try again in a minute.';
+  return e.message;
+};
+
+app.get('/api/alerts/setup', auth, wrap((req) => ({
+  configured: !!req.ws.m91_link, channel: req.ws.m91_channel || null,
+  moments: Object.entries(alerts.MOMENTS).map(([key, text]) => ({ key, text, on: req.settings.alertMoments[key] !== false })),
+  canEdit: isAdmin(req.user)
+})));
+
+app.post('/api/alerts/link', auth, adminOnly, async (req, res, next) => {
+  try {
+    const link = m91.cleanLink(req.body && req.body.link);
+    const info = await m91.checkLink(link); // raises nothing
+    db.prepare('UPDATE workspaces SET m91_link = ?, m91_channel = ? WHERE id = ?').run(m91.seal(link), info.channel.name, req.ws.id);
+    audit(req.ws.id, req.user.id, 'alerts.connected', 'workspace', req.ws.id, { channel: info.channel.name });
+    res.json({ ok: true, channel: info.channel.name });
+  } catch (e) { next(e instanceof m91.M91Error ? bad(m91Error(e)) : e); }
+});
+
+app.delete('/api/alerts/link', auth, adminOnly, wrap((req) => {
+  db.prepare('UPDATE workspaces SET m91_link = NULL, m91_channel = NULL WHERE id = ?').run(req.ws.id);
+  audit(req.ws.id, req.user.id, 'alerts.disconnected', 'workspace', req.ws.id, null);
+  return { ok: true };
+}));
+
+const lastTest = new Map();
+app.post('/api/alerts/test', auth, adminOnly, async (req, res, next) => {
+  try {
+    if (!req.ws.m91_link) throw bad('Paste your channel link first');
+    if (Date.now() - (lastTest.get(req.ws.id) || 0) < 60e3) throw bad('Wait a minute between tests');
+    lastTest.set(req.ws.id, Date.now());
+    const r = await m91.send(alerts.linkOf(req.ws), {
+      title: `Test from Proof of Impact: ${req.user.name} checked that phone alerts work`,
+      description: 'This is a test. Nothing needs doing. Tap "It rang" so the app knows it reached you.',
+      severity: 'LOW', isAutoClose: true,
+      responseOptions: [{ label: 'It rang', effect: 'SHARED' }, { label: 'Seen', effect: 'PERSONAL' }]
+    });
+    audit(req.ws.id, req.user.id, 'alerts.tested', 'workspace', req.ws.id, { delivered: r.delivered || 0 });
+    res.json({ ok: true, delivered: r.delivered || 0, alertId: r._id, unregistered: (r.unregistered || []).length });
+  } catch (e) { next(e instanceof m91.M91Error ? bad(m91Error(e)) : e); }
+});
+
+// Read the test alert back: the only proof a person saw it is an answer.
+app.get('/api/alerts/test/:alertId', auth, adminOnly, async (req, res, next) => {
+  try {
+    const a = await m91.read(alerts.linkOf(req.ws), String(req.params.alertId).slice(0, 64));
+    res.json({ status: a.status, answered: a.decision ? a.decision.label : null, responses: (a.responses || []).length, pending: a.pending });
+  } catch (e) { next(e instanceof m91.M91Error ? bad(m91Error(e)) : e); }
+});
+
+// M91 posts here when someone answers or an alert ends. The body is only a signal (it cannot be verified yet):
+// we read the alert back from M91 with the workspace's own link and act on that.
+app.post('/api/m91/callback/:wsId', async (req, res) => {
+  try {
+    const ws = getWs(req.params.wsId);
+    const body = req.body || {};
+    const customId = body.alert && typeof body.alert.customId === 'string' ? body.alert.customId : null;
+    if (!ws || !ws.m91_link || !customId) return res.sendStatus(204);
+    const key = typeof body.idempotencyKey === 'string' ? body.idempotencyKey.slice(0, 200) : null;
+    if (key && db.prepare('SELECT 1 FROM m91_callbacks WHERE key = ?').get(key)) return res.sendStatus(200);
+    const inc = db.prepare('SELECT * FROM incidents WHERE workspace_id = ? AND custom_id = ?').get(ws.id, customId);
+    if (inc) {
+      const a = await m91.read(alerts.linkOf(ws), customId);
+      const hint = body.response && body.response.by && body.response.by.name;
+      alerts.apply(ws, inc, a, hint);
+      if (a.status === 'RESOLVED' || body.event === 'closed') db.prepare("UPDATE incidents SET status = 'closed', closed_at = COALESCE(closed_at, ?) WHERE id = ? AND status != 'closed'").run(now(), inc.id);
+      await alerts.sweep(getWs(ws.id), { raise: false });
+    }
+    if (key) db.prepare('INSERT OR IGNORE INTO m91_callbacks VALUES (?,?)').run(key, now());
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('m91 callback failed', e.code || e.message);
+    res.sendStatus(500); // M91 retries
+  }
+});
+
 // Honest status only. Nothing is shown as connected until it has been verified.
 app.get('/api/integrations/status', auth, wrap((req) => ({
   viasocket: { keysPresent: !!(process.env.VIASOCKET_ORG_ID && process.env.VIASOCKET_PROJECT_ID && process.env.VIASOCKET_EMBED_SECRET), verified: false, state: 'waiting_for_plan_approval' },
   slack: { state: 'not_connected' },
   keka: { state: 'not_connected', chosen: S.mergeSettings(JSON.parse(req.ws.settings_json || '{}')).peopleSource === 'keka' },
-  m91: { sendLinkPresent: !!process.env.M91_SEND_LINK, verified: false, state: 'not_set_up' }
+  m91: { configured: !!req.ws.m91_link, channel: req.ws.m91_channel || null }
 })));
 
 // ---------- scheduled job (Embarko schedules call this with CRON_SECRET) ----------
-app.get('/tasks/hourly', (req, res) => {
+app.get('/tasks/hourly', async (req, res) => {
   if (!process.env.CRON_SECRET || req.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) return res.sendStatus(401);
   let n = 0;
+  const alertReports = [];
   for (const ws of db.prepare('SELECT * FROM workspaces').all()) {
     const settings = settingsOf(ws);
     const cur = currentWeek(ws);
@@ -1011,9 +1097,13 @@ app.get('/tasks/hourly', (req, res) => {
     db.prepare(`UPDATE blockers SET escalated = 1 WHERE workspace_id = ? AND resolved_at IS NULL AND escalated = 0 AND raised_at <= ?
       AND item_id IN (SELECT id FROM items WHERE rank IS NOT NULL AND rank <= ?)`).run(ws.id, new Date(Date.now() - settings.blockerEscalationHours * 3600e3).toISOString(), settings.secondRaterRanks);
   }
+  for (const ws of db.prepare('SELECT * FROM workspaces WHERE m91_link IS NOT NULL').all()) {
+    try { const r = await alerts.sweep(ws); alertReports.push(`${r.raised} raised, ${r.answered} answered, ${r.closed} closed${r.errors.length ? `, ${r.errors.length} errors` : ''}`); } catch (e) { alertReports.push(`error ${e.code || e.message}`); }
+  }
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now());
   db.prepare('DELETE FROM idempotency WHERE created_at < ?').run(new Date(Date.now() - 7 * 864e5).toISOString());
-  res.send(`Scores refreshed for ${n} person-weeks`);
+  db.prepare('DELETE FROM m91_callbacks WHERE at < ?').run(new Date(Date.now() - 30 * 864e5).toISOString());
+  res.send(`Scores refreshed for ${n} person-weeks. Alerts: ${alertReports.join('; ') || 'no workspace has phone alerts'}`);
 });
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

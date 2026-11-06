@@ -188,7 +188,7 @@ async function weekScreen(params) {
       ${parent ? `<span class="pill">↑ supports: ${esc(parent.title)}</span>` : ''}</div>
       ${it.details ? `<p class="small muted">${esc(it.details)}</p>` : ''}
       ${it.proof_url || it.proof_note ? `<p class="small">Proof (${esc(it.proof_source || 'self-reported')}): ${it.proof_url ? `<a href="${esc(it.proof_url)}" target="_blank" rel="noopener noreferrer">${esc(it.proof_url)}</a> ` : ''}${esc(it.proof_note || '')}</p>` : ''}
-      ${openBlocker ? `<p class="small" style="color:var(--warn)">Blocked: ${esc(openBlocker.description)} · since ${fmtTime(openBlocker.raised_at)}${openBlocker.escalated ? ' · escalated' : ''}</p>` : ''}
+      ${openBlocker ? `<p class="small" style="color:var(--warn)">Blocked: ${esc(openBlocker.description)} · since ${fmtTime(openBlocker.raised_at)}${openBlocker.claimed_by ? ` · ${esc(openBlocker.claimed_by)} is on it` : openBlocker.escalated ? ' · escalated' : ''}</p>` : ''}
       ${ratings ? `<div>${ratings}</div>` : it.status === 'delivered' ? '<p class="small muted">Waiting for rating</p>' : ''}
       </div><div class="actions">${acts.join('')}</div></div>`;
   };
@@ -395,13 +395,16 @@ async function disputesScreen() {
 
 // ---------- Incidents ----------
 async function incidentsScreen() {
-  const r = await api('GET', '/api/incidents');
+  const [r, setup] = await Promise.all([api('GET', '/api/incidents'), api('GET', '/api/alerts/setup')]);
+  const st = { open: ['warn', 'Waiting'], answered: ['good', 'Answered'], closed: ['', 'Closed'] };
   layout('incidents', `<h1>Incidents</h1>
-    <div class="notice warn">Phone alerts (M91) are not set up yet, so nobody is woken. Serious blockers are listed here until it is.</div>
+    ${setup.configured ? `<p class="muted">Phone alerts go to <b>${esc(setup.channel)}</b>.</p>` : `<div class="notice warn">Phone alerts are not set up, so nobody is rung. ${isAdmin() ? '<a href="#/settings">Set them up in Settings</a>.' : 'Ask an admin to set them up.'}</div>`}
+    <h2>Phone alerts</h2><div class="card tablewrap"><table><thead><tr><th>When</th><th>Alert</th><th>Status</th><th>Answer</th></tr></thead><tbody>
+    ${r.incidents.map((i) => `<tr><td class="small">${fmtTime(i.raised_at)}</td><td>${esc(i.title)}<div class="small muted">${esc(i.severity)} · reached ${i.delivered ?? '?'} phone(s)</div></td>
+      <td><span class="pill ${(st[i.status] || [''])[0]}">${(st[i.status] || ['', i.status])[1]}</span></td><td>${i.decision_label ? `${esc(i.decision_label)} · ${esc(i.answered_by || '')}${i.answer_note ? `<div class="small muted">"${esc(i.answer_note)}"</div>` : ''}` : '–'}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No alerts yet.</td></tr>'}</tbody></table></div>
     <h2>Blockers on top priorities, open longer than ${state.me.settings.blockerEscalationHours}h</h2>
     <div class="card tablewrap"><table><thead><tr><th>Person</th><th>Priority</th><th>Blocker</th><th>Since</th></tr></thead><tbody>
-    ${r.blockersOverThreshold.map((b) => `<tr><td>${esc(b.name)}</td><td>#${b.rank} ${esc(b.title)}</td><td>${esc(b.description)}</td><td>${fmtTime(b.raised_at)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">None.</td></tr>'}</tbody></table></div>
-    <h2>Alerts</h2><div class="card">${r.incidents.length ? r.incidents.map((i) => `<p>${esc(i.severity)} · ${esc(i.title)} · ${esc(i.status)}</p>`).join('') : '<p class="muted">No alerts sent.</p>'}</div>`);
+    ${r.blockersOverThreshold.map((b) => `<tr><td>${esc(b.name)}</td><td>#${b.rank} ${esc(b.title)}</td><td>${esc(b.description)}</td><td>${fmtTime(b.raised_at)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">None.</td></tr>'}</tbody></table></div>`);
 }
 
 // ---------- People ----------
@@ -539,7 +542,7 @@ async function integrationsScreen() {
     ${line('Connect your tools (viaSocket)', s.viasocket.verified, s.viasocket.keysPresent ? 'Keys are stored on the server. Waiting for the plan to be approved and a real test.' : 'Keys missing.')}
     ${line('Slack (daily check-ins, rating buttons)', false, 'Not connected yet.')}
     ${line('Keka (people, reporting lines, leave)', false, state.me.settings.peopleSource === 'keka' ? 'Chosen in Settings. The Connect button appears here once the Keka sync is built and tested.' : 'Optional. This company gets people from ' + (state.me.settings.peopleSource === 'csv' ? 'CSV uploads' : 'invite links') + '.')}
-    ${line('M91 (phone alerts for serious problems)', s.m91.verified, s.m91.sendLinkPresent ? 'Send link stored. Waiting for a safe test.' : 'Send link not added yet.')}
+    ${line('Phone alerts (M91)', s.m91.configured, s.m91.configured ? `Connected to "${esc(s.m91.channel)}". Test it in <a href="#/settings">Settings</a>.` : 'Not set up. Add your channel link in <a href="#/settings">Settings</a>.')}
     </tbody></table></div>`);
 }
 
@@ -573,7 +576,9 @@ async function settingsScreen() {
     <p class="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p></div>
     <h2>Alerts</h2>
     <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" value="${s.blockerEscalationHours}">
-    <p class="err" id="serr"></p><button class="primary">Save settings</button></form>`);
+    <p class="err" id="serr"></p><button class="primary">Save settings</button></form>
+    <div class="card form" id="alertsCard"><p class="muted">Loading phone alerts…</p></div>`);
+  phoneAlertsCard();
   $('#sform').addEventListener('change', (e) => { if (e.target.name === 'peopleSource') $('#hrf').style.display = e.target.value === 'keka' ? '' : 'none'; });
   $('#sform').onsubmit = async (e) => {
     e.preventDefault();
@@ -589,6 +594,52 @@ async function settingsScreen() {
     };
     try { await api('PUT', '/api/settings', { name: f.name, timezone: f.timezone, allowed_domain: f.allowed_domain, settings }); await loadMe(); toast('Saved'); settingsScreen(); } catch (err) { $('#serr').textContent = err.message; }
   };
+}
+
+// ---------- Phone alerts (M91) ----------
+async function phoneAlertsCard() {
+  const el = $('#alertsCard');
+  if (!el) return;
+  const a = await api('GET', '/api/alerts/setup');
+  const answers = { blockers: "I'll unblock it · Blocked by others · Seen", unrated: "I'll rate it today · Seen", unranked: "I'll rank today · Seen", disputes: "I'll decide today · Seen" };
+  el.innerHTML = `<h2 style="margin-top:0">Phone alerts</h2>
+    <p>Proof of Impact rings your managers' phones when someone is stuck on a top priority, or when work is waiting on them for days.</p>
+    <ol class="small"><li>Install M91: <a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener">App Store</a> · <a href="https://play.google.com/store/apps/details?id=com.msg91.m91" target="_blank" rel="noopener">Google Play</a></li>
+      <li>In the app, create a channel and add the managers and TLs who should answer.</li>
+      <li>Tap the paper plane on that channel, copy the link and paste it here.</li></ol>
+    ${a.configured ? `<p>✓ Connected to <b>${esc(a.channel)}</b></p>
+      <div class="row"><button type="button" id="testAlert" class="primary">Ring our phones to test</button><button type="button" id="dropAlert" class="ghost danger">Disconnect</button></div><p class="small" id="testOut"></p>`
+    : `<label>Channel link</label><div class="inline"><input id="m91link" placeholder="Paste the link from M91" autocomplete="off"><button type="button" class="primary" id="saveLink" style="flex:0 0 auto">Connect</button></div><p class="err" id="linkErr"></p>`}
+    <h3 style="margin-top:1rem">You'll be asked when…</h3>
+    ${a.moments.map((x) => `<label style="margin:.3rem 0;color:var(--text)"><input type="checkbox" data-moment="${x.key}" ${x.on ? 'checked' : ''} style="width:auto"> ${esc(x.text)} <span class="small muted">→ ${answers[x.key]}</span></label>`).join('')}
+    <p class="small muted">Alerts name the person they are for. Everyone in the channel needs M91 installed and the invite accepted, or their phone stays silent.</p>`;
+  const save = $('#saveLink');
+  if (save) save.onclick = () => run(save, async () => {
+    try { await api('POST', '/api/alerts/link', { link: $('#m91link').value }); toast('Connected'); phoneAlertsCard(); } catch (e) { $('#linkErr').textContent = e.message; }
+  });
+  const tb = $('#testAlert');
+  if (tb) tb.onclick = () => run(tb, async () => {
+    const out = $('#testOut');
+    try {
+      const r = await api('POST', '/api/alerts/test', {});
+      if (!r.delivered) { out.textContent = 'Sent, but it reached nobody: people in the channel still need to install M91 and accept the invite.'; return; }
+      out.textContent = `Ringing ${r.delivered} phone${r.delivered === 1 ? '' : 's'}${r.unregistered ? ` (${r.unregistered} not set up yet)` : ''}. Tap "It rang" on a phone…`;
+      for (let i = 0; i < 40; i++) {
+        await new Promise((res) => setTimeout(res, 3000));
+        const s = await api('GET', `/api/alerts/test/${encodeURIComponent(r.alertId)}`);
+        if (s.answered || s.responses) { out.textContent = `✓ Answered on a phone${s.answered ? `: "${s.answered}"` : ''}. Phone alerts work.`; return; }
+      }
+      out.textContent = 'No answer yet. Check that a phone in the channel rang.';
+    } catch (e) { out.textContent = e.message; }
+  });
+  const drop = $('#dropAlert');
+  if (drop) drop.onclick = () => run(drop, async () => { if (confirm('Stop phone alerts?')) { await api('DELETE', '/api/alerts/link'); phoneAlertsCard(); } });
+  el.querySelectorAll('[data-moment]').forEach((c) => (c.onchange = () => run(null, async () => {
+    const alertMoments = Object.fromEntries([...el.querySelectorAll('[data-moment]')].map((x) => [x.dataset.moment, x.checked]));
+    await api('PUT', '/api/settings', { settings: { alertMoments } });
+    await loadMe();
+    toast('Saved');
+  })));
 }
 
 // ---------- History log ----------

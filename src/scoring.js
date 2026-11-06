@@ -13,6 +13,8 @@ const DEFAULT_SETTINGS = {
   peopleSource: 'manual', // 'manual' | 'csv' | 'keka'
   // true: admins add managers/TLs, and each manager adds and looks after their own team. false: only admins add people.
   managersAddTeam: true,
+  // Which moments may ring a phone (M91). All on by default; an admin can switch any off.
+  alertMoments: { blockers: true, unrated: true, unranked: true, disputes: true },
   // With Keka, only the fields ticked here are ever read. Salary, payroll, bank, tax, documents and attendance never are.
   hrFields: { reportingLine: true, department: true, jobTitle: true, leave: true, phone: false },
   ratingReminderHours: 48,
@@ -23,6 +25,7 @@ function mergeSettings(raw) {
   const s = { ...DEFAULT_SETTINGS, ...(raw || {}) };
   s.quality = { ...DEFAULT_SETTINGS.quality, ...((raw && raw.quality) || {}) };
   s.hrFields = { ...DEFAULT_SETTINGS.hrFields, ...((raw && raw.hrFields) || {}) };
+  s.alertMoments = { ...DEFAULT_SETTINGS.alertMoments, ...((raw && raw.alertMoments) || {}) };
   return s;
 }
 
@@ -42,6 +45,7 @@ function validateSettings(s) {
   if (!(s.maxCoinsPerPerson >= 1 && s.maxCoinsPerPerson <= s.coinsPerWeek)) errors.push('maxCoinsPerPerson must be 1..coinsPerWeek');
   if (!Array.isArray(s.workingDays) || !s.workingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) errors.push('workingDays must be weekday numbers 0-6');
   if (!(s.stretchBonus >= 0 && s.stretchBonus <= 1)) errors.push('stretchBonus must be 0-1');
+  if (Object.keys(s.alertMoments).some((k) => !(k in DEFAULT_SETTINGS.alertMoments)) || Object.values(s.alertMoments).some((v) => typeof v !== 'boolean')) errors.push('alertMoments has unknown entries');
   if (typeof s.managersAddTeam !== 'boolean') errors.push('managersAddTeam must be true or false');
   if (!['manual', 'csv', 'keka'].includes(s.peopleSource)) errors.push('peopleSource must be manual, csv or keka');
   const allowedHr = Object.keys(DEFAULT_SETTINGS.hrFields);
