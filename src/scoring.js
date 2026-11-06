@@ -9,6 +9,10 @@ const DEFAULT_SETTINGS = {
   maxCoinsPerPerson: 3,
   workingDays: [1, 2, 3, 4, 5], // Mon..Fri (0 = Sunday)
   blockerEscalationHours: 4,
+  // Where people, reporting lines and leave come from. Each company chooses.
+  peopleSource: 'manual', // 'manual' | 'csv' | 'keka'
+  // With Keka, only the fields ticked here are ever read. Salary, payroll, bank, tax, documents and attendance never are.
+  hrFields: { reportingLine: true, department: true, jobTitle: true, leave: true, phone: false },
   ratingReminderHours: 48,
   ratingEscalationHours: 96
 };
@@ -16,6 +20,7 @@ const DEFAULT_SETTINGS = {
 function mergeSettings(raw) {
   const s = { ...DEFAULT_SETTINGS, ...(raw || {}) };
   s.quality = { ...DEFAULT_SETTINGS.quality, ...((raw && raw.quality) || {}) };
+  s.hrFields = { ...DEFAULT_SETTINGS.hrFields, ...((raw && raw.hrFields) || {}) };
   return s;
 }
 
@@ -35,6 +40,9 @@ function validateSettings(s) {
   if (!(s.maxCoinsPerPerson >= 1 && s.maxCoinsPerPerson <= s.coinsPerWeek)) errors.push('maxCoinsPerPerson must be 1..coinsPerWeek');
   if (!Array.isArray(s.workingDays) || !s.workingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) errors.push('workingDays must be weekday numbers 0-6');
   if (!(s.stretchBonus >= 0 && s.stretchBonus <= 1)) errors.push('stretchBonus must be 0-1');
+  if (!['manual', 'csv', 'keka'].includes(s.peopleSource)) errors.push('peopleSource must be manual, csv or keka');
+  const allowedHr = Object.keys(DEFAULT_SETTINGS.hrFields);
+  if (Object.keys(s.hrFields).some((k) => !allowedHr.includes(k)) || Object.values(s.hrFields).some((v) => typeof v !== 'boolean')) errors.push(`hrFields may only switch ${allowedHr.join(', ')} on or off`);
   return errors;
 }
 

@@ -23,12 +23,19 @@ Keys and versions are copied from each app's page (`https://viasocket.com/docs/<
 | slack | Send Direct Message | message content | the product (fixed templates + the person's own items) | per run |
 | slack | Send Message (to a channel) | channel | the admin, from a list of their channels | once, after Connect (only for the optional team digest channel; no individual scores ever go there) |
 | slack | Send Message | buttons (label → URL) | the product (links into the app: Rate Work, My Week) | per run |
-| keka | Find Employees | fields (email, name, reportsTo, groups, jobTitle, mobilePhone) | the product | nightly |
-| keka | List Employee Leave Requests | from / to dates | the product (this week and next) | nightly |
+| keka | Find Employees | fields to return | the product, limited to email + name + only the fields the admin ticked in Settings (reportsTo, groups, jobTitle, mobilePhone) | nightly, only when the company chose "Keka sync" |
+| keka | List Employee Leave Requests | from / to dates | the product (this week and next) | nightly, only if "Leave days" is ticked |
 | keka | Update Goal Progress *(optional, off by default)* | goal id, value | the admin picks the goal mapping once; the product sends the weekly score | weekly |
 | keka | Give Praise To Employee *(optional, off by default)* | employee ids, feedback | the product (from peer coins) | per coin, only if the workspace turns it on |
 
 **Who picks each action:** the product's code, every time. No AI chooses actions. Users never see a list of actions.
+
+**Keka is optional.** Each company chooses its people source in Settings:
+- invite links;
+- CSV upload (export from Keka or any HR tool; nothing stays connected);
+- Keka sync.
+
+With Keka sync, only the ticked fields are requested.
 
 **Never read from Keka:** salary, payroll, bank, tax, documents, attendance.
 

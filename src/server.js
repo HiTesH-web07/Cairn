@@ -125,7 +125,7 @@ function visibleUsers(actor) {
   const ids = [actor.id, ...subtreeIds(actor.workspace_id, actor.id)];
   return ids.map((id) => userIn(actor.workspace_id, id)).filter((u) => u && u.active);
 }
-const publicUser = (u) => u && ({ id: u.id, name: u.name, email: u.email, role: u.role, level: u.level, department: u.department, reports_to: u.reports_to, phone: u.phone, active: !!u.active });
+const publicUser = (u) => u && ({ id: u.id, name: u.name, email: u.email, role: u.role, level: u.level, department: u.department, reports_to: u.reports_to, phone: u.phone, active: !!u.active, joined: !!u.pw_hash });
 
 // ---------- auth ----------
 function parseCookies(h) {
@@ -248,12 +248,17 @@ app.post('/api/invites/:token/accept', wrap((req, res) => {
   if (!inv || inv.used_at || inv.expires_at < now()) throw notFound('This invite link is not valid any more');
   const name = str(req.body.name, 'Your name', { max: 120 });
   const password = str(req.body.password, 'Password', { min: 10, max: 200 });
-  const exists = db.prepare('SELECT id FROM users WHERE workspace_id = ? AND email = ?').get(inv.workspace_id, inv.email);
-  if (exists) throw bad('This email already has an account here. Sign in instead.');
-  const uid = newId('u');
+  const exists = db.prepare('SELECT id, pw_hash FROM users WHERE workspace_id = ? AND email = ?').get(inv.workspace_id, inv.email);
+  if (exists && exists.pw_hash) throw bad('This email already has an account here. Sign in instead.');
+  const uid = exists ? exists.id : newId('u');
   db.transaction(() => {
-    db.prepare('INSERT INTO users (id, workspace_id, email, name, pw_hash, role, level, department, reports_to, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .run(uid, inv.workspace_id, inv.email, name, hashPassword(password), inv.role, inv.level, inv.department, inv.reports_to, now());
+    if (exists) {
+      // Created by a people import: the row (and its reporting line) already exists; the person sets a password.
+      db.prepare('UPDATE users SET name = ?, pw_hash = ? WHERE id = ?').run(name, hashPassword(password), uid);
+    } else {
+      db.prepare('INSERT INTO users (id, workspace_id, email, name, pw_hash, role, level, department, reports_to, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+        .run(uid, inv.workspace_id, inv.email, name, hashPassword(password), inv.role, inv.level, inv.department, inv.reports_to, now());
+    }
     db.prepare('UPDATE invites SET used_at = ? WHERE token_hash = ?').run(now(), inv.token_hash);
     audit(inv.workspace_id, uid, 'user.joined', 'user', uid, { invited_by: inv.created_by });
   })();
@@ -350,6 +355,98 @@ app.patch('/api/people/:id', auth, wrap((req) => {
   db.prepare(`UPDATE users SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...keys.map((k) => upd[k]), target.id);
   audit(req.ws.id, req.user.id, 'user.updated', 'user', target.id, upd);
   return { ok: true };
+}));
+
+// ---------- people import (CSV from any HR tool) ----------
+// rows: [{ email, name, role, level, department, manager_email, phone }]. dryRun: true checks without saving.
+app.post('/api/people/import', auth, adminOnly, idempotent, wrap((req) => {
+  const b = req.body || {};
+  const rows = Array.isArray(b.rows) ? b.rows : [];
+  if (!rows.length || rows.length > 2000) throw bad('Send 1-2000 rows');
+  const existing = new Map(db.prepare('SELECT * FROM users WHERE workspace_id = ?').all(req.ws.id).map((u) => [u.email, u]));
+  const seen = new Set();
+  const results = [];
+  const clean = [];
+  rows.forEach((r, i) => {
+    const line = i + 2; // header is line 1
+    const errs = [];
+    let email = String(r.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.push('email is not valid');
+    else if (req.ws.allowed_domain && !email.endsWith(`@${req.ws.allowed_domain}`)) errs.push(`only ${req.ws.allowed_domain} emails can join`);
+    if (seen.has(email)) errs.push('email appears twice in the file');
+    seen.add(email);
+    const name = String(r.name || '').trim().slice(0, 120);
+    if (!name && !existing.has(email)) errs.push('name is required for new people');
+    let role = String(r.role || 'member').trim().toLowerCase();
+    if (role === 'tl' || role === 'lead') role = 'manager';
+    if (!['member', 'manager', 'admin'].includes(role)) errs.push('role must be member, manager or admin');
+    const phone = String(r.phone || '').replace(/[\s+-]/g, '');
+    if (phone && !/^\d{8,15}$/.test(phone)) errs.push('phone must be digits with country code');
+    const mgr = String(r.manager_email || '').trim().toLowerCase();
+    if (mgr === email && mgr) errs.push('a person cannot report to themselves');
+    const cur = existing.get(email);
+    if (cur && cur.role === 'owner') role = 'owner'; // never demote an owner through a file
+    clean.push({ line, email, name, role, level: String(r.level || '').trim().slice(0, 40) || null, department: String(r.department || '').trim().slice(0, 80) || null, phone: phone || null, mgr, errs, cur });
+  });
+  // Managers must exist in the workspace or in the file.
+  const fileEmails = new Set(clean.map((c) => c.email));
+  for (const c of clean) if (c.mgr && !fileEmails.has(c.mgr) && !existing.has(c.mgr)) c.errs.push(`manager ${c.mgr} is not in the file or the workspace`);
+  // Reporting loops across the final picture.
+  const finalMgr = new Map([...existing.values()].map((u) => [u.email, u.reports_to ? [...existing.values()].find((x) => x.id === u.reports_to)?.email : null]));
+  for (const c of clean) finalMgr.set(c.email, c.mgr || (c.cur ? finalMgr.get(c.email) : (c.email === req.user.email ? null : req.user.email)));
+  for (const c of clean) {
+    let cur = c.email; const path = new Set();
+    while (cur && !path.has(cur)) { path.add(cur); cur = finalMgr.get(cur); }
+    if (cur) c.errs.push('this would make a loop in the reporting line');
+  }
+  const invalid = clean.filter((c) => c.errs.length);
+  const summary = { new: clean.filter((c) => !c.cur && !c.errs.length).length, updated: clean.filter((c) => c.cur && !c.errs.length).length, errors: invalid.map((c) => ({ line: c.line, email: c.email, errors: c.errs })) };
+  if (b.dryRun || invalid.length) return { ok: !invalid.length, dryRun: !!b.dryRun, ...summary };
+  const links = [];
+  db.transaction(() => {
+    for (const c of clean) {
+      if (c.cur) {
+        db.prepare('UPDATE users SET name = COALESCE(NULLIF(?, \'\'), name), role = ?, level = COALESCE(?, level), department = COALESCE(?, department), phone = COALESCE(?, phone), active = 1 WHERE id = ?')
+          .run(c.name, c.role, c.level, c.department, c.phone, c.cur.id);
+      } else {
+        const id = newId('u');
+        db.prepare('INSERT INTO users (id, workspace_id, email, name, role, level, department, phone, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+          .run(id, req.ws.id, c.email, c.name, c.role, c.level, c.department, c.phone, now());
+        existing.set(c.email, { id, email: c.email });
+        const token = crypto.randomBytes(24).toString('base64url');
+        db.prepare('INSERT INTO invites (token_hash, workspace_id, email, role, level, department, created_by, expires_at) VALUES (?,?,?,?,?,?,?,?)')
+          .run(sha(token), req.ws.id, c.email, c.role, c.level, c.department, req.user.id, new Date(Date.now() + 30 * 864e5).toISOString());
+        links.push({ email: c.email, name: c.name, link: `/#/join/${token}` });
+      }
+    }
+    for (const c of clean) {
+      const target = existing.get(c.email);
+      const mgrEmail = c.mgr || (c.cur ? null : (c.email === req.user.email ? null : req.user.email));
+      if (mgrEmail) db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(existing.get(mgrEmail).id, target.id);
+    }
+    audit(req.ws.id, req.user.id, 'people.imported', 'workspace', req.ws.id, { new: summary.new, updated: summary.updated, source: 'csv' });
+  })();
+  return { ok: true, ...summary, links };
+}));
+
+// Leave from a file: rows [{ email, date }] (YYYY-MM-DD). Unknown emails are reported, not guessed.
+app.post('/api/leave/import', auth, adminOnly, wrap((req) => {
+  const rows = Array.isArray(req.body && req.body.rows) ? req.body.rows : [];
+  if (!rows.length || rows.length > 5000) throw bad('Send 1-5000 rows');
+  const users = new Map(db.prepare('SELECT id, email FROM users WHERE workspace_id = ?').all(req.ws.id).map((u) => [u.email, u.id]));
+  const errors = [];
+  const ok = [];
+  rows.forEach((r, i) => {
+    const email = String(r.email || '').trim().toLowerCase();
+    const date = String(r.date || '').trim();
+    if (!users.has(email)) errors.push({ line: i + 2, email, errors: ['not in this workspace'] });
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) errors.push({ line: i + 2, email, errors: ['date must be YYYY-MM-DD'] });
+    else ok.push([users.get(email), date]);
+  });
+  if (errors.length) return { ok: false, errors };
+  db.transaction(() => ok.forEach(([uid, d]) => db.prepare("INSERT OR IGNORE INTO leave_days (workspace_id, user_id, day, source) VALUES (?,?,?,'csv')").run(req.ws.id, uid, d)))();
+  audit(req.ws.id, req.user.id, 'leave.imported', 'workspace', req.ws.id, { days: ok.length });
+  return { ok: true, imported: ok.length };
 }));
 
 // ---------- items, stacks, scoring ----------
@@ -789,10 +886,10 @@ app.get('/api/incidents', auth, wrap((req) => ({
 })));
 
 // Honest status only. Nothing is shown as connected until it has been verified.
-app.get('/api/integrations/status', auth, wrap(() => ({
+app.get('/api/integrations/status', auth, wrap((req) => ({
   viasocket: { keysPresent: !!(process.env.VIASOCKET_ORG_ID && process.env.VIASOCKET_PROJECT_ID && process.env.VIASOCKET_EMBED_SECRET), verified: false, state: 'waiting_for_plan_approval' },
   slack: { state: 'not_connected' },
-  keka: { state: 'not_connected' },
+  keka: { state: 'not_connected', chosen: S.mergeSettings(JSON.parse(req.ws.settings_json || '{}')).peopleSource === 'keka' },
   m91: { sendLinkPresent: !!process.env.M91_SEND_LINK, verified: false, state: 'not_set_up' }
 })));
 

@@ -187,3 +187,54 @@ test('full flow: hierarchy, ranking, delivery, ratings, scores, privacy', async 
   await again('POST', '/api/auth/logout');
   assert.equal((await again('GET', '/api/me')).status, 401);
 });
+
+test('people import from a CSV, with dry run, validation, hierarchy and leave', async () => {
+  const admin = client();
+  await admin('POST', '/api/auth/signup', { company: 'CsvCo', name: 'Boss', email: 'boss@csv.co', password: PW, allowed_domain: 'csv.co' });
+  const rows = [
+    { email: 'head@csv.co', name: 'Head', role: 'manager', level: 'Senior', department: 'ISE', manager_email: 'boss@csv.co' },
+    { email: 'tl@csv.co', name: 'TL', role: 'TL', level: 'Lead', department: 'ISE', manager_email: 'head@csv.co', phone: '+91 98765 43210' },
+    { email: 'intern@csv.co', name: 'Intern', level: 'Intern', department: 'ISE', manager_email: 'tl@csv.co' }
+  ];
+  // Errors are reported per line and nothing is saved
+  const badRun = await admin('POST', '/api/people/import', { rows: [...rows, { email: 'x@other.com', name: 'X' }, { email: 'y@csv.co', name: 'Y', manager_email: 'ghost@csv.co' }] });
+  assert.equal(badRun.body.ok, false);
+  assert.deepEqual(badRun.body.errors.map((e) => e.line), [5, 6]);
+  assert.equal((await admin('GET', '/api/people')).body.people.length, 1);
+  // Loop detection
+  const loop = await admin('POST', '/api/people/import', { rows: [{ email: 'a@csv.co', name: 'A', manager_email: 'b@csv.co' }, { email: 'b@csv.co', name: 'B', manager_email: 'a@csv.co' }] });
+  assert.ok(loop.body.errors.some((e) => e.errors.some((m) => /loop/.test(m))));
+  // Dry run then real import
+  const dry = await admin('POST', '/api/people/import', { rows, dryRun: true });
+  assert.equal(dry.body.ok, true);
+  assert.equal(dry.body.new, 3);
+  assert.equal((await admin('GET', '/api/people')).body.people.length, 1);
+  const done = await admin('POST', '/api/people/import', { rows });
+  assert.equal(done.body.links.length, 3);
+  const people = (await admin('GET', '/api/people')).body.people;
+  const byEmail = Object.fromEntries(people.map((p) => [p.email, p]));
+  assert.equal(byEmail['intern@csv.co'].reports_to, byEmail['tl@csv.co'].id);
+  assert.equal(byEmail['tl@csv.co'].role, 'manager');
+  assert.equal(byEmail['tl@csv.co'].phone, '919876543210');
+  assert.equal(byEmail['intern@csv.co'].joined, false);
+  // Not joined yet: cannot sign in; invite link lets them set a password, keeping the reporting line
+  const intern = client();
+  assert.equal((await intern('POST', '/api/auth/login', { email: 'intern@csv.co', password: PW })).status, 401);
+  const token = done.body.links.find((l) => l.email === 'intern@csv.co').link.split('/join/')[1];
+  assert.equal((await intern('POST', `/api/invites/${token}/accept`, { name: 'Intern R', password: PW })).status, 200);
+  const me = (await intern('GET', '/api/me')).body.user;
+  assert.equal(me.reports_to, byEmail['tl@csv.co'].id);
+  // Re-import updates instead of duplicating
+  const again = await admin('POST', '/api/people/import', { rows: [{ email: 'intern@csv.co', level: 'Junior', manager_email: 'tl@csv.co' }] });
+  assert.equal(again.body.updated, 1);
+  assert.equal((await admin('GET', '/api/people')).body.people.length, 4);
+  // Members cannot import
+  assert.equal((await intern('POST', '/api/people/import', { rows })).status, 403);
+  // Leave import
+  const lv = await admin('POST', '/api/leave/import', { rows: [{ email: 'intern@csv.co', date: '2026-11-10' }, { email: 'nobody@csv.co', date: '2026-11-10' }] });
+  assert.equal(lv.body.ok, false);
+  assert.equal((await admin('POST', '/api/leave/import', { rows: [{ email: 'intern@csv.co', date: '2026-11-10' }] })).body.imported, 1);
+  // Source setting: only known fields, never salary
+  assert.equal((await admin('PUT', '/api/settings', { settings: { peopleSource: 'keka', hrFields: { salary: true } } })).status, 400);
+  assert.equal((await admin('PUT', '/api/settings', { settings: { peopleSource: 'csv', hrFields: { leave: false } } })).status, 200);
+});

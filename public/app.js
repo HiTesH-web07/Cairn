@@ -19,6 +19,33 @@ async function api(method, url, body, opts = {}) {
   if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
   return data;
 }
+// Small CSV reader: quoted fields, commas and new lines inside quotes, first row = headers.
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; } else if (c === '"') q = false; else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+    else field += c;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const clean = rows.filter((r) => r.some((x) => x.trim()));
+  if (!clean.length) return [];
+  const head = clean[0].map((h) => h.trim().toLowerCase().replace(/[\s-]+/g, '_'));
+  return clean.slice(1).map((r) => Object.fromEntries(head.map((h, i) => [h, (r[i] || '').trim()])));
+}
+function downloadCsv(name, rows) {
+  const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const text = rows.map((r) => r.map(cell).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+  a.download = name;
+  a.click();
+}
 const idem = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
 
 function toast(msg) {
@@ -381,11 +408,38 @@ async function peopleScreen() {
   const [p, dir] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory')]);
   const byId = Object.fromEntries(dir.people.map((x) => [x.id, x.name]));
   const admin = isAdmin();
-  layout('people', `<div class="row spread"><h1>People</h1><button class="primary" id="invite">+ Invite</button></div>
+  const src = state.me.settings.peopleSource;
+  layout('people', `<div class="row spread"><h1>People</h1><div class="row">${admin ? '<button id="importp">Import people (CSV)</button><button id="importl">Import leave (CSV)</button>' : ''}<button class="primary" id="invite">+ Invite</button></div></div>
+    <p class="small muted">People come from: <b>${src === 'keka' ? 'Keka sync' : src === 'csv' ? 'CSV upload' : 'invite links'}</b>${admin ? ' · change it in <a href="#/settings">Settings</a>' : ''}</p>
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${admin ? '<th></th>' : ''}</tr></thead><tbody>
-    ${p.people.map((u) => `<tr><td><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a><div class="small muted">${esc(u.email)}</div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
+    ${p.people.map((u) => `<tr><td><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<div class="small muted">${esc(u.email)}</div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
       <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${admin ? `<td><button data-edit="${esc(u.id)}">Edit</button></td>` : ''}</tr>`).join('')}</tbody></table></div>
-    <p class="small muted">Leave and the reporting line can later come from your HR tool (e.g. Keka) once Integrations are set up.</p>`);
+    <p class="small muted">Export people from Keka, Excel or any HR tool as a CSV, or keep inviting by link. Keka can also sync on its own once set up under Integrations.</p>`);
+  if (admin) {
+    $('#importp').onclick = () => importDialog({
+      title: 'Import people', endpoint: '/api/people/import',
+      help: 'Columns: <code>email, name, role, level, department, manager_email, phone</code>. Role is member, manager or admin. Existing people are updated, not duplicated. People without a manager in the file report to you. Do not include salary or any other columns: they are ignored.',
+      template: [['email', 'name', 'role', 'level', 'department', 'manager_email', 'phone'], ['tl@yourcompany.com', 'Amit', 'manager', 'Lead', 'ISE', '', '919876543210'], ['riya@yourcompany.com', 'Riya', 'member', 'Intern', 'ISE', 'tl@yourcompany.com', '']],
+      pick: (r) => ({ email: r.email, name: r.name, role: r.role, level: r.level, department: r.department, manager_email: r.manager_email || r.manager || r.reports_to, phone: r.phone }),
+      done: (res) => {
+        peopleScreen();
+        if (res.links && res.links.length) {
+          const rowsOut = [['email', 'name', 'invite_link'], ...res.links.map((l) => [l.email, l.name, location.origin + l.link])];
+          setTimeout(() => {
+            const d2 = modal(`<h3>${res.new} new, ${res.updated} updated</h3><p class="small muted">New people need their own link to set a password. Links work once and expire in 30 days.</p><button type="button" id="dl">Download invite links (CSV)</button>`, async () => {});
+            d2.querySelector('#dl').onclick = () => downloadCsv('invite-links.csv', rowsOut);
+          }, 50);
+        } else toast(`${res.updated} people updated`);
+      }
+    });
+    $('#importl').onclick = () => importDialog({
+      title: 'Import leave', endpoint: '/api/leave/import', noDryRun: true,
+      help: 'Columns: <code>email, date</code> with one row per day off, dates as YYYY-MM-DD. Expectations for those weeks go down automatically.',
+      template: [['email', 'date'], ['riya@yourcompany.com', '2026-11-12']],
+      pick: (r) => ({ email: r.email, date: r.date }),
+      done: (res) => toast(`${res.imported} leave days added`)
+    });
+  }
   const options = (sel) => dir.people.map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
   $('#invite').onclick = () => {
     const key = idem();
@@ -412,6 +466,33 @@ async function peopleScreen() {
   });
 }
 
+function importDialog(o) {
+  let rows = [];
+  const d = modal(`<h3>${o.title}</h3><p class="small">${o.help}</p><button type="button" id="tpl">Download a template</button>
+    <label>CSV file</label><input type="file" id="csvfile" accept=".csv,text/csv"><div id="preview" class="small muted"></div>`, async () => {
+    if (!rows.length) throw new Error('Choose a CSV file first');
+    const res = await api('POST', o.endpoint, { rows }, { idem: idem() });
+    if (!res.ok) throw new Error(res.errors.slice(0, 8).map((e) => `Line ${e.line} (${e.email}): ${e.errors.join(', ')}`).join(' · '));
+    o.done(res);
+  });
+  d.querySelector('button.primary').textContent = 'Import';
+  d.querySelector('#tpl').onclick = () => downloadCsv(`${o.endpoint.split('/')[2]}-template.csv`, o.template);
+  d.querySelector('#csvfile').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 2e6) { d.querySelector('#preview').textContent = 'File is too big (max 2 MB).'; return; }
+    rows = parseCsv(await f.text()).map(o.pick);
+    const pv = d.querySelector('#preview');
+    pv.textContent = `${rows.length} rows read. Checking…`;
+    if (o.noDryRun) { pv.textContent = `${rows.length} rows ready to import.`; return; }
+    try {
+      const chk = await api('POST', o.endpoint, { rows, dryRun: true });
+      pv.innerHTML = chk.ok ? `Ready: <b>${chk.new}</b> new, <b>${chk.updated}</b> updated. Nothing is saved until you click Import.`
+        : `<span class="err">${chk.errors.length} problem(s) to fix in the file:</span><br>${chk.errors.slice(0, 10).map((x) => `Line ${x.line} ${esc(x.email)}: ${esc(x.errors.join(', '))}`).join('<br>')}`;
+    } catch (err) { pv.textContent = err.message; }
+  };
+}
+
 // ---------- Integrations ----------
 async function integrationsScreen() {
   const s = await api('GET', '/api/integrations/status');
@@ -420,7 +501,7 @@ async function integrationsScreen() {
     <div class="card tablewrap"><table><tbody>
     ${line('Connect your tools (viaSocket)', s.viasocket.verified, s.viasocket.keysPresent ? 'Keys are stored on the server. Waiting for the plan to be approved and a real test.' : 'Keys missing.')}
     ${line('Slack (daily check-ins, rating buttons)', false, 'Not connected yet.')}
-    ${line('Keka (people, reporting lines, leave)', false, 'Not connected yet.')}
+    ${line('Keka (people, reporting lines, leave)', false, state.me.settings.peopleSource === 'keka' ? 'Chosen in Settings. The Connect button appears here once the Keka sync is built and tested.' : 'Optional. This company gets people from ' + (state.me.settings.peopleSource === 'csv' ? 'CSV uploads' : 'invite links') + '.')}
     ${line('M91 (phone alerts for serious problems)', s.m91.verified, s.m91.sendLinkPresent ? 'Send link stored. Waiting for a safe test.' : 'Send link not added yet.')}
     </tbody></table></div>`);
 }
@@ -443,8 +524,17 @@ async function settingsScreen() {
     <div class="inline"><div><label>Coins per week</label><input name="coinsPerWeek" type="number" min="0" max="100" value="${s.coinsPerWeek}"></div>
     <div><label>Max coins to one person</label><input name="maxCoinsPerPerson" type="number" min="1" value="${s.maxCoinsPerPerson}"></div></div>
     <label>Working days</label><div class="row">${days.map((d, i) => `<label style="margin:0"><input type="checkbox" name="wd${i}" ${s.workingDays.includes(i) ? 'checked' : ''} style="width:auto"> ${d}</label>`).join('')}</div>
+    <h2>People &amp; leave source</h2><p class="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p>
+    ${[['manual', 'Invite links', 'Managers invite people one by one. Leave is added in the app.'], ['csv', 'CSV upload', 'Export from Keka, Excel or any HR tool and upload it under People. Nothing stays connected.'], ['keka', 'Keka sync', 'Read automatically every night, only the fields ticked below. Needs setup under Integrations.']]
+      .map(([v, t, h]) => `<label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="peopleSource" value="${v}" ${s.peopleSource === v ? 'checked' : ''} style="width:auto"> <b>${t}</b> <span class="small muted">${h}</span></label>`).join('')}
+    <div id="hrf" style="${s.peopleSource === 'keka' ? '' : 'display:none'}"><label>Fields Keka may share</label>
+    ${[['reportingLine', 'Reporting line (who reports to whom)'], ['department', 'Department'], ['jobTitle', 'Job title (used as level)'], ['leave', 'Leave days'], ['phone', 'Mobile number (for serious alerts)']]
+      .map(([k, t]) => `<label style="margin:.2rem 0;color:var(--text)"><input type="checkbox" name="hr_${k}" ${s.hrFields[k] ? 'checked' : ''} style="width:auto"> ${t}</label>`).join('')}
+    <p class="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p></div>
+    <h2>Alerts</h2>
     <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" value="${s.blockerEscalationHours}">
     <p class="err" id="serr"></p><button class="primary">Save settings</button></form>`);
+  $('#sform').addEventListener('change', (e) => { if (e.target.name === 'peopleSource') $('#hrf').style.display = e.target.value === 'keka' ? '' : 'none'; });
   $('#sform').onsubmit = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target).entries());
@@ -452,7 +542,9 @@ async function settingsScreen() {
       rankWeights: f.rankWeights.split(',').map((x) => Number(x.trim())).filter((x) => !Number.isNaN(x)),
       quality: { done_well: Number(f.q_done_well), needs_fixes: Number(f.q_needs_fixes), redo: Number(f.q_redo) },
       secondRaterRanks: Number(f.secondRaterRanks), stretchBonus: Number(f.stretchBonus), coinsPerWeek: Number(f.coinsPerWeek), maxCoinsPerPerson: Number(f.maxCoinsPerPerson),
-      workingDays: days.map((_, i) => (f[`wd${i}`] ? i : null)).filter((x) => x !== null), blockerEscalationHours: Number(f.blockerEscalationHours)
+      workingDays: days.map((_, i) => (f[`wd${i}`] ? i : null)).filter((x) => x !== null), blockerEscalationHours: Number(f.blockerEscalationHours),
+      peopleSource: f.peopleSource || 'manual',
+      hrFields: Object.fromEntries(['reportingLine', 'department', 'jobTitle', 'leave', 'phone'].map((k) => [k, !!f[`hr_${k}`]]))
     };
     try { await api('PUT', '/api/settings', { name: f.name, timezone: f.timezone, allowed_domain: f.allowed_domain, settings }); await loadMe(); toast('Saved'); settingsScreen(); } catch (err) { $('#serr').textContent = err.message; }
   };
