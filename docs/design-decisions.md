@@ -60,3 +60,15 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 ## Deliberate deviations from the skill
 - Footer stays light in the light theme (the skill's table suggested #111111). You rejected a dark footer on a light page earlier.
 - Semantic pills in dark mode are outlined on #272727 so status stays visible without adding backgrounds outside the approved list.
+
+## Home: navigation and hero (step 2)
+- Nav: compact bar, centred, sized to its content, floating 12px off the top edge. Translucent surface over a 16px blur, 1px border, radius 16 with 8px padding, so inner controls are radius 8 (nested radius rule). Firmer surface once the page has scrolled.
+- Current section is marked with `aria-current` (scroll spy, IntersectionObserver). No scroll listener.
+- Menu toggle: three lines that turn into a cross (transform and opacity, 500ms on the base curve).
+- Mobile menu (860px and below): full height panel, base surface at 94% with a 24px blur, page scroll locked, focus moves in and returns to the toggle, Escape closes. Links rise 24px and fade, 60ms apart, finished by 400ms.
+- Hero: Heading 1. 60/60 from 1024px, 48/48 from 640px, 36/40 below. Heading and sub copy capped at 680px. Heading text gradient only (black to #666666 light, white to #9B9B9B dark). Phrases are kept whole (`nowrap`) except below 370px.
+- Hero CTA uses Button-lg with 12px / 24px padding (tokens). The 8px / 12px rule stays for standard buttons. One primary action ("Create a workspace" or "Open my week" when signed in), one quiet secondary.
+- One proof line, using existing product facts. No invented logos, counts or quotes.
+- Hero visual: the product as a ledger. Weight bars share one track so widths compare honestly. Numbers in Geist Mono. One entrance (rows rise and fade, bars grow from the left, score counts up), then it rests. No floating chips, no looping motion.
+- Icons: Phosphor regular, inlined from `public/phosphor.js` (MIT, licence in `public/fonts/LICENSE-phosphor.txt`). `UI.ph('name')` returns the SVG.
+- CTA wording is now the same everywhere: "Create a workspace".

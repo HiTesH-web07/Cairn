@@ -11,10 +11,12 @@
 <script>(function(){var m=/^\/(home|signin|signup|forgot|week|rate|team|score|coins|disputes|incidents|people|integrations|settings|profile|audit|how)\/?$/.exec(location.pathname);if(m)history.replaceState(null,"","/#/"+m[1]+location.search)})()</script>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/system.css">
+<link rel="stylesheet" href="/home.css">
 </head>
 <body>
 <div id="app"><p class="boot">Loading…</p></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<script src="/phosphor.js"></script>
 <script src="/ui.js"></script>
 <script>document.getElementById("favicon").href = UI.favicon();</script>
 <script src="/home.js"></script>

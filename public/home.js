@@ -58,43 +58,56 @@
       <div class="muted small sc-pop" style="--dl:2.4s">Coins sit beside the score. They are never added to it.</div>
     </div>`;
 
-  function html({ signedIn }) {
-    const cta = signedIn
-      ? '<a class="btn primary" href="#/week">Open my week</a>'
-      : '<a class="btn ghost" href="#/signin">Sign in</a><a class="btn primary" href="#/signup">Get started</a>';
-    return `<div class="hp">
-    <header class="hp-nav"><div class="hp-wrap">
-      <a class="brand" href="#/home">${logo()}${brand.name}</a>
-      <nav class="hp-links" aria-label="Sections"><a data-go="hp-how">How it works</a><a data-go="hp-vs">Why it's different</a><a data-go="hp-fair">Fairness</a><a data-go="hp-where">Where you work</a></nav>
-      <div class="hp-cta">${window.UI.themeBtn()}${cta}</div>
-    </div></header>
+  const NAV_LINKS = [['hp-how', 'How it works'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-where', 'Where you work']];
 
-    <div class="hp-herowrap"><div class="hp-deco" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
-    <section class="hp-wrap hp-hero">
-      <div>
-        <div class="hp-eyebrow"><i></i>Measure value, not busyness</div>
-        <h1 class="hp-h1">Measure the <span class="hp-grad">value</span> of work, not the number of tasks.</h1>
-        <p class="hp-lead">Each week your manager picks the few things that matter most. You deliver them with proof, the people who used your work rate them, and you get one fair score.</p>
-        <div class="hp-btns">${signedIn ? '<a class="btn primary" href="#/week">Open my week</a>' : '<a class="btn primary" href="#/signup">Start free</a>'}<button class="ghost" data-go="hp-how" type="button">See how it works ↓</button></div>
-        <div class="hp-trust"><span>No screenshots or time tracking</span><span>Task count never counts</span><span>Every rating has a reason</span></div>
+  function html({ signedIn }) {
+    const ph = window.UI.ph;
+    const primary = signedIn ? '<a class="btn primary" href="#/week">Open my week</a>' : '<a class="btn primary" href="#/signup">Create a workspace</a>';
+    const signin = signedIn ? '' : '<a class="btn ghost" href="#/signin">Sign in</a>';
+    const links = (cls) => NAV_LINKS.map(([id, t], i) => `<a class="${cls}" href="#/home" data-go="${id}" data-spy="${id}" style="--i:${i}">${t}</a>`).join('');
+    return `<div class="hp">
+    <div id="nv-sentinel" aria-hidden="true"></div>
+    <header class="nv-wrap">
+      <nav class="nv" aria-label="Main">
+        <a class="nv-brand" href="#/home" aria-label="${brand.name}, home">${logo()}<span>${brand.name}</span></a>
+        <div class="nv-links">${links('nv-link')}</div>
+        <div class="nv-actions">${window.UI.themeBtn()}${signin}${primary}</div>
+        <button class="nv-toggle" type="button" aria-expanded="false" aria-controls="nv-menu" aria-label="Open menu"><span></span><span></span><span></span></button>
+      </nav>
+      <div class="nv-menu" id="nv-menu" aria-label="Menu">
+        <div class="nv-menu-in">
+          ${NAV_LINKS.map(([id, t], i) => `<a class="nv-mlink" href="#/home" data-go="${id}" data-spy="${id}" style="--i:${i}">${t}${ph('arrow-right')}</a>`).join('')}
+          <div class="nv-mactions" style="--i:${NAV_LINKS.length}">${signin}${primary}</div>
+          <div class="nv-mtheme" style="--i:${NAV_LINKS.length + 1}"><span>Light or dark</span>${window.UI.themeBtn()}</div>
+        </div>
       </div>
-      <div class="hp-vis" aria-hidden="true">
-        <div class="hp-win">
-          <div class="hp-bar"><i></i><i></i><i></i><span>My Week · Riya</span></div>
-          <div class="hp-body">
-            <div><div class="hp-colh">Everything you do<em>logged, earns 0</em></div>
-              <div class="hp-noise">${chips.map((c, i) => `<span class="hp-chip" style="--d:${i}">${c}</span>`).join('')}</div></div>
-            <div><div class="hp-colh">Top priorities<em>locked by your manager</em></div>
-              <div class="hp-prio">
-                <div class="hp-card" style="--i:0"><b>#1</b><span>Gmail plug launch</span><u>35%</u><s style="--i:0">Done well</s></div>
-                <div class="hp-card" style="--i:1"><b>#2</b><span>Write the help docs</span><u>25%</u><s style="--i:1">Done well</s></div>
-                <div class="hp-card" style="--i:2"><b>#3</b><span>OAuth refresh · Stretch</span><u>20%</u><s class="w" style="--i:2">Needs fixes</s></div>
-              </div></div>
-            <div class="hp-score">${ring(88)}<div><strong>88</strong><small>score out of 100, against her own list</small></div></div>
+    </header>
+
+    <main id="home-main">
+    <section class="hero hp-wrap" aria-labelledby="hero-h1">
+      <div class="hero-copy">
+        <p class="hero-eyebrow"><span aria-hidden="true"></span>Measure value, not busyness</p>
+        <h1 class="hero-h1" id="hero-h1"><span class="nb">Measure the value</span> <span class="nb">of work,</span> <span class="nb">not the number</span> <span class="nb">of tasks.</span></h1>
+        <p class="hero-sub">Each week your manager picks the few things that matter most. You deliver them with proof, the people who used your work rate them, and you get one fair score.</p>
+        <div class="hero-cta">${signedIn ? '<a class="btn primary btn-lg" href="#/week">Open my week</a>' : '<a class="btn primary btn-lg" href="#/signup">Create a workspace</a>'}<button class="btn ghost btn-lg" data-go="hp-how" type="button">See how it works${ph('arrow-down')}</button></div>
+        <ul class="hero-proof"><li>${ph('check-circle')}No screenshots or time tracking</li><li>${ph('check-circle')}Task count never counts</li><li>${ph('check-circle')}Every rating has a reason</li></ul>
+      </div>
+      <div class="hv">
+        <p class="sr-only">Example week for Riya. Three ranked priorities worth 35, 25 and 20 points were delivered and rated. She earned 70 of 80 points, a score of 88 out of 100. Everything else she did is logged and earns zero.</p>
+        <div class="hv-card" aria-hidden="true">
+          <div class="hv-head"><div><span class="hv-k">My Week</span><span class="hv-who">Riya Shah · Nov 2 to Nov 8</span></div><span class="pill good hv-lock">${ph('lock-simple')}Locked by Amit</span></div>
+          <div class="hv-label"><span>Top priorities</span><span>Worth</span></div>
+          <ol class="hv-rows">
+            ${[['1', 'Gmail plug launch', 35, 100, 'Done well', 'good'], ['2', 'Write the help docs', 25, 71, 'Done well', 'good'], ['3', 'OAuth refresh', 20, 57, 'Needs fixes', 'warn']].map((r, i) => `
+            <li class="hv-row" style="--i:${i}"><b class="hv-rk">${r[0]}</b><div class="hv-main"><span class="hv-t">${r[1]}</span><div class="hv-bar"><i style="--w:${r[3]}%"></i></div></div><span class="hv-w">${r[2]}</span><span class="pill ${r[5]}">${r[4]}</span></li>`).join('')}
+          </ol>
+          <div class="hv-label hv-label2"><span>Logged, not scored</span><span>0 pts</span></div>
+          <div class="hv-noise">${['Replied to 40 emails', 'Fixed a typo', 'Joined 12 meetings', 'Updated the wiki'].map((c, i) => `<span style="--i:${i + 3}">${c}</span>`).join('')}</div>
+          <div class="hv-score" style="--i:6">
+            <div class="hv-sum"><span class="hv-k">Points</span><span class="hv-eq"><b>70</b> of 80</span></div>
+            <div class="hv-num"><b data-hero-score>88</b><span>/ 100</span><small>against her own list</small></div>
           </div>
         </div>
-        <div class="hp-float a">🔒 Locked by Amit</div>
-        <div class="hp-float b">★ Rated by 2 people</div>
       </div>
     </section>
       <div class="hp-wrap hp-strip">
@@ -103,7 +116,6 @@
         <div class="hp-pr reveal" style="--rd:.16s"><span class="tile-ico t-pink">${icon('team')}</span><div><b>Rated in the open</b><span>Two raters on top work, with reasons.</span></div></div>
         <div class="hp-pr reveal" style="--rd:.24s"><span class="tile-ico t-good">${icon('shield')}</span><div><b>An open formula</b><span>Everyone can see how the score works.</span></div></div>
       </div>
-    </div>
 
     <section class="hp-sec" id="hp-stack"><div class="hp-wrap">
       <div class="hp-kicker reveal">The score</div>
@@ -226,6 +238,7 @@
 
     <section class="hp-wrap hp-final"><div class="box reveal">${cairn()}<h2>See your own week in two minutes.</h2><p>Create a workspace, invite your team, and rank the first week. No setup call needed.</p>
       ${signedIn ? '<a class="btn" href="#/week">Open my week</a>' : '<a class="btn" href="#/signup">Create a workspace</a>'}</div></section>
+    </main>
     <footer class="hp-end"><div class="hp-wrap">
       <div class="hp-fgrid">
         <div class="hp-fbrand"><a class="brand" href="#/home">${logo()}${brand.name}</a>
@@ -255,12 +268,52 @@
     const el = root.querySelector('.hp');
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // smooth scroll for the in-page links (the URL hash belongs to the app's router)
+    // ---- navigation: floating bar, full-height mobile menu, current section ----
+    const nv = el.querySelector('.nv-wrap');
+    const toggle = el.querySelector('.nv-toggle');
+    const menu = el.querySelector('#nv-menu');
+    const desktop = matchMedia('(min-width: 861px)');
+    menu.setAttribute('inert', '');
+    const setMenu = (open, returnFocus = true) => {
+      nv.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      document.documentElement.classList.toggle('nv-lock', open);
+      if (open) { menu.removeAttribute('inert'); setTimeout(() => menu.querySelector('a, button')?.focus(), 60); }
+      else { menu.setAttribute('inert', ''); if (returnFocus && menu.contains(document.activeElement)) toggle.focus(); }
+    };
+    toggle.addEventListener('click', () => setMenu(!nv.classList.contains('open')));
+    const onKey = (e) => { if (e.key === 'Escape' && nv.classList.contains('open')) setMenu(false); };
+    const onSize = () => { if (desktop.matches && nv.classList.contains('open')) setMenu(false, false); };
+    document.addEventListener('keydown', onKey);
+    desktop.addEventListener('change', onSize);
+    cleanups.push(() => { document.removeEventListener('keydown', onKey); desktop.removeEventListener('change', onSize); document.documentElement.classList.remove('nv-lock'); });
+
+    // in-page links scroll smoothly (the URL hash belongs to the app's router)
     el.querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', (e) => {
       e.preventDefault();
+      const wasOpen = nv.classList.contains('open');
+      if (wasOpen) setMenu(false, false);
       const t = document.getElementById(a.dataset.go);
-      if (t) t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      if (t) setTimeout(() => t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }), wasOpen ? 80 : 0);
     }));
+
+    // a quiet change once the page has scrolled: the bar gets a firmer surface
+    const sentinel = el.querySelector('#nv-sentinel');
+    const sv = new IntersectionObserver((en) => nv.classList.toggle('scrolled', !en[0].isIntersecting), { threshold: 0 });
+    sv.observe(sentinel); observers.push(sv);
+
+    // current section in the navigation
+    const spy = new IntersectionObserver((entries) => entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      el.querySelectorAll('[data-spy]').forEach((a) => { if (a.dataset.spy === en.target.id) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current'); });
+    }), { rootMargin: '-35% 0px -60% 0px' });
+    NAV_LINKS.forEach(([id]) => { const t = document.getElementById(id); if (t) spy.observe(t); });
+    observers.push(spy);
+
+    // hero: the score counts up once the rows have landed
+    const heroNum = el.querySelector('[data-hero-score]');
+    if (heroNum && !reduce) { heroNum.textContent = '0'; const ht = setTimeout(() => countUp(heroNum, 88, 1300), 1000); cleanups.push(() => clearTimeout(ht)); }
 
     // reveal on scroll
     // The score walkthrough: five steps that play by themselves, one caption each.
