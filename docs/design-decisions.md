@@ -8,7 +8,7 @@ Guide: the `landing-page-design` skill (elayadesign/ai-design-skills). Where thi
 |---|---|
 | Direction | Flat, quiet, confident. Real product visuals carry the story, not decoration. |
 | Gradients | Only the logo mark, and the hero heading text (left to right: white to #9B9B9B in dark, black to #666666 in light). Nothing else. |
-| Dark theme | Neutral only: page #181818, surface #1F1F1F, raised #272727, border #313131, deepest #000000. |
+| Dark theme | Navy, chosen by the owner after seeing both (2026-11-06). Page #0B0D17, surface #131728, raised #1A1F35, border #252B45, footer #0C0E22. Overrides the skill's neutral list. |
 | Copy | Allowed: one consistent primary action ("Create a workspace"), a tagline reveal and a Home FAQ reusing existing wording. Nothing else is rewritten. |
 | Legal pages | Privacy and Terms are omitted until real documents exist. No dead links. |
 | Scope | Home plus every app screen. |
@@ -23,16 +23,16 @@ Guide: the `landing-page-design` skill (elayadesign/ai-design-skills). Where thi
 ## Colour (light / dark)
 | Token | Light | Dark |
 |---|---|---|
-| page `--bg` | #FFFFFF | #181818 |
-| surface | #F7F7F7 | #1F1F1F |
-| raised `--surface-2` | #EFEFEF | #272727 |
-| border | #E5E5E5 | #313131 |
-| text | #111111 | #F2F2F2 |
-| muted | #5B5B5B | #A1A1A1 |
+| page `--bg` | #FFFFFF | #0B0D17 |
+| surface | #F7F7F7 | #131728 |
+| raised `--surface-2` | #EFEFEF | #1A1F35 |
+| border | #E5E5E5 | #252B45 |
+| text | #111111 | #E9ECF8 |
+| muted | #5B5B5B | #9BA4C0 |
 | accent | #4F46E5 | #8B8CFF |
-| on accent | #FFFFFF | #111111 |
+| on accent | #FFFFFF | #0B0D17 |
 All text pairs measured at 4.5:1 or better (see the QA record).
-Semantic: good #0F7A55 / #4CC99A, warn #8A5200 / #F2B84D, bad #B3261E / #FF7D72. Light tints for pills; dark pills are outlined on #272727.
+Semantic: good #0F7A55 / #4CC99A, warn #8A5200 / #F2B84D, bad #B3261E / #FF7D72. Tinted fills for pills in both themes (dark: #143327, #36290F, #3B1C1A). Banners in dark use the light accent with dark text.
 
 ## Spacing, radius, borders
 - Spacing tokens only: 0, 2, 4, 8, 12, 16, 24, 32, 40, 48, 64, 80, 96 px as `--space-*`.
@@ -53,13 +53,13 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 
 ## Rejected
 - Purple to pink gradient surfaces, aurora backgrounds, dotted page backgrounds, glassmorphism on content.
-- Navy-tinted dark theme (#0b0d17 and friends).
+- Neutral grey dark theme (#181818 family). Tried, then replaced by navy at the owner's request.
 - Colourful per-feature tile icons (teal, pink). One accent plus semantic colours.
 - "Start free" (implies pricing that does not exist).
 
 ## Deliberate deviations from the skill
 - Footer stays light in the light theme (the skill's table suggested #111111). You rejected a dark footer on a light page earlier.
-- Semantic pills in dark mode are outlined on #272727 so status stays visible without adding backgrounds outside the approved list.
+- Dark theme is navy, not the skill's neutral list, by the owner's choice.
 
 ## Home: navigation and hero (step 2)
 - Nav: compact bar, centred, sized to its content, floating 12px off the top edge. Translucent surface over a 16px blur, 1px border, radius 16 with 8px padding, so inner controls are radius 8 (nested radius rule). Firmer surface once the page has scrolled.
@@ -72,3 +72,12 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 - Hero visual: the product as a ledger. Weight bars share one track so widths compare honestly. Numbers in Geist Mono. One entrance (rows rise and fade, bars grow from the left, score counts up), then it rests. No floating chips, no looping motion.
 - Icons: Phosphor regular, inlined from `public/phosphor.js` (MIT, licence in `public/fonts/LICENSE-phosphor.txt`). `UI.ph('name')` returns the SVG.
 - CTA wording is now the same everywhere: "Create a workspace".
+
+## Home sections (step 3)
+- Section heading: kicker (Caption 3, uppercase, accent), Heading 2 at 48/48 from 1024px, 36/40 from 640px, 30/36 below. Heading and sub copy capped at 680px.
+- Score walkthrough: flat ledger like the hero. Mono numbers, 8px bars that grow with transform, one accent. No decorative circles, no gradient panel. One loop is about 12 seconds (was 24). Ratings and points start at 3.8s.
+- Four steps: the same scenes, flat. Emoji and text glyphs replaced by Phosphor icons. Scene card class renamed `sc-card` (it clashed with the "Where you work" `wk` class). On phones the tabs are a 2 by 2 grid and the step text shows below.
+- Why it's different: two flat cards, the winner outlined once in the accent. Numbers in mono, 25 muted and 88 in the accent.
+- Fairness: one featured statement with its bars, and a quiet hairline list. Replaces four identical cards.
+- The four principle cards under the hero are gone. The hero proof line and the Fairness section already say it.
+- Progress bars everywhere use `transform: scaleX`. Scroll reveals rise 32px over 700ms, once.

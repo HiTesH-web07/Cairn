@@ -16,38 +16,39 @@
     { n: 4, t: 'Score', d: 'One score out of 100 against your own list, with the coins your colleagues gave you beside it.' }
   ];
 
+  const ph = (n) => window.UI.ph(n);
   const scenes = () => `
     <div class="sc sc1" data-sc="0">
       <div class="sc-title">Amit ranks Riya's week · Intern</div>
       <div class="rk st" style="--y:90px;--dl:.1s"><b>#1</b><span>Gmail plug launch</span><em>35%</em></div>
       <div class="rk" style="--y:-50px;--dl:.25s"><b>#2</b><span>Write the help docs</span><em>25%</em></div>
       <div class="rk" style="--y:-50px;--dl:.4s"><b>#3</b><span>OAuth refresh · Stretch</span><em>20%</em></div>
-      <div class="lock">🔒 Week locked. Nobody can quietly change it.</div>
-      <div class="dm sc-pop" style="--dl:2.6s"><span class="av">PI</span><div><p><b>Your week is ready, Riya.</b> Your #1: Gmail plug launch (35% of your score).</p><small>Slack · private message</small></div></div>
+      <div class="lock">${ph('lock-simple')}Week locked. Nobody can quietly change it.</div>
+      <div class="dm sc-pop" style="--dl:1.8s"><span class="av">PI</span><div><p><b>Your week is ready, Riya.</b> Your #1: Gmail plug launch (35% of your score).</p><small>Slack · private message</small></div></div>
     </div>
     <div class="sc sc2" data-sc="1">
       <div class="sc-title">Riya delivers her #1</div>
-      <div class="wk sc-pop">
+      <div class="sc-card sc-pop">
         <h4>Gmail plug launch</h4>
         <div class="st-wrap"><span class="pill p1">In progress</span><span class="pill good p2">Delivered</span></div>
-        <div class="proof">${icon('link')}<span>github.com/acme/gmail-plug/pull/231</span><small>proof added</small></div>
+        <div class="proof">${ph('link-simple')}<span>github.com/acme/gmail-plug/pull/231</span><small>proof added</small></div>
       </div>
       <div class="btn-fake">Deliver with proof</div>
-      <div class="nope sc-pop" style="--dl:2s">No link or note? It can't be marked delivered.</div>
+      <div class="nope sc-pop" style="--dl:1.4s">${ph('x')}No link or note? It can't be marked delivered.</div>
     </div>
     <div class="sc sc3" data-sc="2">
       <div class="sc-title">Two people rate it</div>
       <div class="rt">
-        <div class="rater sc-pop"><span class="av">A</span><div><b>Amit</b> <small>her manager</small><div class="opts"><span class="pick" style="--dl:1s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
-        <div class="rater sc-pop" style="--dl:.25s"><span class="av">S</span><div><b>Sonal</b> <small>used the plug</small><div class="opts"><span class="pick" style="--dl:1.7s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
+        <div class="rater sc-pop"><span class="av">A</span><div><b>Amit</b> <small>her manager</small><div class="opts"><span class="pick" style="--dl:.6s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
+        <div class="rater sc-pop" style="--dl:.25s"><span class="av">S</span><div><b>Sonal</b> <small>used the plug</small><div class="opts"><span class="pick" style="--dl:1.1s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
       </div>
-      <div class="done">✓ Rated by 2 people</div>
-      <div class="dm sc-pop" style="--dl:.8s"><span class="av">PI</span><div><p><b>Riya delivered "Gmail plug launch".</b> Rate it: proof attached.</p><small>Slack · sent to both raters</small></div></div>
+      <div class="done">${ph('check-circle')}Rated by 2 people</div>
+      <div class="dm sc-pop" style="--dl:.5s"><span class="av">PI</span><div><p><b>Riya delivered "Gmail plug launch".</b> Rate it: proof attached.</p><small>Slack · sent to both raters</small></div></div>
     </div>
     <div class="sc sc4" data-sc="3">
       <div class="sc-title">Riya's week</div>
       <div class="sg sc-pop">
-        <div class="big">${ring(88)}<strong data-count="88">88</strong></div>
+        <div class="big"><strong data-count="88">88</strong><small>/ 100</small></div>
         <div class="mini">
           <div style="--dl:.2s"><span>Priorities</span><i style="--w:88%;--dl:.2s"></i></div>
           <div style="--dl:.5s"><span>Quality</span><i style="--w:75%;--dl:.5s"></i></div>
@@ -55,7 +56,7 @@
         </div>
       </div>
       <div class="coin"><span class="coinic"></span>3 coins from Aman: "helped me debug the plug"</div>
-      <div class="muted small sc-pop" style="--dl:2.4s">Coins sit beside the score. They are never added to it.</div>
+      <div class="muted small sc-pop" style="--dl:1.7s">Coins sit beside the score. They are never added to it.</div>
     </div>`;
 
   const NAV_LINKS = [['hp-how', 'How it works'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-where', 'Where you work']];
@@ -110,12 +111,6 @@
         </div>
       </div>
     </section>
-      <div class="hp-wrap hp-strip">
-        <div class="hp-pr reveal"><span class="tile-ico t-acc">${icon('eye')}</span><div><b>No screenshots</b><span>We measure results, never screens.</span></div></div>
-        <div class="hp-pr reveal" style="--rd:.08s"><span class="tile-ico t-teal">${icon('score')}</span><div><b>Tasks don't count</b><span>Only ranked priorities score.</span></div></div>
-        <div class="hp-pr reveal" style="--rd:.16s"><span class="tile-ico t-pink">${icon('team')}</span><div><b>Rated in the open</b><span>Two raters on top work, with reasons.</span></div></div>
-        <div class="hp-pr reveal" style="--rd:.24s"><span class="tile-ico t-good">${icon('shield')}</span><div><b>An open formula</b><span>Everyone can see how the score works.</span></div></div>
-      </div>
 
     <section class="hp-sec" id="hp-stack"><div class="hp-wrap">
       <div class="hp-kicker reveal">The score</div>
@@ -125,7 +120,7 @@
         <div class="sx-board">
           <div class="sx-head"><span>Riya's priorities this week</span><span>Worth</span></div>
           ${[['#1', 'Gmail plug launch', 35, 100, 'Done well', 35], ['#2', 'Write the help docs', 25, 100, 'Done well', 25], ['#3', 'OAuth refresh', 20, 50, 'Needs fixes', 10]].map((r, k) => `
-          <div class="sx-row" data-w="${r[2]}" data-q0="${r[3] === 100 ? 'well' : 'fix'}" style="--k:${k};--w:${r[2]};--fill:${r[3]}%">
+          <div class="sx-row" data-w="${r[2]}" data-q0="${r[3] === 100 ? 'well' : 'fix'}" style="--k:${k};--w:${r[2]};--fn:${r[3] / 100}">
             <b class="sx-rk${k === 0 ? ' r1' : ''}">${r[0]}</b>
             <div class="sx-main"><div class="sx-title">${r[1]}</div>
               <div class="sx-line"><div class="sx-track"><i class="fill"></i></div><span class="worth">${r[2]} pts</span></div>
@@ -156,6 +151,7 @@
       <p class="hp-sub reveal">Click a step, or just watch. It plays by itself.</p>
       <div class="hp-steps reveal" id="hpSteps">
         <div class="hp-stepnav" role="tablist">${STEPS.map((s, i) => `<button class="hp-step${i === 0 ? ' on' : ''}" role="tab" data-i="${i}" type="button"><span class="n">${s.n}</span><span><b>${s.t}</b><span class="t">${s.d}</span></span><i class="pb"></i></button>`).join('')}</div>
+        <p class="hp-stepcap" aria-live="polite"></p>
         <div class="hp-stage" aria-live="polite">${scenes()}</div>
       </div>
     </div></section>
@@ -171,7 +167,7 @@
           <div class="vs-score"><strong>25</strong><small>out of 100</small></div></div>
         <div class="vs win reveal" style="--rd:.15s"><h3>A focused week</h3><div class="tag">3 priorities, all delivered</div>
           <div class="vs-cards"><div style="--k:0">#1 Gmail plug launch <em>Done well</em></div><div style="--k:1">#2 Help docs <em>Done well</em></div><div style="--k:2">#3 OAuth refresh <em style="color:var(--warn)">Needs fixes</em></div></div>
-          <div class="vs-score"><strong class="hp-grad">88</strong><small>out of 100</small></div></div>
+          <div class="vs-score"><strong class="vs-win-n">88</strong><small>out of 100</small></div></div>
       </div>
     </div></section>
 
@@ -179,12 +175,20 @@
       <div class="hp-kicker reveal">Fairness</div>
       <h2 class="hp-h2 reveal">Built so one opinion can't decide.</h2>
       <p class="hp-sub reveal">Everyone is measured against their own list, rated in the open, and able to push back.</p>
-      <div class="hp-cards">
-        <div class="hc reveal"><div class="ico">${icon('scale')}</div><h3>Fair at every level</h3><p>An intern's #1 counts as much as a senior's. Everyone is scored out of 100 against their own ranked list.</p>
-          <div class="dbl"><div><span>Intern</span><i style="--w:92%"></i><span>92</span></div><div><span>Senior</span><i style="--w:92%"></i><span>92</span></div></div></div>
-        <div class="hc reveal" style="--rd:.1s"><div class="ico">${icon('eye')}</div><h3>Two sets of eyes</h3><p>Top priorities need a second rater, so one opinion can't decide. Every "Needs fixes" comes with a reason.</p></div>
-        <div class="hc reveal" style="--rd:.2s"><div class="ico">${icon('disputes')}</div><h3>Disagree? Say so</h3><p>Dispute a rating and the rater's manager decides. Both views stay on record.</p></div>
-        <div class="hc reveal" style="--rd:.3s"><div class="ico">${icon('sun')}</div><h3>Life happens</h3><p>Leave days lower what's expected. Work blocked by others isn't held against you.</p></div>
+      <div class="fair">
+        <div class="fair-feature reveal">
+          <h3>Fair at every level</h3>
+          <p>An intern's #1 counts as much as a senior's. Everyone is scored out of 100 against their own ranked list.</p>
+          <div class="fair-bars" aria-label="An intern and a senior, both scored 92 out of 100">
+            <div><span>Intern</span><div class="fb"><i style="--w:.92"></i></div><b>92</b></div>
+            <div><span>Senior</span><div class="fb"><i style="--w:.92"></i></div><b>92</b></div>
+          </div>
+        </div>
+        <ul class="fair-list">
+          <li class="reveal">${ph('eye')}<div><h3>Two sets of eyes</h3><p>Top priorities need a second rater, so one opinion can't decide. Every "Needs fixes" comes with a reason.</p></div></li>
+          <li class="reveal" style="--rd:.1s">${ph('scales')}<div><h3>Disagree? Say so</h3><p>Dispute a rating and the rater's manager decides. Both views stay on record.</p></div></li>
+          <li class="reveal" style="--rd:.2s">${ph('calendar-check')}<div><h3>Life happens</h3><p>Leave days lower what's expected. Work blocked by others isn't held against you.</p></div></li>
+        </ul>
       </div>
     </div></section>
 
@@ -326,7 +330,7 @@
         "Everything else you did is still logged, but it is worth 0. More tasks never mean a higher score.",
         "Score = points earned divided by points possible. 70 ÷ 80 = 88 out of 100."
       ];
-      const DURS = [3600, 3600, 6800, 3800, 6200];
+      const DURS = [1800, 1800, 3400, 2200, 3200];
       const dots = [...sx.querySelectorAll('.sx-dot')];
       const earnEl = sx.querySelector('[data-earn]');
       const numEl = sx.querySelector('[data-n]');
@@ -340,12 +344,12 @@
         clear(); cur = i; sx.dataset.s = String(i);
         dots.forEach((d, k) => { d.classList.toggle('on', k === i); d.classList.toggle('done', k < i); d.style.setProperty('--dur', `${DURS[i]}ms`); });
         capEl.textContent = CAPS[i]; noEl.textContent = `${i + 1} / 5`;
-        gaugeEl0.style.width = i === 4 ? '88%' : '0%';
+        gaugeEl0.style.setProperty('--g', i === 4 ? '0.88' : '0');
         const set = (n, v) => { if (n) { n.textContent = v; n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); } };
         if (i < 2) { earnEl.textContent = '0'; numEl.textContent = '?'; }
-        if (i === 2) { numEl.textContent = '?'; earnEl.textContent = '0'; later(() => set(earnEl, '35'), 2700); later(() => set(earnEl, '60'), 3300); later(() => set(earnEl, '70'), 3900); }
+        if (i === 2) { numEl.textContent = '?'; earnEl.textContent = '0'; later(() => set(earnEl, '35'), 1000); later(() => set(earnEl, '60'), 1350); later(() => set(earnEl, '70'), 1700); }
         if (i === 3) { earnEl.textContent = '70'; numEl.textContent = '?'; }
-        if (i === 4) { earnEl.textContent = '70'; countUp(numEl, 88, 1300); }
+        if (i === 4) { earnEl.textContent = '70'; countUp(numEl, 88, 800); }
         numEl.classList.toggle('dim', i < 4);
         if (!reduce && inView && !hoverSx) later(() => goTo((i + 1) % 5), DURS[i]);
       };
@@ -374,14 +378,14 @@
         rows.forEach((r) => {
           const q = r.dataset.q; const w = +r.dataset.w; const pts = Math.round(w * MULT[q]);
           sum += pts;
-          r.style.setProperty('--fill', `${MULT[q] * 100}%`);
+          r.style.setProperty('--fn', String(MULT[q]));
           const pill = r.querySelector('.p-c'); pill.className = `pill ${LABEL[q][1]} p-c`; pill.textContent = LABEL[q][0];
           const e = r.querySelector('.sx-earn'); e.textContent = `+${pts}`;
           r.querySelectorAll('.sx-rate button').forEach((b) => b.classList.toggle('on', b.dataset.q === q));
         });
         const score = Math.round(sum / 80 * 100);
         tween(earnEl, sum, 500); eqSpans[0].textContent = sum; tween(numEl, score, 700);
-        gaugeEl.style.width = `${score}%`;
+        gaugeEl.style.setProperty('--g', String(score / 100));
         earnEl.classList.remove('bump'); void earnEl.offsetWidth; earnEl.classList.add('bump');
         return score;
       };
@@ -399,7 +403,7 @@
         } else {
           rows.forEach((r) => { r.dataset.q = r.dataset.q0; });
           chipsEl.querySelectorAll('.extra').forEach((c) => c.remove()); logged = 3; shown = 0; loggedEl.textContent = '3';
-          sx.classList.remove('paused'); sameEl.classList.remove('show'); gaugeEl.style.width = '0%';
+          sx.classList.remove('paused'); sameEl.classList.remove('show'); gaugeEl.style.setProperty('--g', '0');
           recompute(); goTo(0);
         }
       };
@@ -448,12 +452,13 @@
     const box = el.querySelector('#hpSteps');
     const btns = [...box.querySelectorAll('.hp-step')];
     const scs = [...box.querySelectorAll('.sc')];
-    const DUR = 6500;
+    const DUR = 5000;
     let cur = 0;
     let visible = false;
     let hover = false;
     const show = (i) => {
       cur = i;
+      const stepCap = el.querySelector('.hp-stepcap'); if (stepCap) stepCap.textContent = STEPS[i].d;
       btns.forEach((b, k) => { b.classList.toggle('on', k === i); b.setAttribute('aria-selected', k === i); });
       scs.forEach((s, k) => s.classList.toggle('on', k === i));
       box.style.setProperty('--dur', `${DUR}ms`);

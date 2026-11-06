@@ -60,28 +60,28 @@
   color-scheme: light;
 }
 
-/* ---------- colour: dark (approved neutral backgrounds only) ---------- */
+/* ---------- colour: dark (navy, chosen by the owner over the skill's neutral list) ---------- */
 :root[data-theme="dark"] {
-  --bg: #181818; --surface: #1F1F1F; --surface-2: #272727; --surface-3: #313131;
-  --border: #313131; --border-strong: #454545;
-  --text: #F2F2F2; --muted: #A1A1A1;
-  --accent: #8B8CFF; --accent-2: #8B8CFF; --accent-soft: #272727; --on-accent: #111111;
-  --good: #4CC99A; --good-bg: #272727; --warn: #F2B84D; --warn-bg: #272727; --bad: #FF7D72; --bad-bg: #272727;
-  --glass: rgba(24, 24, 24, .82);
-  --fe-bg: #000000;
-  --shadow-float: 0 12px 32px rgba(0, 0, 0, .6);
+  --bg: #0B0D17; --surface: #131728; --surface-2: #1A1F35; --surface-3: #232942;
+  --border: #252B45; --border-strong: #343C5E;
+  --text: #E9ECF8; --muted: #9BA4C0;
+  --accent: #8B8CFF; --accent-2: #8B8CFF; --accent-soft: #232650; --on-accent: #0B0D17;
+  --good: #4CC99A; --good-bg: #143327; --warn: #F2B84D; --warn-bg: #36290F; --bad: #FF7D72; --bad-bg: #3B1C1A;
+  --glass: rgba(11, 13, 23, .82);
+  --fe-bg: #0C0E22;
+  --shadow-float: 0 12px 32px rgba(0, 0, 0, .55);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #181818; --surface: #1F1F1F; --surface-2: #272727; --surface-3: #313131;
-    --border: #313131; --border-strong: #454545;
-    --text: #F2F2F2; --muted: #A1A1A1;
-    --accent: #8B8CFF; --accent-2: #8B8CFF; --accent-soft: #272727; --on-accent: #111111;
-    --good: #4CC99A; --good-bg: #272727; --warn: #F2B84D; --warn-bg: #272727; --bad: #FF7D72; --bad-bg: #272727;
-    --glass: rgba(24, 24, 24, .82);
-    --fe-bg: #000000;
-    --shadow-float: 0 12px 32px rgba(0, 0, 0, .6);
+    --bg: #0B0D17; --surface: #131728; --surface-2: #1A1F35; --surface-3: #232942;
+  --border: #252B45; --border-strong: #343C5E;
+  --text: #E9ECF8; --muted: #9BA4C0;
+  --accent: #8B8CFF; --accent-2: #8B8CFF; --accent-soft: #232650; --on-accent: #0B0D17;
+  --good: #4CC99A; --good-bg: #143327; --warn: #F2B84D; --warn-bg: #36290F; --bad: #FF7D72; --bad-bg: #3B1C1A;
+  --glass: rgba(11, 13, 23, .82);
+  --fe-bg: #0C0E22;
+    --shadow-float: 0 12px 32px rgba(0, 0, 0, .55);
     color-scheme: dark;
   }
 }
@@ -163,18 +163,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .tile { padding: var(--space-200); }
 .pill, .chips span { font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: 500; }
 
-/* semantic pills: tinted in light, outlined on the neutral dark surfaces */
+/* semantic pills: tinted fills */
 .pill.good { background: var(--good-bg); color: var(--good); } .pill.warn { background: var(--warn-bg); color: var(--warn); } .pill.bad { background: var(--bad-bg); color: var(--bad); } .pill.acc { background: var(--accent-soft); color: var(--accent); }
-:root[data-theme="dark"] .pill.good { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--good) 45%, transparent); }
-:root[data-theme="dark"] .pill.warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, transparent); }
-:root[data-theme="dark"] .pill.bad { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 45%, transparent); }
-:root[data-theme="dark"] .pill.acc { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .pill.good { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--good) 45%, transparent); }
-  :root:not([data-theme="light"]) .pill.warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, transparent); }
-  :root:not([data-theme="light"]) .pill.bad { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 45%, transparent); }
-  :root:not([data-theme="light"]) .pill.acc { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
-}
 
 /* ---------- the logo mark is the one approved gradient ---------- */
 .logo { background: var(--logo-grad); box-shadow: none; }

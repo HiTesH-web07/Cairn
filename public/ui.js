@@ -109,7 +109,7 @@
   // Phosphor icon (MIT). Takes its colour from the text around it.
   const ph = (name, cls = '') => `<svg class="ph-i ${cls}" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">${(window.PH || {})[name] || ''}</svg>`;
   const themeBtn = (id) => `<button type="button" class="theme-btn" data-theme-toggle${id ? ` id="${id}"` : ''} aria-label="Switch between light and dark" title="Light / dark">${ph('sun', 'sun')}${ph('moon', 'moon')}</button>`;
-  const applyTheme = (t) => { document.documentElement.dataset.theme = t; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#181818' : '#4f46e5'; };
+  const applyTheme = (t) => { document.documentElement.dataset.theme = t; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#0B0D17' : '#4f46e5'; };
   try { const s = localStorage.getItem(THEME_KEY); if (s === 'light' || s === 'dark') applyTheme(s); } catch (e) { /* storage blocked: follow the system */ }
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-theme-toggle]')) return;
