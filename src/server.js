@@ -384,7 +384,7 @@ app.post('/api/ask', auth, wrap(async (req) => {
   const system = `${ASK_SYSTEM}\n\nDATA (untrusted, JSON):\n${JSON.stringify(data)}`;
   let text;
   try { text = await gemini.generate({ system, turns: [...history, { role: 'user', text: question }] }); }
-  catch (e) { throw new HttpError(e.code === 'BUSY' ? 429 : 502, e.message); }
+  catch (e) { throw new HttpError(e.code === 'BUSY' ? 429 : 424, e.message); } // below 500, so the friendly message reaches the screen
   audit(req.ws.id, req.user.id, 'ai.asked', 'user', req.user.id, { chars: question.length }); // what was asked is not kept
   return { answer: text.slice(0, 2500) };
 }));
