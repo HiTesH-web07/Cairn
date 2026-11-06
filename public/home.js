@@ -7,6 +7,30 @@
   let observers = [];
   let cleanups = [];
 
+  // One set of plain examples drives every demo on this page. Fictional people and companies.
+  const EXAMPLES = [
+    { label: 'Product', person: 'Riya Shah', first: 'Riya', mgr: 'Amit', role: 'Engineer', rater2: 'Sonal',
+      t1: 'Ship the new onboarding flow', t2: 'Write the help guide for it', t3: 'Fix the sign in timeout bug', s1: 'Onboarding flow', s2: 'Help guide', s3: 'Sign in bug',
+      n1: 'Replied to 40 emails', n2: 'Fixed a typo', n3: 'Joined 12 meetings', n4: 'Updated the wiki', proof: 'github.com/acme/app/pull/231',
+      coin: '3 coins from Aman: “covered my on call shift”', blocker: 'Waiting on API keys for 4h' },
+    { label: 'Marketing', person: 'Neha Rao', first: 'Neha', mgr: 'Vikram', role: 'Marketer', rater2: 'Isha',
+      t1: 'Launch the spring campaign', t2: 'Publish the customer story', t3: 'Refresh the pricing page', s1: 'Spring campaign', s2: 'Customer story', s3: 'Pricing page',
+      n1: 'Scheduled social posts', n2: 'Answered DMs', n3: 'Joined 9 meetings', n4: 'Renamed the files', proof: 'acme.com/spring-campaign',
+      coin: '3 coins from Isha: “pulled the report together fast”', blocker: 'Waiting on design files for 4h' },
+    { label: 'Sales', person: 'Arjun Mehta', first: 'Arjun', mgr: 'Priya', role: 'Account executive', rater2: 'Kabir',
+      t1: 'Close the Orbit Logistics renewal', t2: 'Send proposals to three new leads', t3: 'Update the sales deck', s1: 'Orbit renewal', s2: 'Three proposals', s3: 'Sales deck',
+      n1: 'Logged 30 calls', n2: 'Updated CRM notes', n3: 'Joined 11 meetings', n4: 'Answered emails', proof: 'crm.acme.com/deals/482',
+      coin: '3 coins from Kabir: “shared his call notes”', blocker: 'Waiting on legal approval for 4h' },
+    { label: 'Support', person: 'Sonal Gupta', first: 'Sonal', mgr: 'Rohan', role: 'Support lead', rater2: 'Meera',
+      t1: 'Clear the oldest open tickets', t2: 'Write the refund guide for agents', t3: 'Train two new agents', s1: 'Oldest tickets', s2: 'Refund guide', s3: 'Agent training',
+      n1: 'Tagged tickets', n2: 'Updated macros', n3: 'Joined 8 meetings', n4: 'Answered chat pings', proof: 'helpdesk.acme.com/reports/oldest',
+      coin: '3 coins from Meera: “stayed late on the backlog”', blocker: 'Waiting on the billing team for 4h' }
+  ];
+  let EX = EXAMPLES[0];
+  const x = (k) => `<span data-ex="${k}">${EX[k]}</span>`;
+  const exPick = () => `<div class="ex-pick" role="group" aria-label="Show an example from"><span>Example from</span>${EXAMPLES.map((e, i) => `<button type="button" class="ex-btn${i === 0 ? ' on' : ''}" data-ex-i="${i}" aria-pressed="${i === 0}">${e.label}</button>`).join('')}</div>`;
+  const heroSr = (e) => `Example week for ${e.first}, ${e.role}. Three ranked priorities worth 35, 25 and 20 points were delivered and rated: ${e.t1}, ${e.t2} and ${e.t3}. ${e.first} earned 70 of 80 points, a score of 88 out of 100. Everything else is logged and earns zero.`;
+
   const chips = ['Reply to emails', 'Fix a typo', 'Update the wiki', 'Join stand-up', 'Rename a file', 'Answer a ping', 'Tidy the board', 'Book a room'];
 
   const STEPS = [
@@ -19,19 +43,19 @@
   const ph = (n) => window.UI.ph(n);
   const scenes = () => `
     <div class="sc sc1" data-sc="0">
-      <div class="sc-title">Amit ranks Riya's week · Intern</div>
-      <div class="rk st" style="--y:90px;--dl:.1s"><b>#1</b><span>Gmail plug launch</span><em>35%</em></div>
-      <div class="rk" style="--y:-50px;--dl:.25s"><b>#2</b><span>Write the help docs</span><em>25%</em></div>
-      <div class="rk" style="--y:-50px;--dl:.4s"><b>#3</b><span>OAuth refresh · Stretch</span><em>20%</em></div>
+      <div class="sc-title">${x('mgr')} ranks ${x('first')}'s week · ${x('role')}</div>
+      <div class="rk st" style="--y:90px;--dl:.1s"><b>#1</b><span>${x('t1')}</span><em>35%</em></div>
+      <div class="rk" style="--y:-50px;--dl:.25s"><b>#2</b><span>${x('t2')}</span><em>25%</em></div>
+      <div class="rk" style="--y:-50px;--dl:.4s"><b>#3</b><span>${x('t3')} · Stretch</span><em>20%</em></div>
       <div class="lock">${ph('lock-simple')}Week locked. Nobody can quietly change it.</div>
-      <div class="dm sc-pop" style="--dl:1.8s"><span class="av">PI</span><div><p><b>Your week is ready, Riya.</b> Your #1: Gmail plug launch (35% of your score).</p><small>Slack · private message</small></div></div>
+      <div class="dm sc-pop" style="--dl:1.8s"><span class="av">PI</span><div><p><b>Your week is ready, ${x('first')}.</b> Your #1: ${x('t1')} (35% of your score).</p><small>Slack · private message</small></div></div>
     </div>
     <div class="sc sc2" data-sc="1">
-      <div class="sc-title">Riya delivers her #1</div>
+      <div class="sc-title">${x('first')} delivers the #1 priority</div>
       <div class="sc-card sc-pop">
-        <h4>Gmail plug launch</h4>
+        <h4>${x('t1')}</h4>
         <div class="st-wrap"><span class="pill p1">In progress</span><span class="pill good p2">Delivered</span></div>
-        <div class="proof">${ph('link-simple')}<span>github.com/acme/gmail-plug/pull/231</span><small>proof added</small></div>
+        <div class="proof">${ph('link-simple')}<span>${x('proof')}</span><small>proof added</small></div>
       </div>
       <div class="btn-fake">Deliver with proof</div>
       <div class="nope sc-pop" style="--dl:1.4s">${ph('x')}No link or note? It can't be marked delivered.</div>
@@ -39,14 +63,14 @@
     <div class="sc sc3" data-sc="2">
       <div class="sc-title">Two people rate it</div>
       <div class="rt">
-        <div class="rater sc-pop"><span class="av">A</span><div><b>Amit</b> <small>her manager</small><div class="opts"><span class="pick" style="--dl:.6s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
-        <div class="rater sc-pop" style="--dl:.25s"><span class="av">S</span><div><b>Sonal</b> <small>used the plug</small><div class="opts"><span class="pick" style="--dl:1.1s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
+        <div class="rater sc-pop"><span class="av">A</span><div><b>${x('mgr')}</b> <small>the manager</small><div class="opts"><span class="pick" style="--dl:.6s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
+        <div class="rater sc-pop" style="--dl:.25s"><span class="av">S</span><div><b>${x('rater2')}</b> <small>used the work</small><div class="opts"><span class="pick" style="--dl:1.1s">Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
       </div>
       <div class="done">${ph('check-circle')}Rated by 2 people</div>
-      <div class="dm sc-pop" style="--dl:.5s"><span class="av">PI</span><div><p><b>Riya delivered "Gmail plug launch".</b> Rate it: proof attached.</p><small>Slack · sent to both raters</small></div></div>
+      <div class="dm sc-pop" style="--dl:.5s"><span class="av">PI</span><div><p><b>${x('first')} delivered “${x('t1')}”.</b> Rate it: proof attached.</p><small>Slack · sent to both raters</small></div></div>
     </div>
     <div class="sc sc4" data-sc="3">
-      <div class="sc-title">Riya's week</div>
+      <div class="sc-title">${x('first')}'s week</div>
       <div class="sg sc-pop">
         <div class="big"><strong data-count="88">88</strong><small>/ 100</small></div>
         <div class="mini">
@@ -55,7 +79,7 @@
           <div style="--dl:.8s"><span>Alignment</span><i style="--w:60%;--dl:.8s"></i></div>
         </div>
       </div>
-      <div class="coin"><span class="coinic"></span>3 coins from Aman: "helped me debug the plug"</div>
+      <div class="coin"><span class="coinic"></span>${x('coin')}</div>
       <div class="muted small sc-pop" style="--dl:1.7s">Coins sit beside the score. They are never added to it.</div>
     </div>`;
 
@@ -107,19 +131,20 @@
         <ul class="hero-proof"><li>${ph('check-circle')}No screenshots or time tracking</li><li>${ph('check-circle')}Task count never counts</li><li>${ph('check-circle')}Every rating has a reason</li></ul>
       </div>
       <div class="hv">
-        <p class="sr-only">Example week for Riya. Three ranked priorities worth 35, 25 and 20 points were delivered and rated. She earned 70 of 80 points, a score of 88 out of 100. Everything else she did is logged and earns zero.</p>
+        <p class="sr-only" data-sr="hero">${heroSr(EX)}</p>
+        ${exPick()}
         <div class="hv-card" aria-hidden="true">
-          <div class="hv-head"><div><span class="hv-k">My Week</span><span class="hv-who">Riya Shah · Nov 2 to Nov 8</span></div><span class="pill good hv-lock">${ph('lock-simple')}Locked by Amit</span></div>
+          <div class="hv-head"><div><span class="hv-k">My Week</span><span class="hv-who">${x('person')} · Nov 2 to Nov 8</span></div><span class="pill good hv-lock">${ph('lock-simple')}Locked by ${x('mgr')}</span></div>
           <div class="hv-label"><span>Top priorities</span><span>Worth</span></div>
           <ol class="hv-rows">
-            ${[['1', 'Gmail plug launch', 35, 100, 'Done well', 'good'], ['2', 'Write the help docs', 25, 71, 'Done well', 'good'], ['3', 'OAuth refresh', 20, 57, 'Needs fixes', 'warn']].map((r, i) => `
+            ${[['1', x('t1'), 35, 100, 'Done well', 'good'], ['2', x('t2'), 25, 71, 'Done well', 'good'], ['3', x('t3'), 20, 57, 'Needs fixes', 'warn']].map((r, i) => `
             <li class="hv-row" style="--i:${i}"><b class="hv-rk">${r[0]}</b><div class="hv-main"><span class="hv-t">${r[1]}</span><div class="hv-bar"><i style="--w:${r[3]}%"></i></div></div><span class="hv-w">${r[2]}</span><span class="pill ${r[5]}">${r[4]}</span></li>`).join('')}
           </ol>
           <div class="hv-label hv-label2"><span>Logged, not scored</span><span>0 pts</span></div>
-          <div class="hv-noise">${['Replied to 40 emails', 'Fixed a typo', 'Joined 12 meetings', 'Updated the wiki'].map((c, i) => `<span style="--i:${i + 3}">${c}</span>`).join('')}</div>
+          <div class="hv-noise">${['n1', 'n2', 'n3', 'n4'].map((k, i) => `<span style="--i:${i + 3}">${x(k)}</span>`).join('')}</div>
           <div class="hv-score" style="--i:6">
             <div class="hv-sum"><span class="hv-k">Points</span><span class="hv-eq"><b>70</b> of 80</span></div>
-            <div class="hv-num"><b data-hero-score>88</b><span>/ 100</span><small>against her own list</small></div>
+            <div class="hv-num"><b data-hero-score>88</b><span>/ 100</span><small>against their own list</small></div>
           </div>
         </div>
       </div>
@@ -128,11 +153,12 @@
     <section class="hp-sec" id="hp-stack"><div class="hp-wrap">
       <div class="hp-kicker reveal">The score</div>
       <h2 class="hp-h2 reveal">Watch one week become one number.</h2>
-      <p class="hp-sub reveal">This is Riya's week. Follow it from the manager's plan to the final score: no formulas to read, just watch.</p>
+      <p class="hp-sub reveal">This is ${x('first')}'s week. Follow it from the manager's plan to the final score: no formulas to read, just watch.</p>
+      <div class="reveal">${exPick()}</div>
       <div class="sx reveal" id="sx" data-s="0">
         <div class="sx-board">
-          <div class="sx-head"><span>Riya's priorities this week</span><span>Worth</span></div>
-          ${[['#1', 'Gmail plug launch', 35, 100, 'Done well', 35], ['#2', 'Write the help docs', 25, 100, 'Done well', 25], ['#3', 'OAuth refresh', 20, 50, 'Needs fixes', 10]].map((r, k) => `
+          <div class="sx-head"><span>${x('first')}'s priorities this week</span><span>Worth</span></div>
+          ${[['#1', x('t1'), 35, 100, 'Done well', 35], ['#2', x('t2'), 25, 100, 'Done well', 25], ['#3', x('t3'), 20, 50, 'Needs fixes', 10]].map((r, k) => `
           <div class="sx-row" data-w="${r[2]}" data-q0="${r[3] === 100 ? 'well' : 'fix'}" style="--k:${k};--w:${r[2]};--fn:${r[3] / 100}">
             <b class="sx-rk${k === 0 ? ' r1' : ''}">${r[0]}</b>
             <div class="sx-main"><div class="sx-title">${r[1]}</div>
@@ -142,14 +168,14 @@
             <div class="sx-earn">+${r[5]}</div>
           </div>`).join('')}
           ${[4, 5].map((n) => `<div class="sx-row sx-empty"><b class="sx-rk">#${n}</b><div class="sx-main"><div class="sx-title">Empty slot</div><div class="sx-line"><div class="sx-track dashed"></div></div></div><div class="sx-state"><span class="pill">Not ranked</span></div><div></div></div>`).join('')}
-          <div class="sx-else"><div class="lab">Everything else Riya did</div>
-            <div class="sx-chips"><span style="--k:0">Replied to 40 emails<em>0 pts</em></span><span style="--k:1">Fixed a typo<em>0 pts</em></span><span style="--k:2">Joined 12 meetings<em>0 pts</em></span></div>
+          <div class="sx-else"><div class="lab">Everything else ${x('first')} did</div>
+            <div class="sx-chips"><span style="--k:0">${x('n1')}<em>0 pts</em></span><span style="--k:1">${x('n2')}<em>0 pts</em></span><span style="--k:2">${x('n3')}<em>0 pts</em></span></div>
             <div class="sx-spam"><button type="button" class="btn sm" data-spam>+ Log 10 more tasks</button><span class="sx-logged">Tasks logged: <b data-logged>3</b></span><span class="sx-same" data-same>Score unchanged</span></div></div>
         </div>
         <aside class="sx-score">
           <div><div class="sx-lab">Points earned</div><div class="sx-earned"><b data-earn>0</b><span>of 80 possible</span></div></div>
           <div class="sx-eq"><span>70</span><i>÷</i><span>80</span><i>=</i></div>
-          <div><div class="sx-lab">Riya's score</div><div class="sx-num"><b data-n>?</b><small>/ 100</small></div></div>
+          <div><div class="sx-lab">${x('first')}'s score</div><div class="sx-num"><b data-n>?</b><small>/ 100</small></div></div>
         </aside>
         <div class="sx-gauge" aria-hidden="true"><i data-gauge></i></div>
         <div class="sx-modes" role="group" aria-label="Mode"><button type="button" class="on" data-mode="auto">Watch it play</button><button type="button" data-mode="play">Try it yourself</button></div>
@@ -187,7 +213,7 @@
         </article>
         <article class="dv-lane dv-focus" aria-hidden="true">
           <header><h3>A focused week</h3><p>Three priorities, all delivered.</p></header>
-          <div class="dv-viz"><ol class="dv-slabs">${[['1', 'Gmail plug launch', 'Done well', 'good'], ['2', 'Help docs', 'Done well', 'good'], ['3', 'OAuth refresh', 'Needs fixes', 'warn']].map((r) => `<li><b>${r[0]}</b><span>${r[1]}</span><em class="pill ${r[3]}">${r[2]}</em></li>`).join('')}</ol></div>
+          <div class="dv-viz"><ol class="dv-slabs">${[['1', x('s1'), 'Done well', 'good'], ['2', x('s2'), 'Done well', 'good'], ['3', x('s3'), 'Needs fixes', 'warn']].map((r) => `<li><b>${r[0]}</b><span>${r[1]}</span><em class="pill ${r[3]}">${r[2]}</em></li>`).join('')}</ol></div>
           <div class="dv-stats">
             <div><span class="dv-k">Tasks logged</span><b class="dv-n" data-dv-tasks2>0</b></div>
             <div class="dv-score"><span class="dv-k">Score</span><b class="dv-n dv-big dv-win-n" data-dv-s2>0</b><span class="dv-of">/ 100</span></div>
@@ -195,7 +221,6 @@
           <div class="dv-meter"><i data-dv-m2></i></div>
           <p class="dv-chip ok" data-dv-win>${ph('check-circle')}Fewer tasks, higher score.</p>
         </article>
-        <button class="btn ghost dv-replay" type="button" data-dv-replay>${ph('arrow-counter-clockwise')}Replay</button>
       </div>
     </div></section>
 
@@ -235,9 +260,9 @@
         <p class="m91-note reveal">Serious events only. Everything else stays in Slack.</p>
       </div>
       <div class="m91-stage reveal" aria-hidden="true">
-        <div class="m91-tl"><span style="--k:0">10:02 · Riya is blocked on #1</span><span style="--k:1">10:03 · Phone rings for Amit</span><span style="--k:2">10:03 · Still ringing…</span><span style="--k:3">10:05 · Amit taps “I'll unblock it”</span></div>
+        <div class="m91-tl"><span style="--k:0">10:02 · ${x('first')} is blocked on #1</span><span style="--k:1">10:03 · Phone rings for ${x('mgr')}</span><span style="--k:2">10:03 · Still ringing…</span><span style="--k:3">10:05 · ${x('mgr')} taps “I'll unblock it”</span></div>
         <div class="m91-phone"><div class="waves"><i></i><i></i><i></i></div>
-          <div class="m91-card"><small>CAIRN · URGENT</small><b>Riya is blocked on #1</b><span>Waiting on API keys for 4h</span>
+          <div class="m91-card"><small>CAIRN · URGENT</small><b>${x('first')} is blocked on #1</b><span>${x('blocker')}</span>
             <div class="bt"><i>I'll unblock it</i><i>Seen</i></div></div>
           <div class="m91-ok">${ph('check-circle')}<b>Answered</b><span>Ringing stopped</span></div></div>
       </div>
@@ -258,13 +283,13 @@
           <div class="wk-p wk-p1"><div class="wk-title">People · 12 added</div>
             <div class="wk-src"><span>CSV</span><span>Keka sync</span><span>Invite link</span></div>
             <div class="wk-org">
-              ${[['Hitesh Ahuja', 'Founder', 'l0'], ['Amit Verma', 'Team lead · Engineering', 'l1'], ['Riya Shah', 'Engineer · reports to Amit', 'l2'], ['Sonal Gupta', 'Engineer · reports to Amit', 'l2'], ['Neha Rao', 'Marketer · reports to Hitesh', 'l1']].map((p, k) => `<div class="wk-per ${p[2]}" style="--k:${k}"><span class="avatar" style="background:hsl(${k * 63 + 230} 65% 52%)">${p[0][0]}</span><div><b>${p[0]}</b><small>${p[1]}</small></div>${k === 4 ? '<em>+ 7 more</em>' : ''}</div>`).join('')}
+              ${[['Meera Iyer', 'Founder', 'l0'], ['Amit Verma', 'Team lead · Product', 'l1'], ['Riya Shah', 'Engineer · reports to Amit', 'l2'], ['Dev Patel', 'Designer · reports to Amit', 'l2'], ['Neha Rao', 'Marketer · reports to Meera', 'l1']].map((p, k) => `<div class="wk-per ${p[2]}" style="--k:${k}"><span class="avatar" style="background:hsl(${k * 63 + 230} 65% 52%)">${p[0][0]}</span><div><b>${p[0]}</b><small>${p[1]}</small></div>${k === 4 ? '<em>+ 7 more</em>' : ''}</div>`).join('')}
             </div></div>
           <div class="wk-p wk-p2"><div class="wk-title">Slack · direct messages</div>
             <div class="wk-slack">
-              <div class="wk-msg" style="--k:0"><span class="av">C</span><div><p><b>Good morning Riya.</b> Your #1 this week: <b>Gmail plug launch</b>.</p><small>Mon · 10:00</small><div class="bt"><i class="go">Open my week</i><i>Mark delivered</i></div></div></div>
+              <div class="wk-msg" style="--k:0"><span class="av">C</span><div><p><b>Good morning ${x('first')}.</b> Your #1 this week: <b>${x('t1')}</b>.</p><small>Mon · 10:00</small><div class="bt"><i class="go">Open my week</i><i>Mark delivered</i></div></div></div>
               <div class="wk-msg me" style="--k:1"><span class="av">R</span><div><p>Delivered, with the launch checklist attached.</p><small>Thu · 16:20</small></div></div>
-              <div class="wk-msg" style="--k:2"><span class="av">C</span><div><p><b>Amit rated it: Done well.</b> You earned 35 of 80 points this week so far.</p><small>Fri · 11:05</small></div></div>
+              <div class="wk-msg" style="--k:2"><span class="av">C</span><div><p><b>${x('mgr')} rated it: Done well.</b> You earned 35 of 80 points this week so far.</p><small>Fri · 11:05</small></div></div>
             </div></div>
         </div>
       </div>
@@ -350,6 +375,16 @@
     NAV_LINKS.forEach(([id]) => { const t = document.getElementById(id); if (t) spy.observe(t); });
     observers.push(spy);
 
+    // the example selector: every demo on the page follows it
+    const applyExample = (i) => {
+      EX = EXAMPLES[i];
+      el.querySelectorAll('[data-ex]').forEach((n) => { n.textContent = EX[n.dataset.ex]; });
+      const sr = el.querySelector('[data-sr="hero"]'); if (sr) sr.textContent = heroSr(EX);
+      el.querySelectorAll('.ex-btn').forEach((b) => { const on = Number(b.dataset.exI) === i; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      el.classList.remove('ex-swap'); void el.offsetWidth; el.classList.add('ex-swap');
+    };
+    el.querySelectorAll('.ex-btn').forEach((b) => b.addEventListener('click', () => applyExample(Number(b.dataset.exI))));
+
     // why it's different: a short race, once, as it scrolls into view
     const dv = el.querySelector('#dv');
     if (dv) {
@@ -387,9 +422,14 @@
         at(() => { m2.style.setProperty('--m', '.88'); tween(s2, 0, 88, 1300); }, 3500);
         at(() => win.classList.add('on'), 4900);
       };
-      const dio = new IntersectionObserver((en) => { if (en[0].isIntersecting) { play(); dio.disconnect(); } }, { threshold: 0.4 });
+      // plays every time it scrolls into view, and rests (resets) once it is out of view
+      let running = false;
+      const dio = new IntersectionObserver((en) => {
+        const r = en[0].intersectionRatio;
+        if (r >= 0.45 && !running) { running = true; play(); }
+        else if (r < 0.05 && running) { running = false; reset(); }
+      }, { threshold: [0, 0.05, 0.45] });
       dio.observe(dv); observers.push(dio);
-      q('[data-dv-replay]').addEventListener('click', play);
       cleanups.push(clearDv);
     }
 

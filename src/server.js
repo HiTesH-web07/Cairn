@@ -647,7 +647,7 @@ const DEMO_PEOPLE = [
   { key: 'neha', name: 'Neha Rao (demo)', role: 'member', level: 'Marketer', department: 'Marketing', boss: 'owner' }
 ];
 const DEMO_WORK = {
-  Engineering: [['Ship the Gmail plug launch', 'Launch checklist done, docs live'], ['Write the help docs', 'Docs published and reviewed'], ['Refresh OAuth tokens', 'Refresh flow merged'], ['Fix the sync retry bug', 'Retries tested on staging'], ['Review the API changes', 'Reviews posted']],
+  Engineering: [['Ship the new onboarding flow', 'Flow live, help guide updated'], ['Write the help guide', 'Guide published and reviewed'], ['Fix the sign in timeout bug', 'Fix merged and tested on staging'], ['Speed up the dashboard', 'Load time cut, measured on staging'], ['Review the API changes', 'Reviews posted']],
   Marketing: [['Launch the October newsletter', 'Sent to 12k readers'], ['Publish the customer story', 'Story live on the blog'], ['Refresh the pricing page', 'New page shipped'], ['Plan the webinar', 'Webinar scheduled'], ['Update the sales deck', 'Deck shared with sales']]
 };
 const DEMO_QUALITY = ['done_well', 'done_well', 'needs_fixes', 'done_well', 'done_well', 'redo', 'done_well', 'needs_fixes', 'done_well', 'done_well'];

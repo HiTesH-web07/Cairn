@@ -95,3 +95,8 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 - Two static boxes became a short race that plays once on scroll, with a Replay button. Busy week: dots fill from 0 to 24 to 50 and the counter follows, while the score stops at 25 ("Still 25. More tasks, same score."). Focused week: three priorities land, the score counts to 88.
 - About 6 seconds end to end. Bars grow with transform, dots and slabs with transform and opacity. Reduced motion shows the final state.
 - Numbers in Geist Mono. The winning week is outlined once in the accent. All figures match the walkthrough (25 and 88).
+
+## Examples and display sizes (owner feedback)
+- "Gmail plug launch" was our own jargon. All Home demos now use plain examples from Product, Marketing, Sales and Support (fictional people and companies). One data set (`EXAMPLES` in `public/home.js`) drives the hero, score walkthrough, four step scenes, the race and the phone alert. A selector ("Example from") switches them together. Default: Product (ship the new onboarding flow). Demo data for Engineering uses the same plain titles.
+- The race has no Replay button. It plays every time it scrolls into view (45% visible) and resets when it leaves (under 5% visible).
+- Display sizes reduced because the biggest text felt heavy (owner decision, overrides the skill's Heading 1 = 60px): hero heading 48 on desktop (36 tablet, 30 phone), section headings 36 (30, 24), tagline 36 (30, 24), big numerals 48 to 60 instead of 72 to 96, race numbers 36.
