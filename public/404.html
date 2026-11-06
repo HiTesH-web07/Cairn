@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found · Cairn</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#4f46e5">
+<link rel="icon" id="favicon" href="data:,">
+<script>try{var t=localStorage.getItem("cairn-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/system.css">
+<link rel="stylesheet" href="/home.css">
+</head>
+<body>
+<main class="nf" id="main">
+  <div class="nf-in">
+    <a class="nf-brand" href="/home" id="nfBrand" aria-label="Cairn, home"></a>
+    <p class="nf-code" aria-hidden="true">404</p>
+    <h1>We can't find that page.</h1>
+    <p>The address may be mistyped, or the page may have moved. Nothing was lost.</p>
+    <div class="nf-cta"><a class="btn primary btn-lg" href="/home">Go to the home page</a><a class="btn btn-lg" href="/signin">Sign in</a></div>
+  </div>
+</main>
+<script src="/phosphor.js"></script>
+<script src="/ui.js"></script>
+<script>document.getElementById("favicon").href = UI.favicon(); document.getElementById("nfBrand").innerHTML = UI.logo() + "<span>" + UI.brand.name + "</span>";</script>
+</body>
+</html>

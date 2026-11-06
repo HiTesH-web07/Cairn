@@ -138,6 +138,14 @@ function layout(active, inner) {
   $('#signout').onclick = async (e) => { e.preventDefault(); await api('POST', '/api/auth/logout'); state.me = null; askTurns = []; document.getElementById('askFab')?.remove(); document.getElementById('askPanel')?.remove(); location.hash = '#/home'; };
 }
 
+// ---------- page not found ----------
+function notFoundScreen() {
+  if (window.Home) window.Home.destroy();
+  $('#app').innerHTML = `<main class="nf" id="main"><div class="nf-in"><a class="nf-brand" href="#/home" aria-label="${UI.brand.name}, home">${UI.logo()}<span>${UI.brand.name}</span></a><p class="nf-code" aria-hidden="true">404</p><h1>We can't find that page.</h1><p>The address may be mistyped, or the page may have moved. Nothing was lost.</p>
+    <div class="nf-cta">${state.me ? '<a class="btn primary btn-lg" href="#/week">Open my week</a>' : '<a class="btn primary btn-lg" href="#/home">Go to the home page</a><a class="btn btn-lg" href="#/signin">Sign in</a>'}</div></div></main>`;
+  document.title = 'Page not found · ' + UI.brand.name;
+}
+
 // ---------- Ask Cairn ----------
 let askTurns = [];
 function askHtml(t) {
@@ -1049,6 +1057,7 @@ function howScreen() {
 // ---------- router ----------
 async function route() {
   document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+  document.title = 'Cairn · Measure what mattered';
   if (window.Home) window.Home.destroy();
   const mainEl = document.getElementById('main');
   if (mainEl && state.me) mainEl.innerHTML = UI.skeleton();
@@ -1060,6 +1069,8 @@ async function route() {
       const inv = await api('GET', `/api/invites/${encodeURIComponent(arg)}`);
       return authScreen('join', { ...inv, token: arg });
     }
+    const KNOWN = ['', 'home', 'signin', 'signup', 'forgot', 'reset', 'join', 'week', 'rate', 'team', 'score', 'coins', 'disputes', 'incidents', 'people', 'integrations', 'settings', 'profile', 'audit', 'how'];
+    if (!KNOWN.includes(page || '')) return notFoundScreen();
     if (page === 'forgot') return authScreen('forgot');
     if (page === 'reset') return authScreen('reset', { token: arg });
     if (!state.me) {

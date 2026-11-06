@@ -189,3 +189,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .notice.ok { border-color: color-mix(in srgb, var(--good) 45%, var(--border)); background: var(--good-bg); color: var(--good); }
 .card[data-id] { border: 1px solid var(--border); }
 tbody tr:hover { box-shadow: none; background: var(--surface-2); }
+
+/* footer colours follow the theme tokens (the old stylesheet's dark footer values are replaced) */
+:root[data-theme="dark"] { --fe-text: var(--muted); --fe-head: var(--text); --fe-mute: var(--muted); --fe-chip: var(--surface); --fe-line: var(--border); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fe-text: var(--muted); --fe-head: var(--text); --fe-mute: var(--muted); --fe-chip: var(--surface); --fe-line: var(--border); } }

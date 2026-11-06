@@ -458,3 +458,13 @@ test('the test-email button reports a clear error when email is not set up, and 
   try { const ok = await owner('POST', '/api/mail/test', {}); assert.equal(ok.status, 200, JSON.stringify(ok.body)); assert.equal(ok.body.to, 'ola@askco.test'); }
   finally { delete process.env.MAIL_TRANSPORT; delete process.env.MAIL_FROM; }
 });
+
+test('unknown addresses get the branded 404 page, API misses stay JSON, real pages still load', async () => {
+  const nope = await fetch(base + '/no-such-page');
+  assert.equal(nope.status, 404); assert.match(nope.headers.get('content-type'), /html/);
+  assert.match(await nope.text(), /We can't find that page/);
+  const api = await fetch(base + '/api/nothing-here'); assert.equal(api.status, 404); assert.match(api.headers.get('content-type'), /json/);
+  assert.equal((await fetch(base + '/home')).status, 200);
+  assert.equal((await fetch(base + '/og.png')).status, 200);
+  const idx = await (await fetch(base + '/')).text(); assert.match(idx, /og:image/);
+});

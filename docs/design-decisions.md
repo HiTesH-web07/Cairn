@@ -81,3 +81,12 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 - Fairness: one featured statement with its bars, and a quiet hairline list. Replaces four identical cards.
 - The four principle cards under the hero are gone. The hero proof line and the Fairness section already say it.
 - Progress bars everywhere use `transform: scaleX`. Scroll reveals rise 32px over 700ms, once.
+
+## Home, lower half (step 4)
+- Tagline reveal sits after "Why it's different". Copy recombines existing phrases: "Measure what mattered, not how busy anyone looked. One fair score for every team, rated by the people who used the work." Words rise from 30% to full opacity one by one as they cross a line 30% above the bottom of the screen (IntersectionObserver, 40ms apart, capped at 400ms). Reduced motion: all words at full strength at once.
+- FAQ: nine questions, every answer is an existing product fact. Same text feeds FAQ structured data (JSON-LD) added on the Home page only. No risk reversal line (trial, guarantee) because none exists. Add one only when a real policy exists.
+- Closing call to action: flat accent panel, same label as the hero button. No decoration, no overlap with the footer.
+- Footer: light surface in light mode, navy in dark. Check icons, not glyphs. No Privacy or Terms links until real documents exist.
+- Phone alerts: handset corners 24px (radius snap bug fixed), icon list instead of rules down the side.
+- 404: branded page for unknown addresses (server) and unknown routes (in the app). Titles reset when you leave it.
+- Sharing: Open Graph and Twitter tags, a 1200 by 630 image (`public/og.png`, navy, Geist, logo mark, headline only). Theme colour follows light and dark.

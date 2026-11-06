@@ -59,6 +59,19 @@
       <div class="muted small sc-pop" style="--dl:1.7s">Coins sit beside the score. They are never added to it.</div>
     </div>`;
 
+  // Existing product facts only: these answers also feed the FAQ structured data.
+  const FAQ = [
+    ['Does Cairn track my screen or time?', 'No. There are no screenshots, no time tracking and no activity monitoring, ever. It only looks at the work you deliver and how it was rated.'],
+    ['What if I only get small tasks this week?', 'Nothing is lost. The score compares what you delivered with your own plan, so delivering every small task well scores 100.'],
+    ['Who rates my work?', 'Your manager rates it, and for your top priorities a second person does too, so one opinion cannot decide. Needs fixes and Redo always come with a reason.'],
+    ['What if I disagree with a rating?', 'Raise a dispute. The rater\'s manager decides, and both views and the decision are kept on record.'],
+    ['Does AI score anyone?', 'No. Ask Cairn is an optional helper that explains a score in plain words, using only what the person can already see. It never scores or rates anyone, and an admin can switch it off.'],
+    ['How do we add our people?', 'Invite them with a link, upload a CSV, or sync from Keka. Managers can add and look after their own team, and people who leave are marked as left with their history kept.'],
+    ['Do we have to use Slack?', 'No. With Slack connected, people get private messages such as a morning reminder and rating requests. Nothing is ever posted in channels.'],
+    ['What about leave and blocked work?', 'Leave days lower what is expected that week, and work blocked by someone else is not held against you.'],
+    ['Can everyone see how the score works?', 'Yes. The formula and the weights are open to everyone in the workspace.']
+  ];
+  const TAGLINE = 'Measure what mattered, not how busy anyone looked. One fair score for every team, rated by the people who used the work.';
   const NAV_LINKS = [['hp-how', 'How it works'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-where', 'Where you work']];
 
   function html({ signedIn }) {
@@ -171,6 +184,8 @@
       </div>
     </div></section>
 
+    <section class="hp-sec tag" id="hp-tag" aria-label="What Cairn is for"><div class="hp-wrap"><p class="tag-text" data-words>${TAGLINE}</p></div></section>
+
     <section class="hp-sec alt" id="hp-fair"><div class="hp-wrap">
       <div class="hp-kicker reveal">Fairness</div>
       <h2 class="hp-h2 reveal">Built so one opinion can't decide.</h2>
@@ -198,9 +213,9 @@
         <h2 class="hp-h2 reveal">When work is stuck and needs a human.</h2>
         <p class="hp-sub reveal">Cairn notifies the right person's phone so they can unblock, decide or act, and keeps ringing until somebody responds.</p>
         <ul class="m91-list reveal">
-          <li><b>Blocked on a top priority</b><span>The manager's phone rings until someone takes it.</span></li>
-          <li><b>Work nobody has rated</b><span>A nudge before the week's score goes stale.</span></li>
-          <li><b>A dispute stuck for days</b><span>Goes up a level, and the phone with it.</span></li>
+          <li>${ph('warning-circle')}<div><b>Blocked on a top priority</b><span>The manager's phone rings until someone takes it.</span></div></li>
+          <li>${ph('clock-counter-clockwise')}<div><b>Work nobody has rated</b><span>A nudge before the week's score goes stale.</span></div></li>
+          <li>${ph('scales')}<div><b>A dispute stuck for days</b><span>Goes up a level, and the phone with it.</span></div></li>
         </ul>
         <p class="m91-note reveal">Serious events only. Everything else stays in Slack.</p>
       </div>
@@ -209,7 +224,7 @@
         <div class="m91-phone"><div class="waves"><i></i><i></i><i></i></div>
           <div class="m91-card"><small>CAIRN · URGENT</small><b>Riya is blocked on #1</b><span>Waiting on API keys for 4h</span>
             <div class="bt"><i>I'll unblock it</i><i>Seen</i></div></div>
-          <div class="m91-ok"><em>✓</em><b>Answered</b><span>Ringing stopped</span></div></div>
+          <div class="m91-ok">${ph('check-circle')}<b>Answered</b><span>Ringing stopped</span></div></div>
       </div>
     </div></section>
 
@@ -240,19 +255,24 @@
       </div>
     </div></section>
 
-    <section class="hp-wrap hp-final"><div class="box reveal">${cairn()}<h2>See your own week in two minutes.</h2><p>Create a workspace, invite your team, and rank the first week. No setup call needed.</p>
-      ${signedIn ? '<a class="btn" href="#/week">Open my week</a>' : '<a class="btn" href="#/signup">Create a workspace</a>'}</div></section>
+    <section class="hp-sec alt" id="hp-faq"><div class="hp-wrap faq">
+      <div class="faq-head"><div class="hp-kicker reveal">Questions</div><h2 class="hp-h2 reveal">Questions people ask before they start.</h2><p class="hp-sub reveal">Short answers, in plain words.</p></div>
+      <div class="faq-list reveal">${FAQ.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>
+    </div></section>
+
+    <section class="hp-wrap hp-final"><div class="box reveal"><div><h2>See your own week in two minutes.</h2><p>Create a workspace, invite your team, and rank the first week. No setup call needed.</p></div>
+      ${signedIn ? '<a class="btn btn-lg" href="#/week">Open my week</a>' : '<a class="btn btn-lg" href="#/signup">Create a workspace</a>'}</div></section>
     </main>
     <footer class="hp-end"><div class="hp-wrap">
       <div class="hp-fgrid">
         <div class="hp-fbrand"><a class="brand" href="#/home">${logo()}${brand.name}</a>
           <p>${brand.tagline} A weekly priority stack, rated by the people who used the work, for every team in the company.</p>
           <div class="hp-tags"><span>No screenshots</span><span>No time tracking</span><span>Open formula</span></div></div>
-        <div><h4>Product</h4><ul><li><a data-go="hp-how">How it works</a></li><li><a data-go="hp-vs">Why it's different</a></li><li><a data-go="hp-fair">Fairness</a></li><li><a data-go="hp-where">Where you work</a></li></ul></div>
+        <div><h4>Product</h4><ul><li><a href="#/home" data-go="hp-how">How it works</a></li><li><a href="#/home" data-go="hp-vs">Why it's different</a></li><li><a href="#/home" data-go="hp-fair">Fairness</a></li><li><a href="#/home" data-go="hp-where">Where you work</a></li></ul></div>
         <div><h4>${signedIn ? 'Your workspace' : 'Get started'}</h4><ul>${signedIn
           ? '<li><a href="#/week">My Week</a></li><li><a href="#/how">How we score</a></li><li><a href="#/team">Team</a></li>'
           : '<li><a href="#/signup">Create a workspace</a></li><li><a href="#/signin">Sign in</a></li>'}</ul></div>
-        <div><h4>Our promises</h4><ul class="hp-pledge"><li>No screenshots, ever</li><li>Task count never counts</li><li>Every rating has a reason</li><li>AI never scores anyone</li></ul></div>
+        <div><h4>Our promises</h4><ul class="hp-pledge">${['No screenshots, ever', 'Task count never counts', 'Every rating has a reason', 'AI never scores anyone'].map((t) => `<li>${ph('check')}${t}</li>`).join('')}</ul></div>
       </div>
       <div class="hp-fbar"><span class="stones">${logo()}© ${new Date().getFullYear()} ${brand.name}</span><span>${brand.tagline}</span></div>
     </div></footer>
@@ -314,6 +334,29 @@
     }), { rootMargin: '-35% 0px -60% 0px' });
     NAV_LINKS.forEach(([id]) => { const t = document.getElementById(id); if (t) spy.observe(t); });
     observers.push(spy);
+
+    // tagline: each word turns from muted to full colour, in reading order, as it crosses the trigger line
+    const tagEl = el.querySelector('[data-words]');
+    if (tagEl) {
+      const words = tagEl.textContent.trim().split(/\s+/);
+      tagEl.setAttribute('aria-label', words.join(' '));
+      tagEl.innerHTML = words.map((w) => `<span class="tw" aria-hidden="true">${w}</span>`).join(' ');
+      const tws = [...tagEl.querySelectorAll('.tw')];
+      if (reduce) tws.forEach((w) => w.classList.add('on'));
+      else {
+        const tio = new IntersectionObserver((entries) => {
+          entries.filter((e) => e.isIntersecting).sort((a, b) => tws.indexOf(a.target) - tws.indexOf(b.target)).forEach((e, k) => {
+            e.target.style.transitionDelay = `${Math.min(k * 40, 400)}ms`; e.target.classList.add('on'); tio.unobserve(e.target);
+          });
+        }, { rootMargin: '0px 0px -30% 0px' });
+        tws.forEach((w) => tio.observe(w)); observers.push(tio);
+      }
+    }
+    // the same questions, as structured data for search and answer engines
+    const ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.id = 'faq-ld';
+    ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) });
+    document.getElementById('faq-ld')?.remove(); document.head.appendChild(ld);
+    cleanups.push(() => document.getElementById('faq-ld')?.remove());
 
     // hero: the score counts up once the rows have landed
     const heroNum = el.querySelector('[data-hero-score]');
