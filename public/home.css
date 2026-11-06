@@ -415,13 +415,6 @@ html.nv-lock { overflow: hidden; }
 @media (max-width: 760px) { .dv { grid-template-columns: minmax(0, 1fr); } .dv-lane { padding: var(--space-200); } .dv-big { font-size: var(--text-5xl); line-height: var(--lh-5xl); } }
 @media (max-width: 420px) { .dv-dots { grid-template-columns: repeat(10, 14px); gap: 6px; } .dv-dots i { width: 14px; height: 14px; } }
 
-/* ---------- example selector: the same week, seen from different teams ---------- */
-.ex-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-75); margin: 0 0 var(--space-200); font-size: var(--text-sm); line-height: var(--lh-sm); color: var(--muted); }
-.ex-btn { min-height: 32px; padding: var(--space-50) var(--space-100); border-radius: var(--rad-full); background: transparent; border: 1px solid var(--border-strong); color: var(--muted); font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: 500; }
-.ex-btn:hover { background: var(--surface-2); color: var(--text); }
-.ex-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.hp .ex-swap [data-ex] { animation: exIn 450ms var(--ease) both; }
-@keyframes exIn { from { opacity: 0; transform: translateY(4px); } }
 
 /* ---------- calmer display sizes (owner preference: the biggest text was too heavy) ---------- */
 .dv-big { font-size: var(--text-4xl); line-height: var(--lh-4xl); }

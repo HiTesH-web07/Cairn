@@ -7,28 +7,15 @@
   let observers = [];
   let cleanups = [];
 
-  // One set of plain examples drives every demo on this page. Fictional people and companies.
+  // One plain example drives every demo on this page. Fictional people and company.
   const EXAMPLES = [
     { label: 'Product', person: 'Riya Shah', first: 'Riya', mgr: 'Amit', role: 'Engineer', rater2: 'Sonal',
       t1: 'Ship the new onboarding flow', t2: 'Write the help guide for it', t3: 'Fix the sign in timeout bug', s1: 'Onboarding flow', s2: 'Help guide', s3: 'Sign in bug',
       n1: 'Replied to 40 emails', n2: 'Fixed a typo', n3: 'Joined 12 meetings', n4: 'Updated the wiki', proof: 'github.com/acme/app/pull/231',
-      coin: '3 coins from Aman: “covered my on call shift”', blocker: 'Waiting on API keys for 4h' },
-    { label: 'Marketing', person: 'Neha Rao', first: 'Neha', mgr: 'Vikram', role: 'Marketer', rater2: 'Isha',
-      t1: 'Launch the spring campaign', t2: 'Publish the customer story', t3: 'Refresh the pricing page', s1: 'Spring campaign', s2: 'Customer story', s3: 'Pricing page',
-      n1: 'Scheduled social posts', n2: 'Answered DMs', n3: 'Joined 9 meetings', n4: 'Renamed the files', proof: 'acme.com/spring-campaign',
-      coin: '3 coins from Isha: “pulled the report together fast”', blocker: 'Waiting on design files for 4h' },
-    { label: 'Sales', person: 'Arjun Mehta', first: 'Arjun', mgr: 'Priya', role: 'Account executive', rater2: 'Kabir',
-      t1: 'Close the Orbit Logistics renewal', t2: 'Send proposals to three new leads', t3: 'Update the sales deck', s1: 'Orbit renewal', s2: 'Three proposals', s3: 'Sales deck',
-      n1: 'Logged 30 calls', n2: 'Updated CRM notes', n3: 'Joined 11 meetings', n4: 'Answered emails', proof: 'crm.acme.com/deals/482',
-      coin: '3 coins from Kabir: “shared his call notes”', blocker: 'Waiting on legal approval for 4h' },
-    { label: 'Support', person: 'Sonal Gupta', first: 'Sonal', mgr: 'Rohan', role: 'Support lead', rater2: 'Meera',
-      t1: 'Clear the oldest open tickets', t2: 'Write the refund guide for agents', t3: 'Train two new agents', s1: 'Oldest tickets', s2: 'Refund guide', s3: 'Agent training',
-      n1: 'Tagged tickets', n2: 'Updated macros', n3: 'Joined 8 meetings', n4: 'Answered chat pings', proof: 'helpdesk.acme.com/reports/oldest',
-      coin: '3 coins from Meera: “stayed late on the backlog”', blocker: 'Waiting on the billing team for 4h' }
+      coin: '3 coins from Aman: “covered my on call shift”', blocker: 'Waiting on API keys for 4h' }
   ];
   let EX = EXAMPLES[0];
   const x = (k) => `<span data-ex="${k}">${EX[k]}</span>`;
-  const exPick = () => `<div class="ex-pick" role="group" aria-label="Show an example from"><span>Example from</span>${EXAMPLES.map((e, i) => `<button type="button" class="ex-btn${i === 0 ? ' on' : ''}" data-ex-i="${i}" aria-pressed="${i === 0}">${e.label}</button>`).join('')}</div>`;
   const heroSr = (e) => `Example week for ${e.first}, ${e.role}. Three ranked priorities worth 35, 25 and 20 points were delivered and rated: ${e.t1}, ${e.t2} and ${e.t3}. ${e.first} earned 70 of 80 points, a score of 88 out of 100. Everything else is logged and earns zero.`;
 
   const chips = ['Reply to emails', 'Fix a typo', 'Update the wiki', 'Join stand-up', 'Rename a file', 'Answer a ping', 'Tidy the board', 'Book a room'];
@@ -132,7 +119,6 @@
       </div>
       <div class="hv">
         <p class="sr-only" data-sr="hero">${heroSr(EX)}</p>
-        ${exPick()}
         <div class="hv-card" aria-hidden="true">
           <div class="hv-head"><div><span class="hv-k">My Week</span><span class="hv-who">${x('person')} · Nov 2 to Nov 8</span></div><span class="pill good hv-lock">${ph('lock-simple')}Locked by ${x('mgr')}</span></div>
           <div class="hv-label"><span>Top priorities</span><span>Worth</span></div>
@@ -154,7 +140,6 @@
       <div class="hp-kicker reveal">The score</div>
       <h2 class="hp-h2 reveal">Watch one week become one number.</h2>
       <p class="hp-sub reveal">This is ${x('first')}'s week. Follow it from the manager's plan to the final score: no formulas to read, just watch.</p>
-      <div class="reveal">${exPick()}</div>
       <div class="sx reveal" id="sx" data-s="0">
         <div class="sx-board">
           <div class="sx-head"><span>${x('first')}'s priorities this week</span><span>Worth</span></div>
@@ -374,16 +359,6 @@
     }), { rootMargin: '-35% 0px -60% 0px' });
     NAV_LINKS.forEach(([id]) => { const t = document.getElementById(id); if (t) spy.observe(t); });
     observers.push(spy);
-
-    // the example selector: every demo on the page follows it
-    const applyExample = (i) => {
-      EX = EXAMPLES[i];
-      el.querySelectorAll('[data-ex]').forEach((n) => { n.textContent = EX[n.dataset.ex]; });
-      const sr = el.querySelector('[data-sr="hero"]'); if (sr) sr.textContent = heroSr(EX);
-      el.querySelectorAll('.ex-btn').forEach((b) => { const on = Number(b.dataset.exI) === i; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-      el.classList.remove('ex-swap'); void el.offsetWidth; el.classList.add('ex-swap');
-    };
-    el.querySelectorAll('.ex-btn').forEach((b) => b.addEventListener('click', () => applyExample(Number(b.dataset.exI))));
 
     // why it's different: a short race, once, as it scrolls into view
     const dv = el.querySelector('#dv');
