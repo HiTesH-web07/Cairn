@@ -533,17 +533,129 @@ function importDialog(o) {
   };
 }
 
-// ---------- Integrations ----------
+// ---------- Integrations (Slack and Keka through viaSocket) ----------
+const connectState = { token: null, serviceIds: {}, actionIds: {}, ready: false, current: null, error: null };
+function loadConnectScript() {
+  return new Promise((resolve, reject) => {
+    if (window.openViasocketConnection) return resolve();
+    const el = document.createElement('script');
+    el.src = 'https://flow.viasocket.com/connect.js';
+    el.onload = resolve;
+    el.onerror = () => reject(new Error('Could not load the connect window. Check your network and try again.'));
+    document.head.appendChild(el);
+  });
+}
+// The popup must open straight from the click, so the token is fetched when the screen opens.
+async function prepareConnect() {
+  try {
+    Object.assign(connectState, await api('GET', '/api/viasocket/token?apps=slack,keka'));
+    await loadConnectScript();
+    connectState.ready = true;
+    connectState.error = null;
+  } catch (e) { connectState.ready = false; connectState.error = e.message; }
+  document.querySelectorAll('[data-connect]').forEach((b) => { b.disabled = !connectState.ready; });
+  const err = $('#connectErr');
+  if (err) err.textContent = connectState.error || '';
+}
+if (!window.__vsListener) {
+  window.__vsListener = true;
+  window.addEventListener('message', async (event) => {
+    const d = event.data;
+    const app = connectState.current;
+    if (!d || !app || typeof d.type !== 'string') return;
+    if (d.serviceId && d.serviceId !== connectState.serviceIds[app]) return; // another app's message
+    if (d.type === 'viasocket_connection_success' && d.data && d.data.id) {
+      connectState.current = null;
+      try { await api('POST', '/api/viasocket/connected', { app, authId: d.data.id }); toast(`${app === 'slack' ? 'Slack' : 'Keka'} connected. Now run the test.`); } catch (e) { toast(e.message); }
+      integrationsScreen();
+    } else if (d.type === 'viasocket_connection_error') {
+      connectState.current = null;
+      toast((d.error && d.error.message) || 'The connection did not finish');
+    } // 'viasocket_connection_closed' is not a failure: a success may still follow
+  });
+}
+
 async function integrationsScreen() {
   const s = await api('GET', '/api/integrations/status');
-  const line = (name, ok, text) => `<tr><td><b>${name}</b></td><td><span class="pill ${ok ? 'good' : 'warn'}">${ok ? 'Working' : 'Not set up'}</span></td><td class="small">${text}</td></tr>`;
-  layout('integrations', `<h1>Integrations</h1><p class="muted">Nothing here is shown as working until it has been tested for real.</p>
-    <div class="card tablewrap"><table><tbody>
-    ${line('Connect your tools (viaSocket)', s.viasocket.verified, s.viasocket.keysPresent ? 'Keys are stored on the server. Waiting for the plan to be approved and a real test.' : 'Keys missing.')}
-    ${line('Slack (daily check-ins, rating buttons)', false, 'Not connected yet.')}
-    ${line('Keka (people, reporting lines, leave)', false, state.me.settings.peopleSource === 'keka' ? 'Chosen in Settings. The Connect button appears here once the Keka sync is built and tested.' : 'Optional. This company gets people from ' + (state.me.settings.peopleSource === 'csv' ? 'CSV uploads' : 'invite links') + '.')}
-    ${line('Phone alerts (M91)', s.m91.configured, s.m91.configured ? `Connected to "${esc(s.m91.channel)}". Test it in <a href="#/settings">Settings</a>.` : 'Not set up. Add your channel link in <a href="#/settings">Settings</a>.')}
-    </tbody></table></div>`);
+  const pill = (c) => (!c.connected ? '<span class="pill warn">Not connected</span>' : c.verifiedAt ? '<span class="pill good">Working</span>' : '<span class="pill warn">Connected, not tested yet</span>');
+  const sl = s.slack, ke = s.keka;
+  const msgs = [['plan', 'Monday: managers with people who have no locked week'], ['locked', "When a manager locks someone's week: that person gets their #1"], ['rating', 'When work is delivered: the raters are asked to rate it'],
+    ['morning', "Weekday mornings (10:00): today's top item, only for people with a locked week and work left"], ['evening', 'Weekday evenings (19:00): a reminder to add proof, only if work is left'], ['digest', "Last working day, evening: each manager gets their team's scores"]];
+  const fieldWords = { 'reportsTo.id': 'manager', 'reportsTo.email': null, groups: 'department', 'jobTitle.title': 'job title', mobilePhone: 'mobile number', employeeNumber: 'employee number', displayName: 'name', email: 'work email', id: null };
+  const asked = [...new Set(ke.requested.map((f) => fieldWords[f]).filter(Boolean))];
+  const runRow = (r) => `<tr><td class="small">${fmtTime(r.started_at)}<div class="muted">${r.trigger}${r.dry_run ? ' · preview' : ''}</div></td><td>${r.status === 'ok' ? `<span class="pill good">ok</span>` : r.status === 'failed' ? '<span class="pill bad">failed</span>' : '<span class="pill">running</span>'}</td>
+    <td class="small">${r.summary ? `${r.summary.created} new · ${r.summary.updated} updated · ${r.summary.moved} moved · ${r.summary.offboarded} left` : esc(r.error || '')}</td></tr>`;
+  layout('integrations', `<h1>Integrations</h1><p class="muted">Nothing here is shown as working until a real test has succeeded.</p>
+    ${s.viasocket.keysPresent ? '' : '<div class="notice warn">The viaSocket keys are missing on the server, so connecting is switched off.</div>'}<p class="err" id="connectErr"></p>
+
+    <div class="card"><div class="row spread"><h2 style="margin:0">Slack</h2>${pill(sl)}</div>
+      <p>Sends private direct messages to the people each message is about: planning, ratings, reminders and the weekly team summary. Nothing is posted in channels.</p>
+      ${sl.lastError ? `<div class="notice warn">Last problem: ${esc(sl.lastError)}</div>` : ''}
+      <div class="row">${sl.connected ? `<button class="primary" id="slTest">Send myself a test message</button><button id="slMatch">Check who is on Slack</button><button class="ghost" data-connect="slack" disabled>Reconnect</button><button class="ghost danger" data-disc="slack">Disconnect</button>` : '<button class="primary" data-connect="slack" disabled>Connect Slack</button>'}</div>
+      <p class="small" id="slOut"></p>
+      ${sl.connected && sl.coverage ? `<p class="small">${sl.coverage.inSlack} of ${sl.coverage.people} people found in Slack by work email${sl.coverage.notChecked ? ` · ${sl.coverage.notChecked} not checked yet` : ''}.${sl.coverage.notFound.length ? ` Not found: ${sl.coverage.notFound.map(esc).join(', ')}. They need the same email in Slack as here.` : ''}</p>` : ''}
+      <h3 style="margin-top:1rem">Messages</h3>
+      ${msgs.map(([k, t]) => `<label style="margin:.3rem 0;color:var(--text)"><input type="checkbox" data-msg="${k}" ${sl.messages[k] ? 'checked' : ''} style="width:auto"> ${esc(t)}</label>`).join('')}
+      ${sl.recent && sl.recent.length ? `<h3 style="margin-top:1rem">Recent</h3><div class="tablewrap"><table><tbody>${sl.recent.map((m) => `<tr><td class="small">${fmtTime(m.created_at)}</td><td>${esc(m.kind)}</td><td><span class="pill ${m.status === 'sent' ? 'good' : m.status === 'pending' ? '' : 'warn'}">${esc(m.status)}</span></td><td class="small muted">${esc(m.last_error || '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    </div>
+
+    <div class="card"><div class="row spread"><h2 style="margin:0">Keka</h2>${pill(ke)}</div>
+      <p>Optional. Keeps people, managers, departments and job titles in step with Keka. Leavers are only removed when Keka marks them as relieved.</p>
+      <p class="small">Keka is only asked for: <b>${asked.join(', ')}</b>. Never salary, payroll, bank, tax, documents, personal email, birth date or attendance. Change what is shared in <a href="#/settings">Settings</a>.</p>
+      ${ke.lastError ? `<div class="notice warn">Last problem: ${esc(ke.lastError)}</div>` : ''}
+      ${ke.connected && !ke.chosen ? '<div class="notice">This company gets people from somewhere else. To use Keka, choose <b>Keka sync</b> in <a href="#/settings">Settings → People &amp; leave source</a>.</div>' : ''}
+      <div class="row">${ke.connected ? `<button class="primary" id="keTest">Test (read-only)</button>${ke.chosen ? '<button id="kePreview">Preview sync</button><button id="keSync">Sync now</button>' : ''}<button class="ghost" data-connect="keka" disabled>Reconnect</button><button class="ghost danger" data-disc="keka">Disconnect</button>` : '<button class="primary" data-connect="keka" disabled>Connect Keka</button>'}</div>
+      <p class="small" id="keOut"></p>
+      <p class="small muted">Leave days from Keka are not available yet. Import them as a CSV under People.${ke.confirmedAt ? ' The sync runs by itself every night.' : ke.chosen ? ' It runs by itself every night once you have run it by hand once.' : ''}</p>
+      ${ke.runs.length ? `<h3 style="margin-top:1rem">Recent syncs</h3><div class="tablewrap"><table><tbody>${ke.runs.map(runRow).join('')}</tbody></table></div>` : ''}
+    </div>
+
+    <div class="card"><div class="row spread"><h2 style="margin:0">Phone alerts (M91)</h2><span class="pill ${s.m91.configured ? 'good' : 'warn'}">${s.m91.configured ? 'Connected' : 'Not set up'}</span></div>
+      <p class="small">${s.m91.configured ? `Rings "${esc(s.m91.channel)}" for serious problems. Test it in <a href="#/settings">Settings</a>.` : 'Add your channel link in <a href="#/settings">Settings</a>.'}</p></div>`);
+
+  prepareConnect();
+  $('#main').onclick = (e) => {
+    const c = e.target.closest('[data-connect]');
+    if (c) { // straight from the click: the popup would be blocked after an await
+      const app = c.dataset.connect;
+      connectState.current = app;
+      try { window.openViasocketConnection(connectState.token, connectState.serviceIds[app], { filteredActions: connectState.actionIds[app], skipActionSelection: true }); } catch (err) { connectState.current = null; toast('Could not open the connect window'); }
+      return;
+    }
+    const d = e.target.closest('[data-disc]');
+    if (d) return run(d, async () => { if (confirm(`Disconnect ${d.dataset.disc === 'slack' ? 'Slack' : 'Keka'}? Messages and syncing stop.`)) { await api('POST', `/api/integrations/${d.dataset.disc}/disconnect`, {}); integrationsScreen(); } });
+    const m = e.target.closest('[data-msg]');
+    if (m) return;
+  };
+  $('#main').onchange = (e) => {
+    const m = e.target.closest('[data-msg]');
+    if (!m) return;
+    run(null, async () => {
+      const slackMessages = Object.fromEntries([...document.querySelectorAll('[data-msg]')].map((x) => [x.dataset.msg, x.checked]));
+      await api('PUT', '/api/settings', { settings: { slackMessages } });
+      await loadMe();
+      toast('Saved');
+    });
+  };
+  const out = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+  const t1 = $('#slTest');
+  if (t1) t1.onclick = () => run(t1, async () => { out('#slOut', 'Sending…'); try { const r = await api('POST', '/api/integrations/slack/test', {}); out('#slOut', r.message); setTimeout(integrationsScreen, 1500); } catch (e) { out('#slOut', e.message); } });
+  const t2 = $('#slMatch');
+  if (t2) t2.onclick = () => run(t2, async () => { out('#slOut', 'Checking…'); try { await api('POST', '/api/integrations/slack/match', {}); integrationsScreen(); } catch (e) { out('#slOut', e.message); } });
+  const t3 = $('#keTest');
+  if (t3) t3.onclick = () => run(t3, async () => { out('#keOut', 'Asking Keka…'); try { const r = await api('POST', '/api/integrations/keka/test', {}); out('#keOut', r.found === null ? 'Keka answered.' : r.found ? 'Keka answered and found you.' : 'Keka answered but has nobody with your email.'); setTimeout(integrationsScreen, 1500); } catch (e) { out('#keOut', e.message); } });
+  const sync = (dryRun) => async () => {
+    out('#keOut', dryRun ? 'Checking what would change…' : 'Syncing…');
+    try {
+      const r = await api('POST', '/api/integrations/keka/sync', { dryRun });
+      const lines = [`${dryRun ? 'Would change' : 'Changed'}: ${r.created} new · ${r.updated} updated · ${r.moved} moved · ${r.offboarded} left.`, ...r.samples, ...r.held.map((h) => `Left alone: ${h}`)];
+      if (dryRun) { $('#keOut').innerHTML = `${lines.map(esc).join('<br>')}<br><b>Nothing was saved.</b>`; } else { toast('Sync finished'); out('#keOut', lines.join(' · ')); setTimeout(integrationsScreen, 2500); }
+    } catch (e) { out('#keOut', e.message); }
+  };
+  const t4 = $('#kePreview');
+  if (t4) t4.onclick = () => run(t4, sync(true));
+  const t5 = $('#keSync');
+  if (t5) t5.onclick = () => run(t5, async () => { if (confirm('Apply Keka\'s people to this workspace now? Use "Preview sync" first to see what changes.')) await sync(false)(); });
 }
 
 // ---------- Settings ----------
@@ -571,8 +683,8 @@ async function settingsScreen() {
     ${[['manual', 'Invite links', 'Managers invite people one by one. Leave is added in the app.'], ['csv', 'CSV upload', 'Export from Keka, Excel or any HR tool and upload it under People. Nothing stays connected.'], ['keka', 'Keka sync', 'Read automatically every night, only the fields ticked below. Needs setup under Integrations.']]
       .map(([v, t, h]) => `<label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="peopleSource" value="${v}" ${s.peopleSource === v ? 'checked' : ''} style="width:auto"> <b>${t}</b> <span class="small muted">${h}</span></label>`).join('')}
     <div id="hrf" style="${s.peopleSource === 'keka' ? '' : 'display:none'}"><label>Fields Keka may share</label>
-    ${[['reportingLine', 'Reporting line (who reports to whom)'], ['department', 'Department'], ['jobTitle', 'Job title (used as level)'], ['leave', 'Leave days'], ['phone', 'Mobile number (for serious alerts)']]
-      .map(([k, t]) => `<label style="margin:.2rem 0;color:var(--text)"><input type="checkbox" name="hr_${k}" ${s.hrFields[k] ? 'checked' : ''} style="width:auto"> ${t}</label>`).join('')}
+    ${[['reportingLine', 'Reporting line (who reports to whom)'], ['department', 'Department'], ['jobTitle', 'Job title (used as level)'], ['leave', 'Leave days (not available from Keka yet: import a CSV)'], ['phone', 'Mobile number (for serious alerts)']]
+      .map(([k, t]) => `<label style="margin:.2rem 0;color:var(--text)"><input type="checkbox" name="hr_${k}" ${s.hrFields[k] && k !== 'leave' ? 'checked' : ''} ${k === 'leave' ? 'disabled' : ''} style="width:auto"> ${t}</label>`).join('')}
     <p class="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p></div>
     <h2>Alerts</h2>
     <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" value="${s.blockerEscalationHours}">

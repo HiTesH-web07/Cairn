@@ -1,4 +1,4 @@
-# viaSocket plan (waiting for approval)
+# viaSocket plan (approved: "go ahead with Slack and Keka")
 
 Skill followed: viasocket-integrations `2026-11-05.1` (installed copy in `.claude/skills/viasocket-integrations/`).
 Backend is Node.js, so every call will go through the `viasocket-apps` npm package.
@@ -53,14 +53,18 @@ These are emitted from the app's own server after each change, with the payload 
 
 They are wired up only after the Slack and Keka steps above have been tested.
 
-## Not done yet, and why
+## Status
 
-The session's network policy blocks the hosts the skill needs:
-- viasocket.com
-- flow.viasocket.com
-- flow-api.viasocket.com
-- flow.sokt.io
-- plug-service.viasocket.com
-- connect.viasocket.com
+Checked against the real viaSocket (this project's keys): the setup check answers; `slack` and `keka` exist; the actions
+`Get_User_Information` (v9), `Send_Direct_Message` (v3) and `Find_Employees` (v36) exist under those keys at exactly those
+versions; the app's token endpoint returns real service ids and action ids; a made-up connection id is refused.
 
-No viaSocket call has been made yet, so every row above is UNTESTED.
+**UNTESTED** (needs a person to sign in to Slack and Keka once, through the Connect button):
+- every `runAction` on a real connection: Slack lookup, Slack DM, Keka Find_Employees (the answers' real shapes are read defensively and fail closed until a real run confirms them)
+- Keka department: taken from the group whose `groupType` is 2, as in the only documented sample
+- reconnecting after a disconnect
+
+**Not built, on purpose:**
+- Keka leave days: the action's `status` values (approved or not) are not documented, so nothing is guessed. Leave comes from CSV.
+- Channel digest and Slack buttons: DMs only.
+- Product events (Stack Locked, Work Item Delivered and so on) for user-built automations.

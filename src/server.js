@@ -385,6 +385,20 @@ app.patch('/api/people/:id', auth, wrap((req) => {
 }));
 
 // ---------- joiners, movers, leavers ----------
+// The change itself, shared by "Left the company" and the Keka sync. The caller wraps it in a transaction.
+function offboardCore(ws, actorId, target, newMgr, source) {
+  const reports = db.prepare('SELECT id FROM users WHERE workspace_id = ? AND reports_to = ? AND active = 1').all(ws.id, target.id);
+  for (const r of reports) {
+    if (newMgr && r.id === newMgr.id) db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(target.reports_to, r.id); // a promoted report steps into the gap
+    else db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(newMgr ? newMgr.id : null, r.id);
+  }
+  db.prepare('UPDATE users SET active = 0 WHERE id = ?').run(target.id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(target.id);
+  db.prepare('UPDATE invites SET used_at = ? WHERE workspace_id = ? AND email = ? AND used_at IS NULL').run(now(), ws.id, target.email);
+  audit(ws.id, actorId, 'user.offboarded', 'user', target.id, { reports_moved_to: newMgr && newMgr.id, reports: reports.length, source });
+  return reports.length;
+}
+
 // Someone leaves: their reports move to a new manager, sign-in stops at once, and every past week, rating and coin stays on record.
 app.post('/api/people/:id/offboard', auth, idempotent, wrap((req) => {
   const target = userIn(req.ws.id, req.params.id);
@@ -402,16 +416,7 @@ app.post('/api/people/:id/offboard', auth, idempotent, wrap((req) => {
     if (subtreeIds(req.ws.id, target.id).includes(newMgr.id) && !reports.some((r) => r.id === newMgr.id)) throw bad('Pick someone outside the leaver\'s team, or one of their direct reports');
     if (!isAdmin(req.user) && newMgr.id !== req.user.id && !isAncestorOf(req.user, newMgr)) throw forbidden('Move their team to someone in your own team');
   }
-  db.transaction(() => {
-    for (const r of reports) {
-      if (newMgr && r.id === newMgr.id) db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(target.reports_to, r.id); // promoted report steps into the gap
-      else db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(newMgr.id, r.id);
-    }
-    db.prepare('UPDATE users SET active = 0 WHERE id = ?').run(target.id);
-    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(target.id);
-    db.prepare('UPDATE invites SET used_at = ? WHERE workspace_id = ? AND email = ? AND used_at IS NULL').run(now(), req.ws.id, target.email);
-    audit(req.ws.id, req.user.id, 'user.offboarded', 'user', target.id, { reports_moved_to: newMgr && newMgr.id, reports: reports.length });
-  })();
+  db.transaction(() => offboardCore(req.ws, req.user.id, target, newMgr, 'manual'))();
   return { ok: true, reportsMoved: reports.length };
 }));
 
@@ -714,6 +719,7 @@ app.post('/api/stacks/lock', auth, idempotent, wrap((req) => {
   if (!stack) db.prepare('INSERT INTO stacks (workspace_id, user_id, week_start, locked_at, locked_by) VALUES (?,?,?,?,?)').run(req.ws.id, target.id, week, now(), req.user.id);
   else db.prepare('UPDATE stacks SET locked_at = ?, locked_by = ? WHERE workspace_id = ? AND user_id = ? AND week_start = ?').run(now(), req.user.id, req.ws.id, target.id, week);
   audit(req.ws.id, req.user.id, 'stack.locked', 'stack', `${target.id}:${week}`, { ranked });
+  integ.slack.onLocked(req.ws, target.id, week);
   return { ok: true };
 }));
 
@@ -728,6 +734,7 @@ app.post('/api/items/:id/deliver', auth, idempotent, wrap((req) => {
   db.prepare("UPDATE items SET status = 'delivered', proof_url = ?, proof_note = ?, proof_source = 'self-reported', delivered_at = ?, updated_at = ? WHERE id = ?").run(url, note, now(), now(), it.id);
   db.prepare('UPDATE blockers SET resolved_at = ?, resolved_by = ? WHERE item_id = ? AND resolved_at IS NULL').run(now(), req.user.id, it.id);
   audit(req.ws.id, req.user.id, 'item.delivered', 'item', it.id, { proof_url: url, has_note: !!note });
+  integ.slack.onDelivered(req.ws, it.id);
   return { ok: true };
 }));
 
@@ -1071,13 +1078,12 @@ app.post('/api/m91/callback/:wsId', async (req, res) => {
   }
 });
 
-// Honest status only. Nothing is shown as connected until it has been verified.
-app.get('/api/integrations/status', auth, wrap((req) => ({
-  viasocket: { keysPresent: !!(process.env.VIASOCKET_ORG_ID && process.env.VIASOCKET_PROJECT_ID && process.env.VIASOCKET_EMBED_SECRET), verified: false, state: 'waiting_for_plan_approval' },
-  slack: { state: 'not_connected' },
-  keka: { state: 'not_connected', chosen: S.mergeSettings(JSON.parse(req.ws.settings_json || '{}')).peopleSource === 'keka' },
-  m91: { configured: !!req.ws.m91_link, channel: req.ws.m91_channel || null }
-})));
+// Slack and Keka through viaSocket. Honest status only: nothing is shown as working until a real call succeeded.
+const integ = require('./integrations').init({
+  app, auth, adminOnly, wrap, bad, db, now, newId, audit, userIn, getWs, settingsOf, currentWeek, addDays, dow, mondayOf, localDate,
+  computeWeek, ancestors, subtreeIds, offboardCore, sha,
+  appUrl: () => process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : null)
+});
 
 // ---------- scheduled job (Embarko schedules call this with CRON_SECRET) ----------
 app.get('/tasks/hourly', async (req, res) => {
@@ -1101,10 +1107,11 @@ app.get('/tasks/hourly', async (req, res) => {
   for (const ws of db.prepare('SELECT * FROM workspaces WHERE m91_link IS NOT NULL').all()) {
     try { const r = await alerts.sweep(ws); alertReports.push(`${r.raised} raised, ${r.answered} answered, ${r.closed} closed${r.errors.length ? `, ${r.errors.length} errors` : ''}`); } catch (e) { alertReports.push(`error ${e.code || e.message}`); }
   }
+  const integReport = await integ.hourly();
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now());
   db.prepare('DELETE FROM idempotency WHERE created_at < ?').run(new Date(Date.now() - 7 * 864e5).toISOString());
   db.prepare('DELETE FROM m91_callbacks WHERE at < ?').run(new Date(Date.now() - 30 * 864e5).toISOString());
-  res.send(`Scores refreshed for ${n} person-weeks. Alerts: ${alertReports.join('; ') || 'no workspace has phone alerts'}`);
+  res.send(`Scores refreshed for ${n} person-weeks. Alerts: ${alertReports.join('; ') || 'no workspace has phone alerts'}. Integrations: ${integReport.join('; ') || 'none connected'}`);
 });
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -1118,5 +1125,5 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   res.status(status).json({ error: status >= 500 ? 'Something went wrong' : err.message });
 });
 
-module.exports = { app, helpers: { mondayOf, addDays, localDate } };
+module.exports = { app, integ, helpers: { mondayOf, addDays, localDate } };
 

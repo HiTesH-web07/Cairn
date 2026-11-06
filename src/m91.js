@@ -1,8 +1,6 @@
 // M91: ring a real person's phone and read their answer back.
 // The send link is a credential (the token is in the URL): it is stored encrypted, never logged,
 // never returned to a browser, and errors from here never contain it.
-const crypto = require('crypto');
-
 const HOST = 'https://m91-api.msg91.com';
 const LINK_RE = /^https:\/\/m91-api\.msg91\.com\/s\/[A-Za-z0-9_-]{8,}$/;
 
@@ -49,23 +47,6 @@ async function close(link, customId) {
   }
 }
 
-// AES-256-GCM with a key derived from APP_SECRET (an Embarko environment variable).
-function key() {
-  const s = process.env.APP_SECRET;
-  if (!s || s.length < 16) throw new M91Error('NO_APP_SECRET', 'The server is missing APP_SECRET, so it cannot store the link safely');
-  return crypto.createHash('sha256').update(`m91-link:${s}`).digest();
-}
-function seal(text) {
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv('aes-256-gcm', key(), iv);
-  const enc = Buffer.concat([c.update(text, 'utf8'), c.final()]);
-  return `v1.${iv.toString('base64url')}.${c.getAuthTag().toString('base64url')}.${enc.toString('base64url')}`;
-}
-function open(sealed) {
-  const [, iv, tag, enc] = String(sealed).split('.');
-  const d = crypto.createDecipheriv('aes-256-gcm', key(), Buffer.from(iv, 'base64url'));
-  d.setAuthTag(Buffer.from(tag, 'base64url'));
-  return Buffer.concat([d.update(Buffer.from(enc, 'base64url')), d.final()]).toString('utf8');
-}
+const { seal, open } = require('./secrets');
 
 module.exports = { HOST, M91Error, cleanLink, checkLink, send, read, close, seal, open };

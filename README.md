@@ -42,3 +42,30 @@ Everyone in the channel must install M91 and accept the invite, or their phone s
 - The link is stored encrypted with `APP_SECRET`, a server environment variable, and is never sent back to the browser.
 - The hourly job raises new alerts, reads answers back, and closes alerts whose condition has cleared. Any change in the app also closes cleared alerts straight away.
 - "Blocked by others" answered from a phone marks the work as blocked by others, so it isn't held against the person.
+
+## Slack and Keka (through viaSocket)
+
+An admin connects each once under **Integrations**. The company is the viaSocket "user": the connection ids are
+stored encrypted (`APP_SECRET`), never sent to a browser, never logged.
+
+**Slack** sends private direct messages only (nothing is posted in channels). People are matched by exact work email.
+
+| Message | When | To |
+|---|---|---|
+| Plan this week | first working day, morning | managers with people who have no locked week |
+| Your week is ready | a manager locks a week | that person |
+| Work to rate | work is delivered | the main rater, and the second rater for the top ranks |
+| Today's top item | working days, 10:00 local | people with a locked week and work left (not on leave) |
+| Add proof | working days, 19:00 local | people with work left |
+| Team summary | last working day, evening | managers (their direct reports' scores) |
+
+Each can be switched off. Messages go through an outbox: once-only, retried up to 4 times, text dropped after sending.
+
+**Keka** is optional (Settings → People & leave source → Keka sync). Only the fields an admin ticks are requested, from a fixed
+allow-list (name, work email, manager, department, job title, mobile number). Salary, payroll, bank, tax, documents, personal
+email, birth date and attendance are never requested. People leave only when Keka marks them **Relieved** (never because they are
+missing from a list), at most 10 per run, and owners and admins are never removed by it. **Preview sync** runs everything and rolls
+it back, so the numbers are exact. The nightly sync starts after the first manual one.
+
+Pinned versions (copied from viaSocket's action pages, checked against the live listing when connecting):
+Slack `Get_User_Information` v9, `Send_Direct_Message` v3; Keka `Find_Employees` v36.
