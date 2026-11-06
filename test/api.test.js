@@ -7,6 +7,7 @@ const fs = require('fs');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'impact-'));
 process.env.DATA_DIR = dir;
 process.env.CRON_SECRET = 'test-cron';
+process.env.RATE_LIMIT_MAX = '1000';
 const { app } = require('../src/server');
 
 let base;
@@ -237,4 +238,90 @@ test('people import from a CSV, with dry run, validation, hierarchy and leave', 
   // Source setting: only known fields, never salary
   assert.equal((await admin('PUT', '/api/settings', { settings: { peopleSource: 'keka', hrFields: { salary: true } } })).status, 400);
   assert.equal((await admin('PUT', '/api/settings', { settings: { peopleSource: 'csv', hrFields: { leave: false } } })).status, 200);
+});
+
+test('admins add TLs; each TL adds and looks after only their own team', async () => {
+  const admin = client();
+  await admin('POST', '/api/auth/signup', { company: 'TeamCo', name: 'Admin', email: 'admin@team.co', password: PW });
+  const adminId = (await admin('GET', '/api/me')).body.user.id;
+  const tlA = await join(admin, 'a@team.co', 'manager', adminId, 'Lead', 'Dev');
+  const tlB = await join(admin, 'b@team.co', 'manager', adminId, 'Lead', 'Marketing');
+  // TL A adds a team by link and by file
+  const m1 = await join(tlA.c, 'm1@team.co', 'member', tlA.id, 'Junior', 'Dev');
+  const imp = await tlA.c('POST', '/api/people/import', { rows: [{ email: 'sub@team.co', name: 'Sub lead', role: 'manager' }, { email: 'm2@team.co', name: 'M2', manager_email: 'sub@team.co' }] });
+  assert.equal(imp.body.ok, true, JSON.stringify(imp.body));
+  // ...but not admins, not under someone else, not people outside the team
+  assert.equal((await tlA.c('POST', '/api/invites', { email: 'x@team.co', role: 'admin' })).status, 403);
+  assert.equal((await tlA.c('POST', '/api/invites', { email: 'x@team.co', reports_to: tlB.id })).status, 403);
+  const outside = await tlA.c('POST', '/api/people/import', { rows: [{ email: 'b@team.co', level: 'Intern' }, { email: 'n@team.co', name: 'N', manager_email: 'b@team.co' }] });
+  assert.equal(outside.body.ok, false);
+  assert.equal(outside.body.errors.length, 2);
+  // TL edits their own people only
+  assert.equal((await tlA.c('PATCH', `/api/people/${m1.id}`, { level: 'Mid', phone: '919800000000' })).status, 200);
+  assert.equal((await tlA.c('PATCH', `/api/people/${m1.id}`, { role: 'admin' })).status, 403);
+  assert.equal((await tlA.c('PATCH', `/api/people/${m1.id}`, { reports_to: tlB.id })).status, 403);
+  const teamB1 = await join(tlB.c, 'b1@team.co', 'member', tlB.id);
+  assert.equal((await tlA.c('PATCH', `/api/people/${teamB1.id}`, { level: 'x' })).status, 403);
+  assert.equal((await tlA.c('GET', '/api/people')).body.people.length, 4); // self, m1, sub, m2
+  // A member cannot add anyone
+  assert.equal((await m1.c('POST', '/api/invites', { email: 'y@team.co' })).status, 403);
+  // Leave import: own team only
+  assert.equal((await tlA.c('POST', '/api/leave/import', { rows: [{ email: 'b1@team.co', date: '2026-11-10' }] })).body.ok, false);
+  assert.equal((await tlA.c('POST', '/api/leave/import', { rows: [{ email: 'm1@team.co', date: '2026-11-10' }] })).body.ok, true);
+  // Company can switch to "only admins add people"
+  await admin('PUT', '/api/settings', { settings: { managersAddTeam: false } });
+  assert.equal((await tlA.c('POST', '/api/invites', { email: 'z@team.co' })).status, 403);
+  assert.equal((await admin('POST', '/api/invites', { email: 'z@team.co', reports_to: tlA.id })).status, 200);
+});
+
+test('joiners, movers and leavers keep the hierarchy and the history intact', async () => {
+  const admin = client();
+  await admin('POST', '/api/auth/signup', { company: 'Churn', name: 'Admin', email: 'admin@churn.co', password: PW });
+  const adminId = (await admin('GET', '/api/me')).body.user.id;
+  const tl = await join(admin, 'tl@churn.co', 'manager', adminId);
+  const tl2 = await join(admin, 'tl2@churn.co', 'manager', adminId);
+  const a = await join(tl.c, 'a@churn.co', 'member', tl.id);
+  const b = await join(tl.c, 'b@churn.co', 'member', tl.id);
+  // a delivers work, TL rates it: history to keep
+  const it = (await a.c('POST', '/api/items', { title: 'Shipped thing' })).body.id;
+  await tl.c('POST', '/api/stacks/rank', { user_id: a.id, order: [{ item_id: it }] });
+  await a.c('POST', `/api/items/${it}/deliver`, { proof_note: 'done' });
+  await tl.c('POST', `/api/items/${it}/rate`, { quality: 'done_well' });
+  // Mover: b moves from TL to TL2 (admin); TL2 now ranks and rates b, TL no longer sees b
+  assert.equal((await admin('PATCH', `/api/people/${b.id}`, { reports_to: tl2.id })).status, 200);
+  assert.equal((await tl.c('GET', `/api/week?user=${b.id}`)).status, 403);
+  assert.equal((await tl2.c('GET', `/api/week?user=${b.id}`)).status, 200);
+  // Leaver: TL leaves; their team must go somewhere; sign-in stops at once
+  assert.equal((await tl2.c('POST', `/api/people/${tl.id}/offboard`, {})).status, 403); // not TL2's person
+  const off = await admin('POST', `/api/people/${tl.id}/offboard`, { new_manager_id: tl2.id });
+  assert.equal(off.body.reportsMoved, 1);
+  assert.equal((await tl.c('GET', '/api/me')).status, 401);
+  assert.equal((await tl2.c('GET', `/api/week?user=${a.id}`)).status, 200);
+  // History kept: a's rated work and score are still there, rating still shows the former TL's name
+  let wk = (await a.c('GET', '/api/week')).body;
+  assert.equal(wk.items[0].ratings[0].rater, 'tl');
+  assert.equal(wk.pending, 1); // #1 still needs its second rater: now TL2's manager (admin)
+  assert.ok((await admin('GET', '/api/ratings/pending')).body.items.find((i) => i.id === it));
+  await admin('POST', `/api/items/${it}/rate`, { quality: 'done_well' });
+  wk = (await a.c('GET', '/api/week')).body;
+  assert.equal(wk.score, 100);
+  // Former people list and coming back
+  const former = (await admin('GET', '/api/people/former')).body.people;
+  assert.equal(former.length, 1);
+  assert.equal((await admin('POST', `/api/people/${tl.id}/reactivate`, { reports_to: adminId })).status, 200);
+  assert.equal((await admin('POST', '/api/auth/logout')).status, 200);
+  // Joiner who lost their link gets a new one; the old one stops working
+  const imp = await admin('POST', '/api/people/import', { rows: [{ email: 'new@churn.co', name: 'New', manager_email: 'tl2@churn.co' }] });
+  assert.equal(imp.status, 401); // admin signed out above
+  await admin('POST', '/api/auth/login', { email: 'admin@churn.co', password: PW });
+  const imp2 = await admin('POST', '/api/people/import', { rows: [{ email: 'new@churn.co', name: 'New', manager_email: 'tl2@churn.co' }] });
+  const oldTok = imp2.body.links[0].link.split('/join/')[1];
+  const newId = (await admin('GET', '/api/people')).body.people.find((p) => p.email === 'new@churn.co').id;
+  const re = await tl2.c('POST', `/api/people/${newId}/invite-link`, {});
+  assert.equal(re.status, 200);
+  assert.equal((await client()('GET', `/api/invites/${oldTok}`)).status, 404);
+  assert.equal((await client()('GET', `/api/invites/${re.body.link.split('/join/')[1]}`)).status, 200);
+  // The last owner cannot be removed
+  const tlb = await join(admin, 'tlb@churn.co', 'admin', adminId);
+  assert.equal((await tlb.c('POST', `/api/people/${adminId}/offboard`, {})).status, 403);
 });

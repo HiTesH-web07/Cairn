@@ -120,6 +120,11 @@ function isRankerFor(actor, target) {
   if (actor.id === target.id) return isAdmin(actor) && !target.reports_to;
   return target.reports_to === actor.id || isAdmin(actor) || isAncestorOf(actor, target);
 }
+// Can this person add and look after people? Admins always; managers only for their own team, if the workspace allows it.
+function canAddPeople(actor, settings) {
+  return isAdmin(actor) || (actor.role === 'manager' && settings.managersAddTeam);
+}
+const inMyTeam = (actor, target) => isAdmin(actor) || isAncestorOf(actor, target);
 function visibleUsers(actor) {
   if (isAdmin(actor)) return db.prepare('SELECT * FROM users WHERE workspace_id = ? AND active = 1 ORDER BY name').all(actor.workspace_id);
   const ids = [actor.id, ...subtreeIds(actor.workspace_id, actor.id)];
@@ -158,7 +163,7 @@ const loginAttempts = new Map();
 function rateLimit(key) {
   const t = Date.now();
   const arr = (loginAttempts.get(key) || []).filter((x) => t - x < 15 * 60e3);
-  if (arr.length >= 10) throw new HttpError(429, 'Too many attempts. Try again in a few minutes.');
+  if (arr.length >= (Number(process.env.RATE_LIMIT_MAX) || 10)) throw new HttpError(429, 'Too many attempts. Try again in a few minutes.');
   arr.push(t);
   loginAttempts.set(key, arr);
 }
@@ -299,7 +304,7 @@ app.get('/api/directory', auth, wrap((req) => ({
 
 app.post('/api/invites', auth, idempotent, wrap((req) => {
   const b = req.body || {};
-  if (!isAdmin(req.user) && req.user.role !== 'manager') throw forbidden('Only managers and admins can invite');
+  if (!canAddPeople(req.user, req.settings)) throw forbidden(req.user.role === 'manager' ? 'In this workspace only admins add people' : 'Only managers and admins can add people');
   const email = emailOf(b.email);
   if (req.ws.allowed_domain && !email.endsWith(`@${req.ws.allowed_domain}`)) throw bad(`Only ${req.ws.allowed_domain} emails can join this workspace`);
   const role = ROLES.includes(b.role) && b.role !== 'owner' ? b.role : 'member';
@@ -309,11 +314,20 @@ app.post('/api/invites', auth, idempotent, wrap((req) => {
   const mgr = userIn(req.ws.id, reportsTo);
   if (!mgr) throw bad('Manager not found');
   if (!isAdmin(req.user) && mgr.id !== req.user.id && !isAncestorOf(req.user, mgr)) throw forbidden('You can only add people under yourself or your team');
-  if (db.prepare('SELECT 1 FROM users WHERE workspace_id = ? AND email = ?').get(req.ws.id, email)) throw bad('This person is already in the workspace');
+  const already = db.prepare('SELECT active FROM users WHERE workspace_id = ? AND email = ?').get(req.ws.id, email);
+  if (already) throw bad(already.active ? 'This person is already in the workspace' : 'This person left earlier. Use "Bring back" under Former people.');
   const token = crypto.randomBytes(24).toString('base64url');
-  db.prepare('INSERT INTO invites (token_hash, workspace_id, email, role, level, department, reports_to, created_by, expires_at) VALUES (?,?,?,?,?,?,?,?,?)')
-    .run(sha(token), req.ws.id, email, role, b.level ? String(b.level).slice(0, 40) : null, b.department ? String(b.department).slice(0, 80) : null, reportsTo, req.user.id, new Date(Date.now() + 14 * 864e5).toISOString());
-  audit(req.ws.id, req.user.id, 'invite.created', 'invite', email, { role, reports_to: reportsTo });
+  const level = b.level ? String(b.level).slice(0, 40) : null;
+  const department = b.department ? String(b.department).slice(0, 80) : null;
+  const uid = newId('u');
+  db.transaction(() => {
+    // The person exists (as "invited") from now on, so they show in the team, can be moved, or get a new link.
+    db.prepare('INSERT INTO users (id, workspace_id, email, name, role, level, department, reports_to, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(uid, req.ws.id, email, b.name ? String(b.name).trim().slice(0, 120) || email.split('@')[0] : email.split('@')[0], role, level, department, reportsTo, now());
+    db.prepare('INSERT INTO invites (token_hash, workspace_id, email, role, level, department, reports_to, created_by, expires_at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(sha(token), req.ws.id, email, role, level, department, reportsTo, req.user.id, new Date(Date.now() + 14 * 864e5).toISOString());
+    audit(req.ws.id, req.user.id, 'invite.created', 'user', uid, { role, reports_to: reportsTo });
+  })();
   return { ok: true, link: `/#/join/${token}` };
 }));
 
@@ -322,7 +336,18 @@ app.patch('/api/people/:id', auth, wrap((req) => {
   if (!target) throw notFound();
   const b = req.body || {};
   const selfEdit = target.id === req.user.id;
-  if (!isAdmin(req.user) && !(selfEdit && Object.keys(b).every((k) => ['name', 'phone'].includes(k)))) throw forbidden('Only admins can change this');
+  const keys0 = Object.keys(b);
+  const managerEdit = !isAdmin(req.user) && !selfEdit && canAddPeople(req.user, req.settings) && inMyTeam(req.user, target);
+  if (managerEdit) {
+    // Managers look after their own team: details, moving people inside their team, member <-> manager.
+    if (!keys0.every((k) => ['name', 'phone', 'level', 'department', 'reports_to', 'active', 'role'].includes(k))) throw forbidden();
+    if (b.role !== undefined && !['member', 'manager'].includes(b.role)) throw forbidden('Only admins can make admins');
+    if (target.role === 'admin' || target.role === 'owner') throw forbidden();
+    if (b.reports_to !== undefined) {
+      const m = b.reports_to ? userIn(req.ws.id, b.reports_to) : null;
+      if (!m || (m.id !== req.user.id && !isAncestorOf(req.user, m))) throw forbidden('You can only move people within your own team');
+    }
+  } else if (!isAdmin(req.user) && !(selfEdit && keys0.every((k) => ['name', 'phone'].includes(k)))) throw forbidden('Only admins or their manager can change this');
   const upd = {};
   if (b.name !== undefined) upd.name = str(b.name, 'Name', { max: 120 });
   if (b.phone !== undefined) {
@@ -357,9 +382,76 @@ app.patch('/api/people/:id', auth, wrap((req) => {
   return { ok: true };
 }));
 
+// ---------- joiners, movers, leavers ----------
+// Someone leaves: their reports move to a new manager, sign-in stops at once, and every past week, rating and coin stays on record.
+app.post('/api/people/:id/offboard', auth, idempotent, wrap((req) => {
+  const target = userIn(req.ws.id, req.params.id);
+  if (!target) throw notFound();
+  if (target.id === req.user.id) throw bad('You cannot remove yourself');
+  if (!canManage(req.user, target) || !(isAdmin(req.user) || canAddPeople(req.user, req.settings))) throw forbidden();
+  if (target.role === 'owner' && req.user.role !== 'owner') throw forbidden('Only an owner can remove an owner');
+  if (target.role === 'owner' && db.prepare("SELECT COUNT(*) c FROM users WHERE workspace_id = ? AND role = 'owner' AND active = 1").get(req.ws.id).c < 2) throw bad('The workspace needs at least one owner');
+  if (!target.active) return { ok: true, already: true };
+  const reports = db.prepare('SELECT id FROM users WHERE workspace_id = ? AND reports_to = ? AND active = 1').all(req.ws.id, target.id);
+  let newMgr = null;
+  if (reports.length) {
+    newMgr = userIn(req.ws.id, req.body.new_manager_id || target.reports_to || req.user.id);
+    if (!newMgr || !newMgr.active || newMgr.id === target.id) throw bad('Choose who their team reports to now');
+    if (subtreeIds(req.ws.id, target.id).includes(newMgr.id) && !reports.some((r) => r.id === newMgr.id)) throw bad('Pick someone outside the leaver\'s team, or one of their direct reports');
+    if (!isAdmin(req.user) && newMgr.id !== req.user.id && !isAncestorOf(req.user, newMgr)) throw forbidden('Move their team to someone in your own team');
+  }
+  db.transaction(() => {
+    for (const r of reports) {
+      if (newMgr && r.id === newMgr.id) db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(target.reports_to, r.id); // promoted report steps into the gap
+      else db.prepare('UPDATE users SET reports_to = ? WHERE id = ?').run(newMgr.id, r.id);
+    }
+    db.prepare('UPDATE users SET active = 0 WHERE id = ?').run(target.id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(target.id);
+    db.prepare('UPDATE invites SET used_at = ? WHERE workspace_id = ? AND email = ? AND used_at IS NULL').run(now(), req.ws.id, target.email);
+    audit(req.ws.id, req.user.id, 'user.offboarded', 'user', target.id, { reports_moved_to: newMgr && newMgr.id, reports: reports.length });
+  })();
+  return { ok: true, reportsMoved: reports.length };
+}));
+
+// Someone comes back: sign-in works again; they rejoin under the manager chosen here.
+app.post('/api/people/:id/reactivate', auth, wrap((req) => {
+  const target = userIn(req.ws.id, req.params.id);
+  if (!target) throw notFound();
+  const mgr = req.body.reports_to ? userIn(req.ws.id, req.body.reports_to) : req.user;
+  if (!mgr || !mgr.active) throw bad('Manager not found');
+  if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && (mgr.id === req.user.id || isAncestorOf(req.user, mgr))))) throw forbidden();
+  db.prepare('UPDATE users SET active = 1, reports_to = ? WHERE id = ?').run(mgr.id, target.id);
+  audit(req.ws.id, req.user.id, 'user.reactivated', 'user', target.id, { reports_to: mgr.id });
+  return { ok: true };
+}));
+
+// A new invite link for someone who has not joined yet (the old link stops working).
+app.post('/api/people/:id/invite-link', auth, wrap((req) => {
+  const target = userIn(req.ws.id, req.params.id);
+  if (!target || !target.active) throw notFound();
+  if (target.pw_hash) throw bad('This person has already joined');
+  if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && inMyTeam(req.user, target)))) throw forbidden();
+  const token = crypto.randomBytes(24).toString('base64url');
+  db.transaction(() => {
+    db.prepare('UPDATE invites SET used_at = ? WHERE workspace_id = ? AND email = ? AND used_at IS NULL').run(now(), req.ws.id, target.email);
+    db.prepare('INSERT INTO invites (token_hash, workspace_id, email, role, level, department, reports_to, created_by, expires_at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(sha(token), req.ws.id, target.email, target.role, target.level, target.department, target.reports_to, req.user.id, new Date(Date.now() + 30 * 864e5).toISOString());
+  })();
+  audit(req.ws.id, req.user.id, 'invite.reissued', 'user', target.id, null);
+  return { ok: true, link: `/#/join/${token}` };
+}));
+
+// People who have left, for admins and their former managers' chain.
+app.get('/api/people/former', auth, wrap((req) => ({
+  people: db.prepare('SELECT * FROM users WHERE workspace_id = ? AND active = 0 ORDER BY name').all(req.ws.id).filter((u) => isAdmin(req.user) || isAncestorOf(req.user, u)).map(publicUser)
+})));
+
 // ---------- people import (CSV from any HR tool) ----------
 // rows: [{ email, name, role, level, department, manager_email, phone }]. dryRun: true checks without saving.
-app.post('/api/people/import', auth, adminOnly, idempotent, wrap((req) => {
+app.post('/api/people/import', auth, idempotent, wrap((req) => {
+  if (!canAddPeople(req.user, req.settings)) throw forbidden('Only admins and managers can add people');
+  const asManager = !isAdmin(req.user);
+  const myTeam = new Set(asManager ? [req.user.id, ...subtreeIds(req.ws.id, req.user.id)] : []);
   const b = req.body || {};
   const rows = Array.isArray(b.rows) ? b.rows : [];
   if (!rows.length || rows.length > 2000) throw bad('Send 1-2000 rows');
@@ -386,11 +478,17 @@ app.post('/api/people/import', auth, adminOnly, idempotent, wrap((req) => {
     if (mgr === email && mgr) errs.push('a person cannot report to themselves');
     const cur = existing.get(email);
     if (cur && cur.role === 'owner') role = 'owner'; // never demote an owner through a file
+    if (asManager) {
+      if (!['member', 'manager'].includes(role)) errs.push('managers can add members and managers only');
+      if (cur && !myTeam.has(cur.id)) errs.push('this person is not in your team');
+      if (cur && cur.id === req.user.id) errs.push('you cannot change yourself here');
+    }
     clean.push({ line, email, name, role, level: String(r.level || '').trim().slice(0, 40) || null, department: String(r.department || '').trim().slice(0, 80) || null, phone: phone || null, mgr, errs, cur });
   });
   // Managers must exist in the workspace or in the file.
   const fileEmails = new Set(clean.map((c) => c.email));
   for (const c of clean) if (c.mgr && !fileEmails.has(c.mgr) && !existing.has(c.mgr)) c.errs.push(`manager ${c.mgr} is not in the file or the workspace`);
+  if (asManager) for (const c of clean) if (c.mgr && existing.has(c.mgr) && !myTeam.has(existing.get(c.mgr).id)) c.errs.push(`manager ${c.mgr} is not in your team`);
   // Reporting loops across the final picture.
   const finalMgr = new Map([...existing.values()].map((u) => [u.email, u.reports_to ? [...existing.values()].find((x) => x.id === u.reports_to)?.email : null]));
   for (const c of clean) finalMgr.set(c.email, c.mgr || (c.cur ? finalMgr.get(c.email) : (c.email === req.user.email ? null : req.user.email)));
@@ -430,16 +528,18 @@ app.post('/api/people/import', auth, adminOnly, idempotent, wrap((req) => {
 }));
 
 // Leave from a file: rows [{ email, date }] (YYYY-MM-DD). Unknown emails are reported, not guessed.
-app.post('/api/leave/import', auth, adminOnly, wrap((req) => {
+app.post('/api/leave/import', auth, wrap((req) => {
+  if (!canAddPeople(req.user, req.settings)) throw forbidden('Only admins and managers can import leave');
   const rows = Array.isArray(req.body && req.body.rows) ? req.body.rows : [];
   if (!rows.length || rows.length > 5000) throw bad('Send 1-5000 rows');
-  const users = new Map(db.prepare('SELECT id, email FROM users WHERE workspace_id = ?').all(req.ws.id).map((u) => [u.email, u.id]));
+  const team = isAdmin(req.user) ? null : new Set(subtreeIds(req.ws.id, req.user.id));
+  const users = new Map(db.prepare('SELECT id, email FROM users WHERE workspace_id = ?').all(req.ws.id).filter((u) => !team || team.has(u.id)).map((u) => [u.email, u.id]));
   const errors = [];
   const ok = [];
   rows.forEach((r, i) => {
     const email = String(r.email || '').trim().toLowerCase();
     const date = String(r.date || '').trim();
-    if (!users.has(email)) errors.push({ line: i + 2, email, errors: ['not in this workspace'] });
+    if (!users.has(email)) errors.push({ line: i + 2, email, errors: [team ? 'not in your team' : 'not in this workspace'] });
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) errors.push({ line: i + 2, email, errors: ['date must be YYYY-MM-DD'] });
     else ok.push([users.get(email), date]);
   });

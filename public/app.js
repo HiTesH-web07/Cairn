@@ -64,6 +64,7 @@ function fmtWeek(w) { const d = new Date(`${w}T00:00:00Z`); return d.toLocaleDat
 function fmtTime(iso) { return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
 const scoreText = (s) => (s === null || s === undefined ? '–' : String(s));
 const isAdmin = () => state.me && ['owner', 'admin'].includes(state.me.user.role);
+const canAddPeople = () => isAdmin() || (state.me && state.me.user.role === 'manager' && state.me.settings.managersAddTeam);
 const isManager = () => isAdmin() || (state.me && state.me.reports > 0);
 
 function modal(html, onSubmit) {
@@ -93,7 +94,7 @@ const NAV = [
   ['disputes', 'Disputes', () => true],
   ['incidents', 'Incidents', isManager],
   ['sep'],
-  ['people', 'People', isManager],
+  ['people', 'People', () => isManager() || canAddPeople()],
   ['integrations', 'Integrations', isAdmin],
   ['settings', 'Settings', isAdmin],
   ['audit', 'History log', () => true],
@@ -405,20 +406,55 @@ async function incidentsScreen() {
 
 // ---------- People ----------
 async function peopleScreen() {
-  const [p, dir] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory')]);
+  const [p, dir, former] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory'), api('GET', '/api/people/former')]);
   const byId = Object.fromEntries(dir.people.map((x) => [x.id, x.name]));
   const admin = isAdmin();
+  const adder = canAddPeople();
+  const me = state.me.user.id;
   const src = state.me.settings.peopleSource;
-  layout('people', `<div class="row spread"><h1>People</h1><div class="row">${admin ? '<button id="importp">Import people (CSV)</button><button id="importl">Import leave (CSV)</button>' : ''}<button class="primary" id="invite">+ Invite</button></div></div>
-    <p class="small muted">People come from: <b>${src === 'keka' ? 'Keka sync' : src === 'csv' ? 'CSV upload' : 'invite links'}</b>${admin ? ' · change it in <a href="#/settings">Settings</a>' : ''}</p>
-    <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${admin ? '<th></th>' : ''}</tr></thead><tbody>
-    ${p.people.map((u) => `<tr><td><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<div class="small muted">${esc(u.email)}</div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
-      <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${admin ? `<td><button data-edit="${esc(u.id)}">Edit</button></td>` : ''}</tr>`).join('')}</tbody></table></div>
-    <p class="small muted">Export people from Keka, Excel or any HR tool as a CSV, or keep inviting by link. Keka can also sync on its own once set up under Integrations.</p>`);
-  if (admin) {
+  const team = p.people; // admins: everyone; managers: themselves and their team
+  const rowActs = (u) => {
+    if (u.id === me || !adder || u.role === 'owner' && !admin) return '';
+    const a = [`<button data-edit="${esc(u.id)}">Edit</button>`];
+    if (!u.joined) a.push(`<button data-link="${esc(u.id)}">New invite link</button>`);
+    a.push(`<button class="ghost danger" data-off="${esc(u.id)}">Left the company</button>`);
+    return a.join(' ');
+  };
+  layout('people', `<div class="row spread"><h1>People</h1><div class="row">${adder ? '<button id="importp">Import (CSV)</button><button id="importl">Import leave (CSV)</button><button class="primary" id="invite">+ Add person</button>' : ''}</div></div>
+    <p class="small muted">${admin ? `Add your managers and TLs; ${state.me.settings.managersAddTeam ? 'each of them adds and looks after their own team' : 'only admins add people in this workspace'}. People come from: <b>${src === 'keka' ? 'Keka sync' : src === 'csv' ? 'CSV upload' : 'invite links'}</b> · <a href="#/settings">Settings</a>`
+      : adder ? 'Add the people in your team. You can update, move within your team, or mark people who left.' : 'Ask your manager or an admin to add or change people.'}</p>
+    <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${adder ? '<th></th>' : ''}</tr></thead><tbody>
+    ${team.map((u) => `<tr><td><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<div class="small muted">${esc(u.email)}</div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
+      <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${adder ? `<td><div class="actions">${rowActs(u)}</div></td>` : ''}</tr>`).join('')}</tbody></table></div>
+    ${former.people.length ? `<h2>Former people</h2><p class="small muted">They cannot sign in. Their past weeks, ratings and coins stay on record.</p><div class="card tablewrap"><table><tbody>
+      ${former.people.map((u) => `<tr><td>${esc(u.name)}<div class="small muted">${esc(u.email)}</div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit → Reports to.</p>`);
+  const managerOptions = (sel, exclude) => (admin ? dir.people : team).filter((x) => x.id !== exclude).map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  $('#main').addEventListener('click', (e) => {
+    const link = e.target.closest('[data-link]');
+    const off = e.target.closest('[data-off]');
+    const back = e.target.closest('[data-back]');
+    if (link) return run(link, async () => {
+      const r = await api('POST', `/api/people/${link.dataset.link}/invite-link`, {});
+      modal(`<h3>New invite link</h3><p class="small muted">The old link no longer works. This one expires in 30 days.</p><input readonly value="${esc(location.origin + r.link)}" onclick="this.select()">`, async () => {});
+    });
+    if (off) {
+      const u = team.find((x) => x.id === off.dataset.off);
+      const reports = team.filter((x) => x.reports_to === u.id);
+      return modal(`<h3>${esc(u.name)} left the company</h3><p class="small">They can no longer sign in. Their past work, ratings and coins stay on record.</p>
+        ${reports.length ? `<label>Their ${reports.length} team member(s) now report to</label><select name="new_manager_id">${managerOptions(u.reports_to || me, u.id)}</select>` : '<p class="small muted">Nobody reports to them.</p>'}`,
+      async (fd) => { await api('POST', `/api/people/${u.id}/offboard`, fd, { idem: idem() }); toast(`${u.name} marked as left`); peopleScreen(); });
+    }
+    if (back) {
+      const u = former.people.find((x) => x.id === back.dataset.back);
+      return modal(`<h3>Bring back ${esc(u.name)}</h3><label>Reports to</label><select name="reports_to">${managerOptions(me)}</select>`,
+        async (fd) => { await api('POST', `/api/people/${u.id}/reactivate`, fd); toast('Welcome back'); peopleScreen(); });
+    }
+  });
+  if (adder) {
     $('#importp').onclick = () => importDialog({
       title: 'Import people', endpoint: '/api/people/import',
-      help: 'Columns: <code>email, name, role, level, department, manager_email, phone</code>. Role is member, manager or admin. Existing people are updated, not duplicated. People without a manager in the file report to you. Do not include salary or any other columns: they are ignored.',
+      help: `Columns: <code>email, name, role, level, department, manager_email, phone</code>. Role is member or manager${admin ? ' (or admin)' : ''}. Existing people are updated, not duplicated. People without a manager in the file report to you. Any other column, such as salary, is ignored.`,
       template: [['email', 'name', 'role', 'level', 'department', 'manager_email', 'phone'], ['tl@yourcompany.com', 'Amit', 'manager', 'Lead', 'ISE', '', '919876543210'], ['riya@yourcompany.com', 'Riya', 'member', 'Intern', 'ISE', 'tl@yourcompany.com', '']],
       pick: (r) => ({ email: r.email, name: r.name, role: r.role, level: r.level, department: r.department, manager_email: r.manager_email || r.manager || r.reports_to, phone: r.phone }),
       done: (res) => {
@@ -441,28 +477,29 @@ async function peopleScreen() {
     });
   }
   const options = (sel) => dir.people.map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
-  $('#invite').onclick = () => {
+  if (adder) $('#invite').onclick = () => {
     const key = idem();
-    modal(`<h3>Invite someone</h3><label>Email</label><input name="email" type="email" required>
-      <label>Role</label><select name="role"><option value="member">Member</option><option value="manager">Manager / TL</option>${admin ? '<option value="admin">Admin</option>' : ''}</select>
-      <label>Reports to</label><select name="reports_to">${options(state.me.user.id)}</select>
+    modal(`<h3>Add a person</h3><label>Work email</label><input name="email" type="email" required><label>Name</label><input name="name" maxlength="120">
+      <label>Role</label><select name="role"><option value="member">Member</option><option value="manager">Manager / TL (can add their own team)</option>${admin ? '<option value="admin">Admin</option>' : ''}</select>
+      <label>Reports to</label><select name="reports_to">${managerOptions(me)}</select>
       <div class="inline"><div><label>Level</label><input name="level" placeholder="Intern, Junior, Senior…"></div><div><label>Department</label><input name="department" placeholder="ISE, Marketing…"></div></div>`,
     async (fd) => {
       const r = await api('POST', '/api/invites', fd, { idem: key });
       const link = location.origin + r.link;
+      peopleScreen();
       setTimeout(() => modal(`<h3>Invite link</h3><p class="small muted">Send this link to them. It works once and expires in 14 days.</p><input readonly value="${esc(link)}" onclick="this.select()">`, async () => {}), 50);
     });
   };
   $('#main').addEventListener('click', (e) => {
     const b = e.target.closest('[data-edit]');
     if (!b) return;
-    const u = p.people.find((x) => x.id === b.dataset.edit);
-    modal(`<h3>Edit ${esc(u.name)}</h3><label>Role</label><select name="role">${['member', 'manager', 'admin', 'owner'].map((r) => `<option ${r === u.role ? 'selected' : ''}>${r}</option>`).join('')}</select>
-      <label>Reports to</label><select name="reports_to"><option value="">Nobody (top)</option>${options(u.reports_to)}</select>
+    const u = team.find((x) => x.id === b.dataset.edit);
+    const roles = admin ? ['member', 'manager', 'admin', 'owner'] : ['member', 'manager'];
+    modal(`<h3>Edit ${esc(u.name)}</h3><label>Role</label><select name="role">${roles.map((r) => `<option ${r === u.role ? 'selected' : ''}>${r}</option>`).join('')}</select>
+      <label>Reports to (moving teams)</label><select name="reports_to">${admin ? '<option value="">Nobody (top)</option>' : ''}${managerOptions(u.reports_to, u.id)}</select>
       <div class="inline"><div><label>Level</label><input name="level" value="${esc(u.level || '')}"></div><div><label>Department</label><input name="department" value="${esc(u.department || '')}"></div></div>
-      <label>Phone for serious alerts (country code, no +)</label><input name="phone" value="${esc(u.phone || '')}">
-      <label>Active</label><select name="active"><option value="1" ${u.active ? 'selected' : ''}>Active</option><option value="" ${u.active ? '' : 'selected'}>Deactivated</option></select>`,
-    async (fd) => { await api('PATCH', `/api/people/${u.id}`, { ...fd, active: !!fd.active, reports_to: fd.reports_to || null }); peopleScreen(); });
+      <label>Phone for serious alerts (country code, no +)</label><input name="phone" value="${esc(u.phone || '')}">`,
+    async (fd) => { await api('PATCH', `/api/people/${u.id}`, { ...fd, reports_to: fd.reports_to || null }); toast('Saved'); peopleScreen(); });
   });
 }
 
@@ -524,6 +561,9 @@ async function settingsScreen() {
     <div class="inline"><div><label>Coins per week</label><input name="coinsPerWeek" type="number" min="0" max="100" value="${s.coinsPerWeek}"></div>
     <div><label>Max coins to one person</label><input name="maxCoinsPerPerson" type="number" min="1" value="${s.maxCoinsPerPerson}"></div></div>
     <label>Working days</label><div class="row">${days.map((d, i) => `<label style="margin:0"><input type="checkbox" name="wd${i}" ${s.workingDays.includes(i) ? 'checked' : ''} style="width:auto"> ${d}</label>`).join('')}</div>
+    <h2>Who adds people</h2>
+    <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="1" ${s.managersAddTeam ? 'checked' : ''} style="width:auto"> <b>Managers add their own team</b> <span class="small muted">Admins add managers/TLs; each manager adds, moves and offboards people in their team.</span></label>
+    <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="" ${s.managersAddTeam ? '' : 'checked'} style="width:auto"> <b>Only admins</b> <span class="small muted">Managers rank and rate their team but cannot add or remove people.</span></label>
     <h2>People &amp; leave source</h2><p class="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p>
     ${[['manual', 'Invite links', 'Managers invite people one by one. Leave is added in the app.'], ['csv', 'CSV upload', 'Export from Keka, Excel or any HR tool and upload it under People. Nothing stays connected.'], ['keka', 'Keka sync', 'Read automatically every night, only the fields ticked below. Needs setup under Integrations.']]
       .map(([v, t, h]) => `<label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="peopleSource" value="${v}" ${s.peopleSource === v ? 'checked' : ''} style="width:auto"> <b>${t}</b> <span class="small muted">${h}</span></label>`).join('')}
@@ -544,6 +584,7 @@ async function settingsScreen() {
       secondRaterRanks: Number(f.secondRaterRanks), stretchBonus: Number(f.stretchBonus), coinsPerWeek: Number(f.coinsPerWeek), maxCoinsPerPerson: Number(f.maxCoinsPerPerson),
       workingDays: days.map((_, i) => (f[`wd${i}`] ? i : null)).filter((x) => x !== null), blockerEscalationHours: Number(f.blockerEscalationHours),
       peopleSource: f.peopleSource || 'manual',
+      managersAddTeam: !!f.managersAddTeam,
       hrFields: Object.fromEntries(['reportingLine', 'department', 'jobTitle', 'leave', 'phone'].map((k) => [k, !!f[`hr_${k}`]]))
     };
     try { await api('PUT', '/api/settings', { name: f.name, timezone: f.timezone, allowed_domain: f.allowed_domain, settings }); await loadMe(); toast('Saved'); settingsScreen(); } catch (err) { $('#serr').textContent = err.message; }
