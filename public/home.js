@@ -335,7 +335,7 @@
       const setMode = (m) => {
         const on = m === 'play';
         modeBtns.forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
-        if (on === play) return;
+        if (on === play) { if (!on) goTo(0); return; }
         play = on; clear();
         sx.classList.toggle('play', on);
         if (on) {
@@ -364,9 +364,7 @@
         numEl.classList.remove('shake'); void numEl.offsetWidth; numEl.classList.add('shake');
       });
       dots.forEach((d, i) => d.addEventListener('click', () => { if (play) setMode('auto'); goTo(i); }));
-      sx.addEventListener('mouseenter', () => { hoverSx = true; clear(); sx.classList.add('paused'); });
-      sx.addEventListener('mouseleave', () => { hoverSx = false; if (play) return; sx.classList.remove('paused'); goTo(cur); });
-      const sxv = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== inView) { inView = v; if (play) return; if (v) goTo(reduce ? 4 : 0); else clear(); } }, { threshold: 0.35 });
+      const sxv = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== inView) { inView = v; if (play) return; if (v) goTo(reduce ? 4 : 0); else clear(); } }, { threshold: 0.12 });
       sxv.observe(sx);
       observers.push(sxv);
       cleanups.push(clear);
@@ -384,9 +382,7 @@
         if (!reduce && wvis && !wh) wt = setTimeout(() => wgo((i + 1) % 3), WD);
       };
       tabs.forEach((t, i) => t.addEventListener('click', () => wgo(i)));
-      wk.addEventListener('mouseenter', () => { wh = true; wgo(wc); });
-      wk.addEventListener('mouseleave', () => { wh = false; wgo(wc); });
-      const wv = new IntersectionObserver((en) => { const v = en[0].isIntersecting; if (v === wvis) return; wvis = v; wgo(v && !reduce ? 0 : wc); }, { threshold: 0.4 });
+      const wv = new IntersectionObserver((en) => { const v = en[0].isIntersecting; if (v === wvis) return; wvis = v; wgo(v && !reduce ? 0 : wc); }, { threshold: 0.15 });
       wv.observe(wk); observers.push(wv); cleanups.push(() => clearTimeout(wt));
       wgo(0);
     }
@@ -418,9 +414,7 @@
       timers.push(setTimeout(() => show((cur + 1) % STEPS.length), DUR));
     }
     btns.forEach((b, i) => b.addEventListener('click', () => show(i)));
-    box.addEventListener('mouseenter', () => { hover = true; schedule(); });
-    box.addEventListener('mouseleave', () => { hover = false; schedule(); });
-    const vis = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== visible) { visible = v; if (v) show(cur); else schedule(); } }, { threshold: 0.35 });
+    const vis = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== visible) { visible = v; if (v) show(cur); else schedule(); } }, { threshold: 0.2 });
     vis.observe(box);
     observers.push(vis);
     show(0);
