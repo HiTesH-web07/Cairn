@@ -113,22 +113,26 @@
         <div class="sx-board">
           <div class="sx-head"><span>Riya's priorities this week</span><span>Worth</span></div>
           ${[['#1', 'Gmail plug launch', 35, 100, 'Done well', 35], ['#2', 'Write the help docs', 25, 100, 'Done well', 25], ['#3', 'OAuth refresh', 20, 50, 'Needs fixes', 10]].map((r, k) => `
-          <div class="sx-row" style="--k:${k};--w:${r[2]};--fill:${r[3]}%">
+          <div class="sx-row" data-w="${r[2]}" data-q0="${r[3] === 100 ? 'well' : 'fix'}" style="--k:${k};--w:${r[2]};--fill:${r[3]}%">
             <b class="sx-rk${k === 0 ? ' r1' : ''}">${r[0]}</b>
             <div class="sx-main"><div class="sx-title">${r[1]}</div>
-              <div class="sx-line"><div class="sx-track"><i class="fill"></i></div><span class="worth">${r[2]} pts</span></div></div>
+              <div class="sx-line"><div class="sx-track"><i class="fill"></i></div><span class="worth">${r[2]} pts</span></div>
+              <div class="sx-rate" role="group" aria-label="Rate ${r[1]}">${[['well', 'Done well'], ['fix', 'Needs fixes'], ['redo', 'Redo']].map((q) => `<button type="button" data-q="${q[0]}"${(r[3] === 100 ? 'well' : 'fix') === q[0] ? ' class="on"' : ''}>${q[1]}</button>`).join('')}</div></div>
             <div class="sx-state"><span class="pill p-a">Planned</span><span class="pill warn p-b">Delivered</span><span class="pill ${r[3] === 100 ? 'good' : 'warn'} p-c">${r[4]}</span></div>
             <div class="sx-earn">+${r[5]}</div>
           </div>`).join('')}
           ${[4, 5].map((n) => `<div class="sx-row sx-empty"><b class="sx-rk">#${n}</b><div class="sx-main"><div class="sx-title">Empty slot</div><div class="sx-line"><div class="sx-track dashed"></div></div></div><div class="sx-state"><span class="pill">Not ranked</span></div><div></div></div>`).join('')}
           <div class="sx-else"><div class="lab">Everything else Riya did</div>
-            <div class="sx-chips"><span style="--k:0">Replied to 40 emails<em>0 pts</em></span><span style="--k:1">Fixed a typo<em>0 pts</em></span><span style="--k:2">Joined 12 meetings<em>0 pts</em></span></div></div>
+            <div class="sx-chips"><span style="--k:0">Replied to 40 emails<em>0 pts</em></span><span style="--k:1">Fixed a typo<em>0 pts</em></span><span style="--k:2">Joined 12 meetings<em>0 pts</em></span></div>
+            <div class="sx-spam"><button type="button" class="btn sm" data-spam>+ Log 10 more tasks</button><span class="sx-logged">Tasks logged: <b data-logged>3</b></span><span class="sx-same" data-same>Score unchanged</span></div></div>
         </div>
         <aside class="sx-score">
           <div><div class="sx-lab">Points earned</div><div class="sx-earned"><b data-earn>0</b><span>of 80 possible</span></div></div>
           <div class="sx-eq"><span>70</span><i>÷</i><span>80</span><i>=</i></div>
           <div><div class="sx-lab">Riya's score</div><div class="sx-num"><b data-n>?</b><small>/ 100</small></div></div>
         </aside>
+        <div class="sx-gauge" aria-hidden="true"><i data-gauge></i></div>
+        <div class="sx-modes" role="group" aria-label="Mode"><button type="button" class="on" data-mode="auto">Watch it play</button><button type="button" data-mode="play">Try it yourself</button></div>
         <div class="sx-cap"><span class="sx-step" data-stepno>1 / 5</span><p data-cap></p></div>
         <div class="sx-dots" role="tablist">${['Rank', 'Weigh', 'Deliver & rate', 'The rest', 'Score'].map((t, i) => `<button type="button" role="tab" class="sx-dot${i === 0 ? ' on' : ''}" data-i="${i}"><i></i><span>${i + 1}. ${t}</span></button>`).join('')}</div>
       </div>
@@ -169,6 +173,27 @@
         <div class="hc reveal" style="--rd:.1s"><div class="ico">${icon('eye')}</div><h3>Two sets of eyes</h3><p>Top priorities need a second rater, so one opinion can't decide. Every "Needs fixes" comes with a reason.</p></div>
         <div class="hc reveal" style="--rd:.2s"><div class="ico">${icon('disputes')}</div><h3>Disagree? Say so</h3><p>Dispute a rating and the rater's manager decides. Both views stay on record.</p></div>
         <div class="hc reveal" style="--rd:.3s"><div class="ico">${icon('sun')}</div><h3>Life happens</h3><p>Leave days lower what's expected. Work blocked by others isn't held against you.</p></div>
+      </div>
+    </div></section>
+
+    <section class="hp-sec alt" id="hp-m91"><div class="hp-wrap m91">
+      <div class="m91-copy">
+        <div class="hp-kicker reveal">Phone alerts · powered by M91</div>
+        <h2 class="hp-h2 reveal">When work is stuck and needs a human.</h2>
+        <p class="hp-sub reveal">Cairn notifies the right person's phone so they can unblock, decide or act, and keeps ringing until somebody responds.</p>
+        <ul class="m91-list reveal">
+          <li><b>Blocked on a top priority</b><span>The manager's phone rings until someone takes it.</span></li>
+          <li><b>Work nobody has rated</b><span>A nudge before the week's score goes stale.</span></li>
+          <li><b>A dispute stuck for days</b><span>Goes up a level, and the phone with it.</span></li>
+        </ul>
+        <p class="m91-note reveal">Serious events only. Everything else stays in Slack.</p>
+      </div>
+      <div class="m91-stage reveal" aria-hidden="true">
+        <div class="m91-tl"><span style="--k:0">10:02 · Riya is blocked on #1</span><span style="--k:1">10:03 · Phone rings for Amit</span><span style="--k:2">10:03 · Still ringing…</span><span style="--k:3">10:05 · Amit taps “I'll unblock it”</span></div>
+        <div class="m91-phone"><div class="waves"><i></i><i></i><i></i></div>
+          <div class="m91-card"><small>CAIRN · URGENT</small><b>Riya is blocked on #1</b><span>Waiting on API keys for 4h</span>
+            <div class="bt"><i>I'll unblock it</i><i>Seen</i></div></div>
+          <div class="m91-ok"><em>✓</em><b>Answered</b><span>Ringing stopped</span></div></div>
       </div>
     </div></section>
 
@@ -242,6 +267,7 @@
       const numEl = sx.querySelector('[data-n]');
       const capEl = sx.querySelector('[data-cap]');
       const noEl = sx.querySelector('[data-stepno]');
+      const gaugeEl0 = sx.querySelector('[data-gauge]');
       let cur = 0; let inView = false; let hoverSx = false; let tms = [];
       const clear = () => { tms.forEach(clearTimeout); tms = []; };
       const later = (fn, ms) => tms.push(setTimeout(fn, ms));
@@ -249,6 +275,7 @@
         clear(); cur = i; sx.dataset.s = String(i);
         dots.forEach((d, k) => { d.classList.toggle('on', k === i); d.classList.toggle('done', k < i); d.style.setProperty('--dur', `${DURS[i]}ms`); });
         capEl.textContent = CAPS[i]; noEl.textContent = `${i + 1} / 5`;
+        gaugeEl0.style.width = i === 4 ? '88%' : '0%';
         const set = (n, v) => { if (n) { n.textContent = v; n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); } };
         if (i < 2) { earnEl.textContent = '0'; numEl.textContent = '?'; }
         if (i === 2) { numEl.textContent = '?'; earnEl.textContent = '0'; later(() => set(earnEl, '35'), 2700); later(() => set(earnEl, '60'), 3300); later(() => set(earnEl, '70'), 3900); }
@@ -257,10 +284,77 @@
         numEl.classList.toggle('dim', i < 4);
         if (!reduce && inView && !hoverSx) later(() => goTo((i + 1) % 5), DURS[i]);
       };
-      dots.forEach((d, i) => d.addEventListener('click', () => goTo(i)));
+      // Feature 1 and 2: play mode. Rate each priority yourself, then try to game it with tasks.
+      let play = false;
+      const rows = [...sx.querySelectorAll('.sx-row[data-w]')];
+      const gaugeEl = sx.querySelector('[data-gauge]');
+      const eqSpans = sx.querySelectorAll('.sx-eq span');
+      const loggedEl = sx.querySelector('[data-logged]');
+      const chipsEl = sx.querySelector('.sx-chips');
+      const sameEl = sx.querySelector('[data-same]');
+      const modeBtns = [...sx.querySelectorAll('[data-mode]')];
+      const MULT = { well: 1, fix: 0.5, redo: 0 };
+      const LABEL = { well: ['Done well', 'good'], fix: ['Needs fixes', 'warn'], redo: ['Redo', 'bad'] };
+      const TASKS = ['Answered a Slack thread', 'Renamed a file', 'Updated a ticket', 'Joined a standup', 'Tidied the board', 'Sent a reminder', 'Reordered tabs', 'Replied "thanks"', 'Cleared notifications', 'Moved a meeting'];
+      let logged = 3; let shown = 0;
+      const tween = (n, to, ms) => {
+        const from = parseInt(n.textContent, 10) || 0;
+        if (reduce || from === to) { n.textContent = to; return; }
+        const t0 = performance.now();
+        const f = (t) => { const p = Math.min(1, (t - t0) / ms); n.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); };
+        requestAnimationFrame(f);
+      };
+      const recompute = () => {
+        let sum = 0;
+        rows.forEach((r) => {
+          const q = r.dataset.q; const w = +r.dataset.w; const pts = Math.round(w * MULT[q]);
+          sum += pts;
+          r.style.setProperty('--fill', `${MULT[q] * 100}%`);
+          const pill = r.querySelector('.p-c'); pill.className = `pill ${LABEL[q][1]} p-c`; pill.textContent = LABEL[q][0];
+          const e = r.querySelector('.sx-earn'); e.textContent = `+${pts}`;
+          r.querySelectorAll('.sx-rate button').forEach((b) => b.classList.toggle('on', b.dataset.q === q));
+        });
+        const score = Math.round(sum / 80 * 100);
+        tween(earnEl, sum, 500); eqSpans[0].textContent = sum; tween(numEl, score, 700);
+        gaugeEl.style.width = `${score}%`;
+        earnEl.classList.remove('bump'); void earnEl.offsetWidth; earnEl.classList.add('bump');
+        return score;
+      };
+      const setMode = (m) => {
+        const on = m === 'play';
+        modeBtns.forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+        if (on === play) return;
+        play = on; clear();
+        sx.classList.toggle('play', on);
+        if (on) {
+          sx.classList.add('paused'); sx.dataset.s = '4'; numEl.classList.remove('dim');
+          dots.forEach((d) => d.classList.remove('on')); noEl.textContent = 'Your turn';
+          capEl.textContent = 'Tap a rating on each priority and watch the score move. Then press “Log 10 more tasks” to try to game it.';
+          recompute();
+        } else {
+          rows.forEach((r) => { r.dataset.q = r.dataset.q0; });
+          chipsEl.querySelectorAll('.extra').forEach((c) => c.remove()); logged = 3; shown = 0; loggedEl.textContent = '3';
+          sx.classList.remove('paused'); sameEl.classList.remove('show'); gaugeEl.style.width = '0%';
+          recompute(); goTo(0);
+        }
+      };
+      rows.forEach((r) => { r.dataset.q = r.dataset.q0; r.querySelectorAll('.sx-rate button').forEach((b) => b.addEventListener('click', () => { r.dataset.q = b.dataset.q; if (!play) setMode('play'); else recompute(); const e = r.querySelector('.sx-earn'); e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); })); });
+      modeBtns.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+      sx.querySelector('[data-spam]').addEventListener('click', () => {
+        if (!play) setMode('play');
+        const before = numEl.textContent;
+        for (let i = 0; i < 10; i++) {
+          logged += 1; shown += 1;
+          if (shown <= 24) { const c = document.createElement('span'); c.className = 'extra'; c.style.setProperty('--k', i * 0.05); c.innerHTML = `${TASKS[(logged + i) % TASKS.length]}<em>0 pts</em>`; chipsEl.appendChild(c); }
+        }
+        loggedEl.textContent = logged; loggedEl.classList.remove('bump'); void loggedEl.offsetWidth; loggedEl.classList.add('bump');
+        numEl.textContent = before; sameEl.classList.remove('show'); void sameEl.offsetWidth; sameEl.classList.add('show');
+        numEl.classList.remove('shake'); void numEl.offsetWidth; numEl.classList.add('shake');
+      });
+      dots.forEach((d, i) => d.addEventListener('click', () => { if (play) setMode('auto'); goTo(i); }));
       sx.addEventListener('mouseenter', () => { hoverSx = true; clear(); sx.classList.add('paused'); });
-      sx.addEventListener('mouseleave', () => { hoverSx = false; sx.classList.remove('paused'); goTo(cur); });
-      const sxv = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== inView) { inView = v; if (v) goTo(reduce ? 4 : 0); else clear(); } }, { threshold: 0.35 });
+      sx.addEventListener('mouseleave', () => { hoverSx = false; if (play) return; sx.classList.remove('paused'); goTo(cur); });
+      const sxv = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== inView) { inView = v; if (play) return; if (v) goTo(reduce ? 4 : 0); else clear(); } }, { threshold: 0.35 });
       sxv.observe(sx);
       observers.push(sxv);
       cleanups.push(clear);
