@@ -71,3 +71,26 @@ it back, so the numbers are exact. The nightly sync starts after the first manua
 
 Pinned versions (copied from viaSocket's action pages, checked against the live listing when connecting):
 Slack `Get_User_Information` v9, `Send_Direct_Message` v3; Keka `Find_Employees` v36.
+
+## Settings (environment variables)
+
+Names only. Values go in `.env` (git-ignored) or the host's environment settings, never in the code.
+
+| Name | What for |
+|---|---|
+| `APP_SECRET` | Encrypts stored connection ids and the phone-alert link |
+| `CRON_SECRET` | Protects `/tasks/hourly` |
+| `DATA_DIR` | Where the SQLite database lives |
+| `VIASOCKET_ORG_ID`, `VIASOCKET_PROJECT_ID`, `VIASOCKET_EMBED_SECRET` | Slack and Keka through viaSocket |
+| `M91_SEND_LINK`, `M91_BLOCKER_ESCALATION_HOURS` | Phone alerts (the link can also be set per workspace) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Password reset emails |
+| `GEMINI_API_KEY` | Ask Cairn, the AI helper (explains scores, never scores anyone) |
+| `RECOVERY_KEY` | Optional break glass reset for whoever runs the server (12 or more characters) |
+
+## Design
+
+Every visual decision is recorded in [`docs/design-decisions.md`](docs/design-decisions.md) and the sign off in [`docs/qa-record.md`](docs/qa-record.md). Styles live in `public/system.css` (tokens and shared parts), `home.css`, `app.css` and the older `style.css`. Icons are Phosphor (MIT), see `public/fonts/LICENSE-phosphor.txt`. Fonts are Geist (OFL), see `public/fonts/LICENSE-geist.txt`.
+
+## Demo data
+
+Admins can load labelled demo people and seven weeks of ranked, rated work from **People → Load demo data** (or the banner on an empty My Week), and remove it again in one click.
