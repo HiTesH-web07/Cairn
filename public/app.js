@@ -98,7 +98,6 @@ function modal(html, onSubmit) {
 // ---------- layout ----------
 const NAV = [
   ['label', 'Work'],
-  ['home', 'Home', () => true],
   ['week', 'My Week', () => true],
   ['rate', 'Rate Work', () => true],
   ['team', 'Team', isManager],
@@ -127,7 +126,7 @@ function layout(active, inner) {
   }
   const u = state.me.user;
   $('#app').innerHTML = `<a class="skip" href="#" id="skip">Skip to content</a><div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b>${UI.themeBtn()}</div>
-  <div class="shell"><nav class="side" id="side" aria-label="Main"><div class="brand-row"><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>${UI.themeBtn()}</div>
+  <div class="shell"><nav class="side" id="side" aria-label="Main"><div class="brand-row"><a class="brand" href="#/week" title="My Week">${UI.logo()}${UI.brand.name}</a>${UI.themeBtn()}</div>
   <div class="ws"><span>Workspace</span><b>${esc(state.me.workspace.name)}</b></div>${links.join('')}
   <div class="me-card">${UI.avatar(u.name)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
@@ -174,8 +173,19 @@ function authScreen(mode, extra = {}) {
     <p class="muted">${UI.brand.tagline} Measure the value of work, not the number of tasks.</p>
     ${mode === 'join' || mode === 'forgot' || mode === 'reset' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
     ${mode === 'forgot' ? '<h2 class="auth-h">Forgot your password?</h2>' : mode === 'reset' ? '<h2 class="auth-h">Set a new password</h2>' : ''}<form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : mode === 'forgot' ? forgot : mode === 'reset' ? reset : signin}<p class="err" id="autherr"></p>
-    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : mode === 'forgot' ? 'Send reset link' : mode === 'reset' ? 'Save new password' : 'Sign in'}</button>${mode === 'forgot' || mode === 'reset' ? '<a class="back" style="display:block;margin:.9rem 0 0;text-align:center" href="#/signin">← Back to sign in</a>' : ''}</form></div></div>`;
+    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : mode === 'forgot' ? 'Send reset link' : mode === 'reset' ? 'Save new password' : 'Sign in'}</button>${mode === 'forgot' || mode === 'reset' ? '<a class="back" style="display:block;margin:.9rem 0 0;text-align:center" href="#/signin">← Back to sign in</a>' : ''}</form>${mode === 'forgot' ? '<details class="recover"><summary>I run this server: use my recovery key</summary><form id="recform"><label>Email of the locked-out account</label><input name="email" type="email" required><label>Recovery key</label><input name="key" type="password" required autocomplete="off"><p class="err" id="recerr"></p><button class="primary">Get a reset link</button></form></details>' : ''}</div></div>`;
   addPwToggles($('#authform'));
+  if (mode === 'forgot') {
+    addPwToggles($('#recform'));
+    $('#recform').onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const r = await api('POST', '/api/auth/recover', Object.fromEntries(new FormData(e.target).entries()));
+        if (r.chooseWorkspace) { $('#recerr').textContent = 'That email is in more than one workspace. Use a different email, or ask an admin of the workspace for a link.'; return; }
+        location.hash = r.link.replace('/#', '#');
+      } catch (err) { $('#recerr').textContent = err.message; }
+    };
+  }
   $('#authform').onsubmit = async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
@@ -675,6 +685,11 @@ async function integrationsScreen() {
       ${ke.runs.length ? `<h3 style="margin-top:1rem">Recent syncs</h3><div class="tablewrap"><table><tbody>${ke.runs.map(runRow).join('')}</tbody></table></div>` : ''}
     </div>
 
+    <div class="card"><div class="row spread"><h2 style="margin:0">Email</h2><span class="pill ${s.mail.configured ? 'good' : 'warn'}">${s.mail.configured ? 'Set up' : 'Not set up'}</span></div>
+      <p class="small">Sends password reset links to people's inboxes${s.mail.from ? `, from <b>${esc(s.mail.from)}</b>` : ''}. This is a setting of the whole server, so it works for every workspace.</p>
+      ${s.mail.configured ? '<div class="row"><button class="primary" id="mailTest">Send myself a test email</button></div><p class="small" id="mailOut"></p>' : '<div class="notice warn">Not set up yet. The person who runs this server adds <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> and <code>MAIL_FROM</code> in the app settings on Embarko. Until then reset links go to Slack when Slack is connected.</div>'}
+    </div>
+
     <div class="card"><div class="row spread"><h2 style="margin:0">Phone alerts (M91)</h2><span class="pill ${s.m91.configured ? 'good' : 'warn'}">${s.m91.configured ? 'Connected' : 'Not set up'}</span></div>
       <p class="small">${s.m91.configured ? `Rings "${esc(s.m91.channel)}" for serious problems. Test it in <a href="#/settings">Settings</a>.` : 'Add your channel link in <a href="#/settings">Settings</a>.'}</p></div>`);
 
@@ -705,6 +720,8 @@ async function integrationsScreen() {
   const out = (id, t) => { const el = $(id); if (el) el.textContent = t; };
   const t1 = $('#slTest');
   if (t1) t1.onclick = () => run(t1, async () => { out('#slOut', 'Sending…'); try { const r = await api('POST', '/api/integrations/slack/test', {}); out('#slOut', r.message); setTimeout(integrationsScreen, 1500); } catch (e) { out('#slOut', e.message); } });
+  const tm = $('#mailTest');
+  if (tm) tm.onclick = () => run(tm, async () => { out('#mailOut', 'Sending…'); try { const r = await api('POST', '/api/mail/test', {}); out('#mailOut', `Sent to ${r.to}. Check the inbox, and spam too.`); } catch (e) { out('#mailOut', e.message); } });
   const t2 = $('#slMatch');
   if (t2) t2.onclick = () => run(t2, async () => { out('#slOut', 'Checking…'); try { await api('POST', '/api/integrations/slack/match', {}); integrationsScreen(); } catch (e) { out('#slOut', e.message); } });
   const t3 = $('#keTest');

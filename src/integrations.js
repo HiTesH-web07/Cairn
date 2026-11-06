@@ -95,6 +95,7 @@ function init(ctx) {
     const s = settingsOf(req.ws);
     return {
       viasocket: { keysPresent: viasocket.keysPresent() },
+      mail: { configured: require('./mail').configured(), from: process.env.MAIL_FROM ? String(process.env.MAIL_FROM).replace(/^.*<|>.*$/g, '') : null },
       slack: { ...vs.status(req.ws.id, 'slack'), ...(vs.connected(req.ws.id, 'slack') ? { coverage: slack.coverage(req.ws), recent: slack.recent(req.ws) } : {}), messages: s.slackMessages },
       keka: { ...vs.status(req.ws.id, 'keka'), chosen: s.peopleSource === 'keka', fields: s.hrFields, requested: kekaMod.fieldsFor(s.hrFields), runs: keka.lastRuns(req.ws) },
       m91: { configured: !!req.ws.m91_link, channel: req.ws.m91_channel || null }

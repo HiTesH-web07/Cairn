@@ -357,3 +357,38 @@ test('forgotten password: generic answer, admin link works once, old password an
   assert.equal((await client()('POST', '/api/auth/login', { email: 'mia@resetco.test', password: 'a-brand-new-pass-1' })).status, 200);
   assert.equal((await mia('GET', '/api/me')).status, 401); // the old session was signed out
 });
+
+test('operator recovery key: off unless set, rejects a wrong key, issues a one-time link when right', async () => {
+  const c = client();
+  assert.equal((await c('POST', '/api/auth/recover', { email: 'olive@resetco.test', key: 'whatever-whatever' })).status, 403); // not switched on
+  process.env.RECOVERY_KEY = 'a-long-operator-key-123';
+  assert.equal((await c('POST', '/api/auth/recover', { email: 'olive@resetco.test', key: 'wrong-wrong-wrong-1' })).status, 403);
+  const ok = await c('POST', '/api/auth/recover', { email: 'olive@resetco.test', key: 'a-long-operator-key-123' });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  const token = ok.body.link.split('/reset/')[1];
+  assert.equal((await c('POST', `/api/auth/reset/${token}`, { password: 'olive-new-password-9' })).status, 200);
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'olive@resetco.test', password: 'olive-new-password-9' })).status, 200);
+  delete process.env.RECOVERY_KEY;
+  assert.equal((await c('POST', '/api/auth/recover', { email: 'olive@resetco.test', key: 'a-long-operator-key-123' })).status, 403);
+});
+
+test('reset emails: sent to the inbox when email is set up, with the same answer for unknown addresses', async () => {
+  process.env.MAIL_TRANSPORT = 'json'; process.env.MAIL_FROM = 'Cairn <no-reply@example.test>';
+  const mailMod = require('../src/mail');
+  const sent = []; const orig = mailMod.send;
+  mailMod.send = async (m) => { sent.push(m); return { ok: true }; };
+  try {
+    const c = client();
+    const a = await c('POST', '/api/auth/forgot', { email: 'olive@resetco.test' });
+    const b = await c('POST', '/api/auth/forgot', { email: 'ghost@resetco.test' });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(a.status, 200); assert.deepEqual(a.body, b.body);
+    assert.equal(sent.length, 1); assert.equal(sent[0].to, 'olive@resetco.test');
+    assert.match(sent[0].text, /#\/reset\//); assert.match(sent[0].html, /Choose a new password/);
+    assert.ok(!JSON.stringify(a.body).includes('/reset/')); // the link is never in the answer
+    const owner = client();
+    await owner('POST', '/api/auth/login', { email: 'olive@resetco.test', password: 'olive-new-password-9' });
+    const status = await owner('GET', '/api/integrations/status');
+    assert.equal(status.body.mail.configured, true);
+  } finally { mailMod.send = orig; delete process.env.MAIL_TRANSPORT; delete process.env.MAIL_FROM; }
+});

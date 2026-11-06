@@ -1,6 +1,7 @@
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
+const mail = require('./mail');
 const db = require('./db');
 const S = require('./scoring');
 
@@ -264,7 +265,7 @@ function newReset(user, createdBy, hours) {
   })();
   return token;
 }
-const FORGOT_ANSWER = { ok: true, message: 'If that email has an account, a reset link is on its way. It arrives as a Slack message when Slack is connected. Otherwise ask your admin or manager for a reset link.' };
+const FORGOT_ANSWER = { ok: true, message: 'If that email has an account, a reset link is on its way to that inbox. It can take a minute. Check your spam folder too, or ask your admin or manager for a link.' };
 app.post('/api/auth/forgot', wrap((req) => {
   const email = emailOf(req.body.email);
   rateLimit(`forgot:${req.ip}`); rateLimit(`forgot:${email}`);
@@ -273,10 +274,45 @@ app.post('/api/auth/forgot', wrap((req) => {
     const ws = getWs(u.workspace_id);
     const token = newReset(u, null, 1);
     const base = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
-    if (integ.slack.enqueue(ws, 'reset', u.id, `reset:${sha(token).slice(0, 16)}`, `Someone asked to reset your Cairn password. If it was you, use this link within 1 hour: ${base}/#/reset/${token}\nIf it was not you, ignore this message.`)) integ.slack.flushSoon(ws);
+    const link = `${base}/#/reset/${token}`;
+    if (mail.configured()) {
+      // sent in the background so the answer takes the same time whether or not the email exists
+      const m = mail.resetEmail(u.name, link);
+      mail.send({ to: u.email, ...m }).catch((e) => audit(u.workspace_id, null, 'password.reset_mail_failed', 'user', u.id, { reason: String(e.message).slice(0, 120) }));
+    } else if (integ.slack.enqueue(ws, 'reset', u.id, `reset:${sha(token).slice(0, 16)}`, `Someone asked to reset your Cairn password. If it was you, use this link within 1 hour: ${link}\nIf it was not you, ignore this message.`)) integ.slack.flushSoon(ws);
     audit(u.workspace_id, null, 'password.reset_requested', 'user', u.id, null);
   }
   return FORGOT_ANSWER; // the same answer whether or not the email exists
+}));
+
+
+// Break-glass for whoever runs this server: with RECOVERY_KEY set in the app's environment, they can get a reset link
+// for a locked-out account. Off unless the variable is set. Every use is rate limited and written to the history log.
+app.post('/api/auth/recover', wrap((req) => {
+  rateLimit(`recover:${req.ip}`);
+  const want = process.env.RECOVERY_KEY;
+  const key = String(req.body.key || '');
+  const ok = want && want.length >= 12 && crypto.timingSafeEqual(crypto.createHash('sha256').update(key).digest(), crypto.createHash('sha256').update(want).digest());
+  if (!ok) throw new HttpError(403, 'That recovery key is not right, or recovery is not switched on for this server.');
+  const email = emailOf(req.body.email);
+  const rows = db.prepare('SELECT u.*, w.name AS ws_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.email = ? AND u.active = 1 AND u.pw_hash IS NOT NULL').all(email);
+  if (!rows.length) throw notFound('No active account has that email.');
+  let u = rows[0];
+  if (rows.length > 1) {
+    u = rows.find((r) => r.workspace_id === req.body.workspace_id);
+    if (!u) return { chooseWorkspace: rows.map((r) => ({ id: r.workspace_id, name: r.ws_name })) };
+  }
+  const token = newReset(u, null, 1);
+  audit(u.workspace_id, null, 'password.recovery_used', 'user', u.id, null);
+  return { ok: true, link: `/#/reset/${token}` };
+}));
+
+app.post('/api/mail/test', auth, adminOnly, wrap(async (req) => {
+  if (!mail.configured()) throw bad('Email is not set up on this server yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and MAIL_FROM in the app settings.');
+  rateLimit(`mailtest:${req.user.id}`);
+  try { await mail.send({ to: req.user.email, subject: 'Cairn test email', text: 'This is a test from Cairn. If you can read it, password reset emails will reach people.', html: '<p>This is a test from Cairn. If you can read it, password reset emails will reach people.</p>' }); }
+  catch (e) { throw bad(`The email was not sent: ${e.message}`); }
+  return { ok: true, to: req.user.email };
 }));
 
 app.post('/api/auth/reset/:token', wrap((req) => {

@@ -1037,3 +1037,7 @@ nav.side { background: linear-gradient(180deg, color-mix(in srgb, var(--surface)
 .forgot:hover { text-decoration: underline; }
 .auth-h { margin: 1rem 0 .8rem; } .auth-h::before { display: none; }
 .notice.ok { background: var(--good-bg); color: var(--good); border-radius: 12px; padding: .7rem .9rem; font-size: .9rem; margin: .8rem 0 0; }
+
+.recover { margin-top: 1rem; font-size: .88rem; color: var(--muted); }
+.recover summary { cursor: pointer; padding: .4rem 0; font-weight: 600; }
+.recover form { margin-top: .6rem; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 14px; padding: .9rem 1rem 1.1rem; }
