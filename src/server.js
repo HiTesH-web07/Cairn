@@ -640,15 +640,24 @@ function offboardCore(ws, actorId, target, newMgr, source) {
 // ---------- demo data (admins): clearly labelled sample people and weeks, easy to remove ----------
 const DEMO_DOMAIN = '@demo.cairn.example';
 const DEMO_PEOPLE = [
-  { key: 'amit', name: 'Amit Verma (demo)', role: 'manager', level: 'Team lead', department: 'Engineering', boss: 'owner' },
-  { key: 'riya', name: 'Riya Shah (demo)', role: 'member', level: 'Engineer', department: 'Engineering', boss: 'amit' },
-  { key: 'sonal', name: 'Sonal Gupta (demo)', role: 'member', level: 'Engineer', department: 'Engineering', boss: 'amit' },
-  { key: 'karan', name: 'Karan Mehta (demo)', role: 'member', level: 'Intern', department: 'Engineering', boss: 'amit' },
-  { key: 'neha', name: 'Neha Rao (demo)', role: 'member', level: 'Marketer', department: 'Marketing', boss: 'owner' }
+  { key: 'amit', name: 'Amit Verma (demo)', role: 'manager', level: 'Team lead', department: 'Product', boss: 'owner' },
+  { key: 'riya', name: 'Riya Shah (demo)', role: 'member', level: 'Engineer', department: 'Product', boss: 'amit' },
+  { key: 'sonal', name: 'Sonal Gupta (demo)', role: 'member', level: 'Engineer', department: 'Product', boss: 'amit' },
+  { key: 'karan', name: 'Karan Mehta (demo)', role: 'member', level: 'Intern', department: 'Product', boss: 'amit' },
+  { key: 'vikram', name: 'Vikram Shah (demo)', role: 'manager', level: 'Marketing lead', department: 'Marketing', boss: 'owner' },
+  { key: 'neha', name: 'Neha Rao (demo)', role: 'member', level: 'Marketer', department: 'Marketing', boss: 'vikram' },
+  { key: 'isha', name: 'Isha Nair (demo)', role: 'member', level: 'Designer', department: 'Marketing', boss: 'vikram' },
+  { key: 'priya', name: 'Priya Menon (demo)', role: 'manager', level: 'Sales lead', department: 'Sales', boss: 'owner' },
+  { key: 'arjun', name: 'Arjun Mehta (demo)', role: 'member', level: 'Account executive', department: 'Sales', boss: 'priya' },
+  { key: 'kabir', name: 'Kabir Anand (demo)', role: 'member', level: 'Account executive', department: 'Sales', boss: 'priya' },
+  { key: 'rohan', name: 'Rohan Kapoor (demo)', role: 'manager', level: 'Support lead', department: 'Support', boss: 'owner' },
+  { key: 'meera', name: 'Meera Iyer (demo)', role: 'member', level: 'Support agent', department: 'Support', boss: 'rohan' }
 ];
 const DEMO_WORK = {
-  Engineering: [['Ship the new onboarding flow', 'Flow live, help guide updated'], ['Write the help guide', 'Guide published and reviewed'], ['Fix the sign in timeout bug', 'Fix merged and tested on staging'], ['Speed up the dashboard', 'Load time cut, measured on staging'], ['Review the API changes', 'Reviews posted']],
-  Marketing: [['Launch the October newsletter', 'Sent to 12k readers'], ['Publish the customer story', 'Story live on the blog'], ['Refresh the pricing page', 'New page shipped'], ['Plan the webinar', 'Webinar scheduled'], ['Update the sales deck', 'Deck shared with sales']]
+  Product: [['Ship the new onboarding flow', 'Flow live, help guide updated'], ['Write the help guide', 'Guide published and reviewed'], ['Fix the sign in timeout bug', 'Fix merged and tested on staging'], ['Speed up the dashboard', 'Load time cut, measured on staging'], ['Review the API changes', 'Reviews posted']],
+  Marketing: [['Launch the spring campaign', 'Campaign page and results shared'], ['Publish the customer story', 'Story live on the blog'], ['Refresh the pricing page', 'New page shipped'], ['Plan the webinar', 'Webinar scheduled'], ['Update the sales deck', 'Deck shared with sales']],
+  Sales: [['Close the Orbit Logistics renewal', 'Renewal signed, deal updated'], ['Send proposals to three new leads', 'Three proposals sent, notes logged'], ['Update the sales deck', 'New deck shared with the team'], ['Run the product demo for Northwind', 'Demo done, follow up booked'], ['Clean up the pipeline', 'Stale deals closed or updated']],
+  Support: [['Clear the oldest open tickets', 'Oldest tickets resolved'], ['Write the refund guide for agents', 'Guide published to the help desk'], ['Train two new agents', 'Training done, checklist signed'], ['Fix the top three canned replies', 'Replies updated and tested'], ['Review last month of escalations', 'Review notes shared']]
 };
 const DEMO_QUALITY = ['done_well', 'done_well', 'needs_fixes', 'done_well', 'done_well', 'redo', 'done_well', 'needs_fixes', 'done_well', 'done_well'];
 
@@ -669,7 +678,7 @@ app.post('/api/demo', auth, adminOnly, idempotent, wrap((req, res) => {
     }
     let q = 0;
     DEMO_PEOPLE.forEach((p, pi) => {
-      const boss = ids[p.boss]; const second = p.boss === 'owner' ? ids.amit : owner.id;
+      const boss = ids[p.boss]; const second = p.boss === 'owner' ? (p.key === 'amit' ? ids.vikram : ids.amit) : (['amit', 'vikram', 'priya', 'rohan'].includes(p.boss) ? (p.boss === 'amit' ? owner.id : ids.amit) : owner.id);
       for (let back = 6; back >= 0; back--) {
         const week = addDays(cur, -7 * back); const isCur = back === 0;
         const n = p.level === 'Intern' ? 3 : 5;
@@ -693,7 +702,7 @@ app.post('/api/demo', auth, adminOnly, idempotent, wrap((req, res) => {
       }
     });
     const coin = (from, to, c, why, back) => db.prepare('INSERT INTO coins (id, workspace_id, from_id, to_id, coins, reason, week_start, created_at) VALUES (?,?,?,?,?,?,?,?)').run(newId('cn'), ws.id, ids[from] || from, ids[to] || to, c, why, addDays(cur, -7 * back), now());
-    coin('sonal', 'riya', 3, 'Stayed late to unblock my launch', 0); coin('karan', 'sonal', 2, 'Great code review', 1); coin('riya', 'karan', 2, 'Patient pairing session', 0); coin('amit', 'neha', 3, 'Helped with the deck', 1);
+    coin('sonal', 'riya', 3, 'Covered my on call shift', 0); coin('karan', 'sonal', 2, 'Great code review', 1); coin('riya', 'karan', 2, 'Patient pairing session', 0); coin('amit', 'neha', 3, 'Helped with the deck', 1); coin('isha', 'neha', 2, 'Pulled the campaign report together fast', 0); coin('kabir', 'arjun', 3, 'Shared his call notes', 0); coin('meera', 'rohan', 2, 'Stayed late on the backlog', 1); coin('arjun', 'kabir', 2, 'Covered a demo for me', 1);
     audit(ws.id, owner.id, 'demo.loaded', 'workspace', ws.id, { people: DEMO_PEOPLE.length });
   })();
   res.status(201);

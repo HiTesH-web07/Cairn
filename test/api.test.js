@@ -468,3 +468,17 @@ test('unknown addresses get the branded 404 page, API misses stay JSON, real pag
   assert.equal((await fetch(base + '/og.png')).status, 200);
   const idx = await (await fetch(base + '/')).text(); assert.match(idx, /og:image/);
 });
+
+test('demo data: twelve labelled people across four teams, scored weeks, removable in one go', async () => {
+  const c = client();
+  assert.equal((await c('POST', '/api/auth/signup', { company: 'DemoCo', name: 'Dana Demo', email: 'dana@democo.test', password: PW, timezone: 'UTC' })).status, 200);
+  const r = await c('POST', '/api/demo', {}, { 'idempotency-key': 'demo-1' });
+  assert.equal(r.status, 201, JSON.stringify(r.body)); assert.equal(r.body.people, 12);
+  assert.equal((await c('POST', '/api/demo', {}, { 'idempotency-key': 'demo-2' })).status, 400); // already loaded
+  const team = (await c('GET', '/api/team')).body.people.filter((p) => /\(demo\)/.test(p.name));
+  assert.equal(team.length, 12);
+  assert.deepEqual([...new Set(team.map((p) => p.department))].sort(), ['Marketing', 'Product', 'Sales', 'Support']);
+  assert.ok(team.some((p) => p.score !== null), 'some people have scored weeks');
+  const gone = await c('DELETE', '/api/demo'); assert.equal(gone.body.removed, 12);
+  assert.equal((await c('GET', '/api/team')).body.people.filter((p) => /\(demo\)/.test(p.name)).length, 0);
+});
