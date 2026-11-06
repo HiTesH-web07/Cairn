@@ -107,7 +107,7 @@
   const sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
   const curTheme = () => document.documentElement.dataset.theme || (sysDark() ? 'dark' : 'light');
   const themeBtn = (id) => `<button type="button" class="theme-btn" data-theme-toggle${id ? ` id="${id}"` : ''} aria-label="Switch between light and dark" title="Light / dark"><svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>`;
-  const applyTheme = (t) => { document.documentElement.dataset.theme = t; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#0f1020' : '#4f46e5'; };
+  const applyTheme = (t) => { document.documentElement.dataset.theme = t; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#181818' : '#4f46e5'; };
   try { const s = localStorage.getItem(THEME_KEY); if (s === 'light' || s === 'dark') applyTheme(s); } catch (e) { /* storage blocked: follow the system */ }
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-theme-toggle]')) return;
