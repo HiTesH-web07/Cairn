@@ -27,27 +27,32 @@
   };
   const brand = { name: 'Cairn', tagline: 'Measure what mattered.' };
   const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${P[name] || P.how}"/></svg>`;
-  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  // The mark: three stones, the top one painted blaze orange, the way a trail is marked.
-  const logo = () => '<span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect class="st" x="2" y="21" width="28" height="8" rx="4"/><rect class="st" x="7" y="12" width="18" height="8" rx="4"/><rect class="top" x="11.5" y="3" width="9" height="8" rx="4"/></svg></span>';
-  const favicon = () => 'data:image/svg+xml,' + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='#17150f'/><rect x='5' y='21' width='22' height='6' rx='3' fill='#f3efe6'/><rect x='8.5' y='13' width='15' height='6' rx='3' fill='#f3efe6'/><rect x='12' y='5' width='8' height='6' rx='3' fill='#ff5a1f'/></svg>");
-  const cairn = (cls = '') => `<svg class="cairn-art ${cls}" viewBox="0 0 120 100" aria-hidden="true"><rect class="st" x="8" y="66" width="104" height="26" rx="13"/><rect class="st" x="28" y="36" width="64" height="26" rx="13"/><rect class="top" x="46" y="8" width="28" height="24" rx="12"/></svg>`;
-  // A score ring, kept for compatibility; the app now shows the stack meter instead.
+  // The mark: three stones, biggest at the bottom, like a priority stack and like the cairns that mark a path.
+  const stones = (a = 1) => `<ellipse cx="16" cy="24.2" rx="11.6" ry="5.1" transform="rotate(-3 16 24)" fill="#fff" fill-opacity="${.96 * a}"/><ellipse cx="16.9" cy="15.4" rx="8.1" ry="4.3" transform="rotate(4 17 15)" fill="#fff" fill-opacity="${.82 * a}"/><ellipse cx="15.5" cy="8.3" rx="5.1" ry="3.5" transform="rotate(-6 15 8)" fill="#fff" fill-opacity="${.64 * a}"/>`;
+  const logo = () => `<span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true">${stones()}</svg></span>`;
+  const favicon = () => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#4f46e5'/><stop offset='.55' stop-color='#8b5cf6'/><stop offset='1' stop-color='#ec4899'/></linearGradient></defs><rect width='32' height='32' rx='9' fill='url(#g)'/>${stones()}</svg>`);
+  const cairn = (cls = '') => `<svg class="cairn-art ${cls}" viewBox="0 0 120 100" aria-hidden="true"><ellipse cx="60" cy="82" rx="42" ry="14" fill="currentColor" opacity=".9"/><ellipse cx="63" cy="52" rx="30" ry="12" fill="currentColor" opacity=".6"/><ellipse cx="58" cy="26" rx="18" ry="9.5" fill="currentColor" opacity=".38"/><circle cx="96" cy="14" r="3" fill="currentColor" opacity=".25"/><circle cx="20" cy="30" r="2" fill="currentColor" opacity=".2"/></svg>`;
+  // A score ring that draws itself. Colour follows the score. r = 34 in an 80 box.
   function ring(score, extra = '') {
     const c = 2 * Math.PI * 34;
-    const v = score === null || score === undefined ? 0 : Math.max(0, Math.min(100, score));
-    return `<svg class="ring ${extra}" viewBox="0 0 80 80" aria-hidden="true"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-fg" cx="40" cy="40" r="34" style="stroke-dasharray:${c};stroke-dashoffset:${c * (1 - v / 100)}"/></svg>`;
+    const has = score !== null && score !== undefined;
+    const v = has ? Math.max(0, Math.min(100, score)) : 0;
+    const tone = !has ? 's-none' : v >= 85 ? 's-good' : v >= 60 ? 's-ok' : 's-low';
+    return `<svg class="ring ${tone} ${extra}" viewBox="0 0 80 80" aria-hidden="true"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-fg" cx="40" cy="40" r="34" style="--c:${c};--final:${c * (1 - v / 100)};stroke-dasharray:${c};stroke-dashoffset:${c * (1 - v / 100)}"/></svg>`;
   }
-  // A square avatar: initial on an earthy colour taken from the name, so a person always looks the same.
+  // A round avatar: initial on a colour taken from the name, so a person always looks the same.
   function avatar(name, size = '') {
     const n = String(name || '?').trim();
     let h = 0;
     for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     return `<span class="avatar ${size}" style="--h:${h}" aria-hidden="true">${esc(n.charAt(0).toUpperCase())}</span>`;
   }
+  // An empty state with a little illustration, instead of a bare line of grey text.
   const empty = (title, text, action = '') => `<div class="empty">${cairn()}<h3>${title}</h3><p>${text}</p>${action}</div>`;
+
   // The stack meter: one slab per rank, as wide as its weight. Filled by how well it was rated.
-  function stack(items, settings) {
+  function stack(items, settings, size = '') {
     const weights = settings.rankWeights;
     const q = settings.quality;
     const byRank = new Map(items.filter((i) => i.rank).map((i) => [i.rank, i]));
@@ -71,11 +76,12 @@
           }
         } else cls = 'open';
       }
-      return `<div class="seg ${cls} ${k === 0 ? 'top' : ''}" style="--w:${w};--k:${k};--fill:${fill}%" title="${esc(tip)}"><i></i><span class="n">#${k + 1}</span><span class="wt">${w}</span></div>`;
+      return `<div class="seg ${cls}" style="--w:${w};--k:${k};--fill:${fill}%" title="${esc(tip)}"><i></i><span class="n">#${k + 1}</span><span class="wt">${w}</span></div>`;
     }).join('');
-    return `<div class="stack" role="img" aria-label="Priority stack">${seg}</div><div class="legend"><span class="l-full">Done well</span><span class="l-half">Needs fixes</span><span class="l-wait">Waiting for rating</span><span class="l-miss">Missed or redo</span></div>`;
+    return `<div class="stack ${size}" role="img" aria-label="Priority stack">${seg}</div><div class="legend"><span class="l-full">Done well</span><span class="l-half">Needs fixes</span><span class="l-wait">Waiting for rating</span><span class="l-miss">Missed or redo</span></div>`;
   }
-  // A page head: a small mono line, the big serif title, then a rule.
-  const head = (eyebrow, title, right = '') => `<header class="ph"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div>${right ? `<div class="ph-r">${right}</div>` : ''}</header>`;
-  window.UI = { brand, icon, logo, ring, avatar, empty, cairn, favicon, stack, head };
+  // A page head: a small label, the title, a one-line explanation, and actions on the right.
+  const head = (eyebrow, title, sub = '', right = '') => `<header class="ph"><div>${eyebrow ? `<div class="eyebrow">${eyebrow}</div>` : ''}<h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div>${right ? `<div class="ph-r">${right}</div>` : ''}</header>`;
+  const skeleton = () => '<div class="sk-wrap" aria-hidden="true"><div class="sk" style="height:34px;width:34%"></div><div class="sk" style="height:16px;width:52%;margin-top:.8rem"></div><div class="sk-grid"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><div class="sk" style="height:230px;margin-top:1rem"></div></div>';
+  window.UI = { brand, icon, logo, ring, avatar, empty, cairn, favicon , stack, head, skeleton };
 })();
