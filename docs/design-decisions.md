@@ -100,3 +100,13 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 - "Gmail plug launch" was our own jargon. All Home demos now use plain examples from Product, Marketing, Sales and Support (fictional people and companies). One data set (`EXAMPLES` in `public/home.js`) drives the hero, score walkthrough, four step scenes, the race and the phone alert. A selector ("Example from") switches them together. Default: Product (ship the new onboarding flow). Demo data for Engineering uses the same plain titles.
 - The race has no Replay button. It plays every time it scrolls into view (45% visible) and resets when it leaves (under 5% visible).
 - Display sizes reduced because the biggest text felt heavy (owner decision, overrides the skill's Heading 1 = 60px): hero heading 48 on desktop (36 tablet, 30 phone), section headings 36 (30, 24), tagline 36 (30, 24), big numerals 48 to 60 instead of 72 to 96, race numbers 36.
+
+## The app (step 5)
+- Icons: every app icon is Phosphor (`UI.icon(name)` keeps its names and now draws Phosphor; `UI.ph(name)` for anything else). No text arrows or glyphs: Previous and Next, move up and down, sign out, menu and the back links use icons.
+- Sidebar: flat surface, Title 4 links, 20px icons, active state is a soft accent fill with accent text (the left bar is gone), workspace chip and user card are flat bordered boxes. Menu button reports its open state.
+- Page heads: outlined caption chip, Heading 4 title, hairline underneath. Section headings have no accent bar.
+- My Week banner: flat accent panel with no shapes. Sign in side panel and the scoring page banner: flat as well. Sign in list uses check icons.
+- Score tiles use a flat 6px meter that grows with transform, instead of the animated ring. Colour: green from 85, accent from 60, amber below.
+- Ready-made avatars are flat colours. Photos and initials unchanged.
+- Touch: on touch screens every control is 44px high, checkbox and radio labels are fully tappable, and the show-password and rating chips follow.
+- Left alone on purpose: all behaviour, data, API and permissions. Ask Cairn keeps its panel; only its icon changed.

@@ -127,11 +127,11 @@ function layout(active, inner) {
     links.push(`<a href="#/${n[0]}" class="${n[0] === active ? 'on' : ''}"${n[0] === active ? ' aria-current="page"' : ''}>${UI.icon(n[0])}<span>${n[1]}</span>${n[0] === 'rate' && state.pending ? `<span class="badge">${state.pending}</span>` : ''}</a>`);
   }
   const u = state.me.user;
-  $('#app').innerHTML = `<a class="skip" href="#" id="skip">Skip to content</a><div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b>${UI.themeBtn()}</div>
+  $('#app').innerHTML = `<a class="skip" href="#" id="skip">Skip to content</a><div class="topbar"><button class="ghost" id="menu" aria-label="Open menu" aria-expanded="false" aria-controls="side">${UI.ph('list')}</button><b>${UI.brand.name}</b>${UI.themeBtn()}</div>
   <div class="shell"><nav class="side" id="side" aria-label="Main"><div class="brand-row"><a class="brand" href="#/week" title="My Week">${UI.logo()}${UI.brand.name}</a>${UI.themeBtn()}</div>
   <div class="ws"><span>Workspace</span><b>${esc(state.me.workspace.name)}</b></div>${links.join('')}
-  <div class="me-card"><a class="me-link" href="#/profile" title="My profile">${UI.avatar(u.name, '', u.avatar)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div></a><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
-  $('#menu').onclick = () => $('#side').classList.toggle('open');
+  <div class="me-card"><a class="me-link" href="#/profile" title="My profile">${UI.avatar(u.name, '', u.avatar)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div></a><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.ph('sign-out')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
+  $('#menu').onclick = () => { const open = $('#side').classList.toggle('open'); $('#menu').setAttribute('aria-expanded', String(open)); };
   initAsk();
   $('#skip').onclick = (e) => { e.preventDefault(); $('#main').focus(); };
   $('#side').addEventListener('click', (e) => { if (e.target.closest('a[href^="#/"]')) $('#side').classList.remove('open'); });
@@ -226,11 +226,11 @@ function authScreen(mode, extra = {}) {
     <label>Your name</label><input name="name" required maxlength="120">
     <label>Choose a password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">`;
   if (window.Home) window.Home.destroy();
-  $('#app').innerHTML = `<div class="auth2"><aside class="auth-art" aria-hidden="true"><div class="auth-art-in">${UI.cairn()}<h2>Measure what mattered.</h2><ul><li><b>Ranked, not counted</b><span>Only your manager's top five priorities score.</span></li><li><b>Rated in the open</b><span>Two raters on the biggest work, with reasons.</span></li><li><b>Open formula</b><span>Everyone can read how the score works.</span></li></ul></div></aside><div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
+  $('#app').innerHTML = `<div class="auth2"><aside class="auth-art" aria-hidden="true"><div class="auth-art-in">${UI.cairn()}<h2>Measure what mattered.</h2><ul>${[['Ranked, not counted', "Only your manager's top five priorities score."], ['Rated in the open', 'Two raters on the biggest work, with reasons.'], ['Open formula', 'Everyone can read how the score works.']].map(([t, d]) => `<li>${UI.ph('check-circle')}<div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ul></div></aside><div class="auth"><a class="back" href="#/home">${UI.ph('arrow-left')}Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
     <p class="muted">${UI.brand.tagline} Measure the value of work, not the number of tasks.</p>
     ${mode === 'join' || mode === 'forgot' || mode === 'reset' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
     ${mode === 'forgot' ? '<h2 class="auth-h">Forgot your password?</h2>' : mode === 'reset' ? '<h2 class="auth-h">Set a new password</h2>' : ''}<form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : mode === 'forgot' ? forgot : mode === 'reset' ? reset : signin}<p class="err" id="autherr"></p>
-    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : mode === 'forgot' ? 'Send reset link' : mode === 'reset' ? 'Save new password' : 'Sign in'}</button>${mode === 'forgot' || mode === 'reset' ? '<a class="back" style="display:block;margin:.9rem 0 0;text-align:center" href="#/signin">← Back to sign in</a>' : ''}</form>${mode === 'forgot' ? '<details class="recover"><summary>I run this server: use my recovery key</summary><form id="recform"><label>Email of the locked-out account</label><input name="email" type="email" required><label>Recovery key</label><input name="key" type="password" required autocomplete="off"><p class="err" id="recerr"></p><button class="primary">Get a reset link</button></form></details>' : ''}</div></div>`;
+    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : mode === 'forgot' ? 'Send reset link' : mode === 'reset' ? 'Save new password' : 'Sign in'}</button>${mode === 'forgot' || mode === 'reset' ? '<a class="back back-center" href="#/signin">' + UI.ph('arrow-left') + 'Back to sign in</a>' : ''}</form>${mode === 'forgot' ? '<details class="recover"><summary>I run this server: use my recovery key</summary><form id="recform"><label>Email of the locked-out account</label><input name="email" type="email" required><label>Recovery key</label><input name="key" type="password" required autocomplete="off"><p class="err" id="recerr"></p><button class="primary">Get a reset link</button></form></details>' : ''}</div></div>`;
   addPwToggles($('#authform'));
   if (mode === 'forgot') {
     addPwToggles($('#recform'));
@@ -305,7 +305,7 @@ async function weekScreen(params) {
     return `<div class="item"><div class="rank ${it.rank ? `r${Math.min(it.rank, 3)}` : ''}">${it.rank ? `#${it.rank}<small>${weights[it.rank - 1]}%</small>` : '–'}</div>
       <div><h3>${esc(it.title)} ${it.stretch ? '<span class="pill acc star">Stretch</span>' : ''}</h3>
       <div><span class="pill ${statusCls}">${STATUS[it.status]}</span>${it.kind !== 'work' ? `<span class="pill">${it.kind === 'helping' ? 'Helping others' : 'Unplanned'}</span>` : ''}
-      ${parent ? `<span class="pill">↑ supports: ${esc(parent.title)}</span>` : ''}</div>
+      ${parent ? `<span class="pill">${UI.ph('arrow-up-right')}Supports: ${esc(parent.title)}</span>` : ''}</div>
       ${it.details ? `<p class="small muted">${esc(it.details)}</p>` : ''}
       ${it.proof_url || it.proof_note ? `<p class="small">Proof (${esc(it.proof_source || 'self-reported')}): ${it.proof_url ? `<a href="${esc(it.proof_url)}" target="_blank" rel="noopener noreferrer">${esc(it.proof_url)}</a> ` : ''}${esc(it.proof_note || '')}</p>` : ''}
       ${openBlocker ? `<p class="small" style="color:var(--warn)">Blocked: ${esc(openBlocker.description)} · since ${fmtTime(openBlocker.raised_at)}${openBlocker.claimed_by ? ` · ${esc(openBlocker.claimed_by)} is on it` : openBlocker.escalated ? ' · escalated' : ''}</p>` : ''}
@@ -314,7 +314,7 @@ async function weekScreen(params) {
   };
 
   layout('week', `<div class="hello">${UI.cairn()}<div class="who">${w.isSelf ? '' : UI.avatar(w.person.name, 'lg', w.person.avatar)}<div><h1>${w.isSelf ? `${greet}, ${esc(state.me.user.name.split(' ')[0])}` : who}</h1><p>${w.isSelf ? 'My Week · ' : ''}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div></div>
-    <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a>${weekPick(w.week)}<a class="btn" href="${nav(7)}">Next →</a></div></div>
+    <div class="row"><a class="btn" href="${nav(-7)}">${UI.ph('arrow-left')}Previous</a>${weekPick(w.week)}<a class="btn" href="${nav(7)}">Next${UI.ph('arrow-right')}</a></div></div>
     <div class="grid">
       <div class="tile has-ring"><div><span class="tile-ico t-acc">${UI.icon('score')}</span><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
       <div class="tile"><span class="tile-ico t-good">${UI.icon('check')}</span><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
@@ -391,7 +391,7 @@ function rankEditor(w, people, reload) {
     const pool = w.items.filter((i) => !order.find((o) => o.item_id === i.id) && i.status !== 'blocked_external');
     d.innerHTML = `<h3>Rank ${esc(w.person.name)}'s week</h3><p class="small muted">Top ${max} only. #1 is worth ${state.me.settings.rankWeights[0]}%. Items ranked #1–#${state.me.settings.secondRaterRanks} also get a second rater.</p>
       ${order.map((o, i) => `<div class="card" style="padding:.6rem .8rem"><div class="row spread"><b>#${i + 1} · ${title(o.item_id)}</b>
-        <div class="row"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-down="${i}" ${i === order.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="ghost danger" data-out="${i}">✕</button></div></div>
+        <div class="row"><button type="button" data-up="${i}" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>${UI.ph('arrow-up')}</button><button type="button" data-down="${i}" aria-label="Move down" ${i === order.length - 1 ? 'disabled' : ''}>${UI.ph('arrow-down')}</button><button type="button" class="ghost danger" data-out="${i}">✕</button></div></div>
         <div class="row small"><label style="margin:0"><input type="checkbox" data-stretch="${i}" ${o.stretch ? 'checked' : ''} style="width:auto"> <span class="star-i"></span> Stretch (above level: bonus, no penalty)</label></div>
         ${i < state.me.settings.secondRaterRanks ? `<label>Second rater (someone who uses this work; default: your own manager)</label><select data-second="${i}"><option value="">Default</option>${others.map((p) => `<option value="${esc(p.id)}" ${p.id === o.second_rater_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>` : ''}</div>`).join('') || '<p class="muted">Nothing ranked.</p>'}
       ${pool.length && order.length < max ? `<label>Add to ranking</label><select id="addpool"><option value="">Choose…</option>${pool.map((i) => `<option value="${esc(i.id)}">${esc(i.title)}</option>`).join('')}</select>` : ''}
@@ -514,7 +514,7 @@ async function profileScreen() {
 async function teamScreen(params) {
   const t = await api('GET', `/api/team${params.week ? `?week=${encodeURIComponent(params.week)}` : ''}`);
   const nav = (n) => `#/team?week=${addDays(t.week, n)}`;
-  layout('team', `${UI.head('Manager view', 'Team', `${fmtWeek(t.week)} · each person against their own ranked priorities`, `<a class="btn" href="${nav(-7)}">← Previous</a>${weekPick(t.week)}<a class="btn" href="${nav(7)}">Next →</a>`)}
+  layout('team', `${UI.head('Manager view', 'Team', `${fmtWeek(t.week)} · each person against their own ranked priorities`, `<a class="btn" href="${nav(-7)}">${UI.ph('arrow-left')}Previous</a>${weekPick(t.week)}<a class="btn" href="${nav(7)}">Next${UI.ph('arrow-right')}</a>`)}
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Level</th><th>Department</th><th class="num">Score</th><th class="num">Quality</th><th class="num">Coins</th><th class="num">Alignment</th><th>Flags</th></tr></thead><tbody>
     ${t.people.map((p) => `<tr><td><div class="who">${UI.avatar(p.name, '', p.avatar)}<a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></div></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
       <td class="num"><b>${scoreText(p.score)}</b>${p.score === null ? '' : `<span class="sbar"><i style="width:${p.score}%"></i></span>`}${p.pending ? ` <span class="pill">${p.pending} unrated</span>` : ''}</td><td class="num">${p.qualityPct === null ? '–' : `${p.qualityPct}%`}</td>
@@ -620,7 +620,7 @@ async function peopleScreen() {
     ${admin ? `<div class="card demo-card"><div><h3>Sample data</h3><p class="small muted">${demo.loaded ? 'Demo people and six weeks of ranked, rated work are loaded (their names end in “(demo)”). Open Team or Scorecard to look around. Remove them any time.' : 'Fill this workspace with a few labelled demo people and six weeks of ranked, rated work, so you can try the screens, Slack messages and phone alerts. Remove it with one click.'}</p></div><div class="actions"><button class="${demo.loaded ? 'ghost danger' : 'primary'}" id="demoBtn">${demo.loaded ? 'Remove demo data' : 'Load demo data'}</button></div></div>` : ''}
     ${former.people.length ? `<h2>Former people</h2><p class="small muted">They cannot sign in. Their past weeks, ratings and coins stay on record.</p><div class="card tablewrap"><table><tbody>
       ${former.people.map((u) => `<tr><td><div class="who">${UI.avatar(u.name, '', u.avatar)}<div>${esc(u.name)}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
-    <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit → Reports to.</p>`);
+    <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit, then Reports to.</p>`);
   const managerOptions = (sel, exclude) => (admin ? dir.people : team).filter((x) => x.id !== exclude).map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
   const demoBtn = $('#demoBtn');
   if (demoBtn) demoBtn.onclick = () => run(demoBtn, async () => {
@@ -936,7 +936,7 @@ async function phoneAlertsCard() {
     <ol class="small"><li>Install M91: <a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener">App Store</a> · <a href="https://play.google.com/store/apps/details?id=com.msg91.m91" target="_blank" rel="noopener">Google Play</a></li>
       <li>In the app, create a channel and add the managers and TLs who should answer.</li>
       <li>Tap the paper plane on that channel, copy the link and paste it here.</li></ol>
-    ${a.configured ? `<p>✓ Connected to <b>${esc(a.channel)}</b></p>
+    ${a.configured ? `<p class="ok-line">${UI.ph('check-circle')}Connected to <b>${esc(a.channel)}</b></p>
       <div class="row"><button type="button" id="testAlert" class="primary">Ring our phones to test</button><button type="button" id="dropAlert" class="ghost danger">Disconnect</button></div><p class="small" id="testOut"></p>`
     : `<label>Channel link</label><div class="inline"><input id="m91link" placeholder="Paste the link from M91" autocomplete="off"><button type="button" class="primary" id="saveLink" style="flex:0 0 auto">Connect</button></div><p class="err" id="linkErr"></p>`}
     <h3 style="margin-top:1rem">You'll be asked when…</h3>
@@ -956,8 +956,8 @@ async function phoneAlertsCard() {
       for (let i = 0; i < 40; i++) {
         await new Promise((res) => setTimeout(res, 3000));
         const s = await api('GET', `/api/alerts/test/${encodeURIComponent(r.alertId)}`);
-        if (s.answered || s.responses) { out.textContent = `✓ Answered on a phone${s.answered ? `: "${s.answered}"` : ''}. Phone alerts work.`; return; }
-        if (s.status === 'RESOLVED') { out.textContent = '✓ Closed on a phone. Phone alerts work.'; return; }
+        if (s.answered || s.responses) { out.textContent = `Answered on a phone${s.answered ? `: "${s.answered}"` : ''}. Phone alerts work.`; return; }
+        if (s.status === 'RESOLVED') { out.textContent = 'Closed on a phone. Phone alerts work.'; return; }
       }
       out.textContent = 'No answer yet. Check that a phone in the channel rang.';
     } catch (e) { out.textContent = e.message; }

@@ -1,0 +1,80 @@
+/* ==========================================================================
+   The app: sidebar, page heads, banners, tiles, tables, forms. Tokens from system.css.
+   ========================================================================== */
+svg.ph-i { fill: currentColor; stroke: none; }
+.ph-i { width: 1.25em; height: 1.25em; flex: none; }
+.ok-line { display: flex; align-items: center; gap: var(--space-75); color: var(--good); }
+.ok-line .ph-i { width: 18px; height: 18px; }
+
+/* ---------- sidebar ---------- */
+nav.side { background: var(--surface); border-right: 1px solid var(--border); padding: var(--space-200) var(--space-100); }
+nav.side .brand-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-75); }
+nav.side .brand { padding: var(--space-50) var(--space-75) var(--space-200); font-size: var(--text-base); line-height: var(--lh-base); font-weight: 600; }
+nav.side .brand .logo { width: 28px; height: 28px; border-radius: var(--rad-md); }
+.ws { background: var(--bg); border: 1px solid var(--border); border-radius: var(--rad-xl); }
+.navlabel { margin: var(--space-200) var(--space-75) var(--space-50); font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+nav.side a { gap: var(--space-100); padding: var(--space-75) var(--space-100); border-radius: var(--rad-lg); font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: 500; color: var(--muted); transform: none; }
+nav.side a:hover { background: var(--surface-2); color: var(--text); transform: none; }
+nav.side a svg, nav.side a svg.ph-i { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+nav.side a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+nav.side a.on::before { display: none; }
+nav.side .badge { background: var(--accent); color: var(--on-accent); border-radius: var(--rad-full); font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: 600; padding: 0 var(--space-75); min-width: 20px; text-align: center; }
+.me-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--rad-xl); box-shadow: none; }
+.me-card button svg, .me-card button svg.ph-i { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.topbar button svg.ph-i { width: 22px; height: 22px; }
+
+/* ---------- page heads and section titles ---------- */
+.ph { border-bottom: 1px solid var(--border); padding-bottom: var(--space-200); margin-bottom: var(--space-300); }
+.ph h1 { background: none; color: var(--text); }
+.ph .eyebrow { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: var(--rad-full); padding: var(--space-25) var(--space-100); margin-bottom: var(--space-100); font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: 600; letter-spacing: .06em; }
+.ph .eyebrow::before { background: var(--accent); }
+.ph p { color: var(--muted); }
+main h2::before, .hp-end h2::before { display: none; }
+main h2 { margin: var(--space-400) 0 var(--space-100); }
+
+/* ---------- the My Week banner: flat accent, no shapes ---------- */
+.hello { background: var(--accent); color: var(--on-accent); border-radius: var(--rad-3xl); padding: var(--space-300); display: flex; align-items: center; justify-content: space-between; gap: var(--space-200); flex-wrap: wrap; }
+.hello::before, .hello::after, .hello .cairn-art { display: none; }
+.hello h1 { color: inherit; font-size: var(--text-2xl); line-height: var(--lh-2xl); }
+.hello p { color: inherit; opacity: .9; }
+.hello .btn, .hello .wk-pick { background: color-mix(in srgb, var(--on-accent) 14%, transparent); border-color: color-mix(in srgb, var(--on-accent) 40%, transparent); color: var(--on-accent); }
+.hello .btn:hover, .hello .wk-pick:hover { background: color-mix(in srgb, var(--on-accent) 24%, transparent); }
+.hello .ph-i { width: 18px; height: 18px; }
+
+/* ---------- tiles, with a flat score meter instead of the ring ---------- */
+.tile.has-ring { display: block; }
+.tile .tile-ico { border-radius: var(--rad-lg); }
+.tile-ico svg, .tile-ico svg.ph-i { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.meter-r { height: 6px; margin-top: var(--space-100); border-radius: var(--rad-full); background: var(--surface-3); overflow: hidden; }
+.meter-r i { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--muted); transform: scaleX(var(--m, 0)); transform-origin: left; transition: transform 900ms var(--ease); }
+.meter-r.s-good i { background: var(--good); } .meter-r.s-ok i { background: var(--accent); } .meter-r.s-low i { background: var(--warn); }
+.tile .v { font-family: var(--mono); letter-spacing: -.03em; }
+
+/* ---------- small things ---------- */
+.pill .ph-i { width: 14px; height: 14px; margin-right: var(--space-50); vertical-align: -2px; }
+.btn .ph-i, button .ph-i { width: 18px; height: 18px; }
+.back { display: inline-flex; align-items: center; gap: var(--space-75); }
+.back .ph-i { width: 16px; height: 16px; }
+.back-center { display: flex; justify-content: center; margin-top: var(--space-200); }
+.empty h3 { font-size: var(--text-lg); line-height: var(--lh-lg); }
+.ask-fab svg.ph-i, .ask-fab svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.pw-eye svg.ph-i { width: 20px; height: 20px; }
+.seg i, .seg .fill, .stack .seg i { transition: transform 700ms var(--ease); }
+.row button .ph-i { width: 16px; height: 16px; }
+
+/* ---------- sign in panel and the scoring page: no decorative shapes ---------- */
+.auth-art::before, .auth-art::after, .how-hero::before { display: none; }
+.auth-art { background: var(--accent); color: var(--on-accent); }
+.auth-art h2 { color: inherit; font-size: var(--text-3xl); line-height: var(--lh-3xl); letter-spacing: -.02em; }
+.auth-art li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-100); padding: 0; border-left: 0; animation: none; }
+.auth-art li .ph-i { width: 24px; height: 24px; }
+.auth-art li b { display: block; font-size: var(--text-base); line-height: var(--lh-base); font-weight: 600; }
+.auth-art li span { opacity: .9; font-size: var(--text-sm); line-height: var(--lh-sm); }
+.auth-art .cairn-art { color: var(--on-accent); opacity: .9; }
+
+/* ---------- touch: whole labels are tappable, boxes are bigger ---------- */
+@media (pointer: coarse) {
+  label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { display: flex; align-items: center; gap: var(--space-100); min-height: 44px; }
+  input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; flex: none; }
+}
+@media (pointer: coarse) { .pw-eye { width: 44px; height: 44px; } .how-row .opts .q, .sx-rate button { min-height: 44px; } }
