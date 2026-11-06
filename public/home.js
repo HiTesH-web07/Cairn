@@ -173,14 +173,29 @@
       <div class="hp-kicker reveal">Why it's different</div>
       <h2 class="hp-h2 reveal">Doing more doesn't score more.</h2>
       <p class="hp-sub reveal">Fifty small tasks can't beat two things that mattered. Only the ranked priorities are scored.</p>
-      <div class="hp-vs">
-        <div class="vs reveal"><h3>A busy week</h3><div class="tag">24 small things logged</div>
-          <div class="vs-dots">${Array.from({ length: 24 }, (_, k) => `<i style="--k:${k}"></i>`).join('')}</div>
-          <div class="muted small">Delivered only #3 of the top priorities.</div>
-          <div class="vs-score"><strong>25</strong><small>out of 100</small></div></div>
-        <div class="vs win reveal" style="--rd:.15s"><h3>A focused week</h3><div class="tag">3 priorities, all delivered</div>
-          <div class="vs-cards"><div style="--k:0">#1 Gmail plug launch <em>Done well</em></div><div style="--k:1">#2 Help docs <em>Done well</em></div><div style="--k:2">#3 OAuth refresh <em style="color:var(--warn)">Needs fixes</em></div></div>
-          <div class="vs-score"><strong class="vs-win-n">88</strong><small>out of 100</small></div></div>
+      <div class="dv reveal" id="dv">
+        <p class="sr-only">A busy week: fifty small things logged, only the number three priority delivered, a score of 25 out of 100. A focused week: three priorities delivered, a score of 88 out of 100.</p>
+        <article class="dv-lane dv-busy" aria-hidden="true">
+          <header><h3>A busy week</h3><p>Lots of small things, one priority delivered.</p></header>
+          <div class="dv-viz"><div class="dv-dots">${Array.from({ length: 50 }, () => '<i></i>').join('')}</div><p class="dv-cap">Each small thing earns 0 points.</p></div>
+          <div class="dv-stats">
+            <div><span class="dv-k">Tasks logged</span><b class="dv-n" data-dv-tasks>0</b></div>
+            <div class="dv-score"><span class="dv-k">Score</span><b class="dv-n dv-big" data-dv-s1>0</b><span class="dv-of">/ 100</span></div>
+          </div>
+          <div class="dv-meter"><i data-dv-m1></i></div>
+          <p class="dv-chip" data-dv-still>${ph('minus-circle')}Still 25. More tasks, same score.</p>
+        </article>
+        <article class="dv-lane dv-focus" aria-hidden="true">
+          <header><h3>A focused week</h3><p>Three priorities, all delivered.</p></header>
+          <div class="dv-viz"><ol class="dv-slabs">${[['1', 'Gmail plug launch', 'Done well', 'good'], ['2', 'Help docs', 'Done well', 'good'], ['3', 'OAuth refresh', 'Needs fixes', 'warn']].map((r) => `<li><b>${r[0]}</b><span>${r[1]}</span><em class="pill ${r[3]}">${r[2]}</em></li>`).join('')}</ol></div>
+          <div class="dv-stats">
+            <div><span class="dv-k">Tasks logged</span><b class="dv-n" data-dv-tasks2>0</b></div>
+            <div class="dv-score"><span class="dv-k">Score</span><b class="dv-n dv-big dv-win-n" data-dv-s2>0</b><span class="dv-of">/ 100</span></div>
+          </div>
+          <div class="dv-meter"><i data-dv-m2></i></div>
+          <p class="dv-chip ok" data-dv-win>${ph('check-circle')}Fewer tasks, higher score.</p>
+        </article>
+        <button class="btn ghost dv-replay" type="button" data-dv-replay>${ph('arrow-counter-clockwise')}Replay</button>
       </div>
     </div></section>
 
@@ -334,6 +349,49 @@
     }), { rootMargin: '-35% 0px -60% 0px' });
     NAV_LINKS.forEach(([id]) => { const t = document.getElementById(id); if (t) spy.observe(t); });
     observers.push(spy);
+
+    // why it's different: a short race, once, as it scrolls into view
+    const dv = el.querySelector('#dv');
+    if (dv) {
+      const q = (sel) => dv.querySelector(sel);
+      const dots = [...dv.querySelectorAll('.dv-dots i')]; const slabs = [...dv.querySelectorAll('.dv-slabs li')];
+      const n1 = q('[data-dv-tasks]'); const n2 = q('[data-dv-tasks2]'); const s1 = q('[data-dv-s1]'); const s2 = q('[data-dv-s2]');
+      const m1 = q('[data-dv-m1]'); const m2 = q('[data-dv-m2]'); const still = q('[data-dv-still]'); const win = q('[data-dv-win]');
+      let dts = [];
+      const clearDv = () => { dts.forEach(clearTimeout); dts = []; };
+      const at = (fn, ms) => dts.push(setTimeout(fn, ms));
+      const tween = (node, from, to, ms) => {
+        if (reduce) { node.textContent = to; return; }
+        const t0 = performance.now();
+        const step = (t) => { const p = Math.min(1, (t - t0) / ms); node.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
+        requestAnimationFrame(step);
+      };
+      const final = () => {
+        dots.forEach((d) => d.classList.add('on')); slabs.forEach((l) => l.classList.add('on'));
+        n1.textContent = '50'; n2.textContent = '3'; s1.textContent = '25'; s2.textContent = '88';
+        m1.style.setProperty('--m', '.25'); m2.style.setProperty('--m', '.88'); still.classList.add('on'); win.classList.add('on');
+      };
+      const reset = () => {
+        clearDv(); dots.forEach((d) => d.classList.remove('on')); slabs.forEach((l) => l.classList.remove('on'));
+        [n1, n2, s1, s2].forEach((n) => { n.textContent = '0'; });
+        m1.style.setProperty('--m', '0'); m2.style.setProperty('--m', '0'); still.classList.remove('on'); win.classList.remove('on');
+      };
+      const play = () => {
+        reset(); if (reduce) { final(); return; }
+        dots.forEach((d, i) => at(() => d.classList.add('on'), i < 24 ? i * 45 : 1800 + (i - 24) * 35));
+        tween(n1, 0, 24, 1100); at(() => tween(n1, 24, 50, 900), 1800);
+        at(() => { m1.style.setProperty('--m', '.25'); tween(s1, 0, 25, 700); }, 500);
+        at(() => still.classList.add('on'), 2800);
+        slabs.forEach((l, i) => at(() => l.classList.add('on'), 3300 + i * 450));
+        at(() => { tween(n2, 0, 3, 900); }, 3300);
+        at(() => { m2.style.setProperty('--m', '.88'); tween(s2, 0, 88, 1300); }, 3500);
+        at(() => win.classList.add('on'), 4900);
+      };
+      const dio = new IntersectionObserver((en) => { if (en[0].isIntersecting) { play(); dio.disconnect(); } }, { threshold: 0.4 });
+      dio.observe(dv); observers.push(dio);
+      q('[data-dv-replay]').addEventListener('click', play);
+      cleanups.push(clearDv);
+    }
 
     // tagline: each word turns from muted to full colour, in reading order, as it crosses the trigger line
     const tagEl = el.querySelector('[data-words]');

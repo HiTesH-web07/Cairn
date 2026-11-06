@@ -90,3 +90,8 @@ Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons
 - Phone alerts: handset corners 24px (radius snap bug fixed), icon list instead of rules down the side.
 - 404: branded page for unknown addresses (server) and unknown routes (in the app). Titles reset when you leave it.
 - Sharing: Open Graph and Twitter tags, a 1200 by 630 image (`public/og.png`, navy, Geist, logo mark, headline only). Theme colour follows light and dark.
+
+## Why it's different, rebuilt (follow-up to step 3)
+- Two static boxes became a short race that plays once on scroll, with a Replay button. Busy week: dots fill from 0 to 24 to 50 and the counter follows, while the score stops at 25 ("Still 25. More tasks, same score."). Focused week: three priorities land, the score counts to 88.
+- About 6 seconds end to end. Bars grow with transform, dots and slabs with transform and opacity. Reduced motion shows the final state.
+- Numbers in Geist Mono. The winning week is outlined once in the accent. All figures match the walkthrough (25 and 88).
