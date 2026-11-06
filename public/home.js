@@ -199,16 +199,28 @@
 
     <section class="hp-sec" id="hp-where"><div class="hp-wrap">
       <div class="hp-kicker reveal">Where you work</div>
-      <h2 class="hp-h2 reveal">It meets your team where they already are.</h2>
-      <p class="hp-sub reveal">Nobody has to live in another tool.</p>
-      <div class="hp-where">
-        <div class="hw reveal"><h3>${icon('slack').replace('<svg', '<svg width="20" height="20" style="stroke:var(--accent);fill:none;stroke-width:1.9"')} Slack</h3><p>Private messages: your #1 in the morning, rating requests, a weekly team summary. Nothing in channels.</p>
-          <div class="demo"><div class="dm"><span class="av">PI</span><div><p><b>Good morning Riya.</b> Your #1 to deliver: Gmail plug launch.</p><small>Today · 10:00</small></div></div><div class="typing" aria-hidden="true"><i></i><i></i><i></i></div></div></div>
-        <div class="hw reveal" style="--rd:.12s"><h3>📞 Phone alerts</h3><p>Stuck on a top priority for hours? A phone rings until someone takes it.</p>
-          <div class="demo"><div class="phone"><div class="waves"><i></i><i></i><i></i></div><div class="ap"><b>Riya is blocked on #1</b>Waiting on API keys for 4h<div class="bt"><i>I'll unblock it</i><i>Seen</i></div></div></div></div></div>
-        <div class="hw reveal" style="--rd:.24s"><h3>${icon('people').replace('<svg', '<svg width="20" height="20" style="stroke:var(--accent);fill:none;stroke-width:1.9"')} Your people</h3><p>Invite by link, import a CSV from any HR tool, or sync from Keka. Managers add and look after their own team.</p>
-          <div class="demo"><div class="csv"><div style="--k:0">email,name,role,manager</div><div style="--k:1">amit@co.com,Amit,manager,</div><div style="--k:2">riya@co.com,Riya,member,amit@co.com</div><div style="--k:3">sonal@co.com,Sonal,member,amit@co.com</div></div>
-          <div class="chips" style="margin-top:.6rem"><span>CSV</span><span>Keka</span><span>Invite link</span></div></div></div>
+      <h2 class="hp-h2 reveal">Set up in minutes. Then it lives in Slack.</h2>
+      <p class="hp-sub reveal">Three steps for an admin, and nothing new to learn for everyone else.</p>
+      <div class="wk reveal" id="wk" data-s="0">
+        <div class="wk-tabs" role="tablist">
+          ${[['Connect your tools', 'One click for Slack, Keka and the phone alert. We only read what you tick.'], ['Bring your people', 'Import a CSV, sync from Keka or share invite links. Managers add their own team.'], ['Work arrives in Slack', 'A private message each morning, rating requests and a weekly summary. Nothing in channels.']].map((t, i) => `<button type="button" role="tab" class="wk-tab${i === 0 ? ' on' : ''}" data-i="${i}"><span class="n">${i + 1}</span><b>${t[0]}</b><span class="d">${t[1]}</span><i></i></button>`).join('')}
+        </div>
+        <div class="wk-stage" aria-live="polite">
+          <div class="wk-p wk-p0"><div class="wk-title">Integrations · admin</div>
+            ${[['Slack', 'Private messages to your team', '#4a154b', 'S'], ['Keka', 'Read people and teams, never salary', '#ef4d5e', 'K'], ['M91', 'Phone rings for serious events', '#0d9488', 'M']].map((x, k) => `<div class="wk-conn" style="--k:${k}"><span class="lg" style="background:${x[2]}">${x[3]}</span><div><b>${x[0]}</b><small>${x[1]}</small></div><div class="wk-btn"><span class="b1">Connect</span><span class="b2">✓ Connected</span></div></div>`).join('')}
+            <p class="wk-note">Connections are stored encrypted. You can disconnect any of them at any time.</p></div>
+          <div class="wk-p wk-p1"><div class="wk-title">People · 12 added</div>
+            <div class="wk-src"><span>CSV</span><span>Keka sync</span><span>Invite link</span></div>
+            <div class="wk-org">
+              ${[['Hitesh Ahuja', 'Founder', 'l0'], ['Amit Verma', 'Team lead · Engineering', 'l1'], ['Riya Shah', 'Engineer · reports to Amit', 'l2'], ['Sonal Gupta', 'Engineer · reports to Amit', 'l2'], ['Neha Rao', 'Marketer · reports to Hitesh', 'l1']].map((p, k) => `<div class="wk-per ${p[2]}" style="--k:${k}"><span class="avatar" style="background:hsl(${k * 63 + 230} 65% 52%)">${p[0][0]}</span><div><b>${p[0]}</b><small>${p[1]}</small></div>${k === 4 ? '<em>+ 7 more</em>' : ''}</div>`).join('')}
+            </div></div>
+          <div class="wk-p wk-p2"><div class="wk-title">Slack · direct messages</div>
+            <div class="wk-slack">
+              <div class="wk-msg" style="--k:0"><span class="av">C</span><div><p><b>Good morning Riya.</b> Your #1 this week: <b>Gmail plug launch</b>.</p><small>Mon · 10:00</small><div class="bt"><i class="go">Open my week</i><i>Mark delivered</i></div></div></div>
+              <div class="wk-msg me" style="--k:1"><span class="av">R</span><div><p>Delivered, with the launch checklist attached.</p><small>Thu · 16:20</small></div></div>
+              <div class="wk-msg" style="--k:2"><span class="av">C</span><div><p><b>Amit rated it: Done well.</b> You earned 35 of 80 points this week so far.</p><small>Fri · 11:05</small></div></div>
+            </div></div>
+        </div>
       </div>
     </div></section>
 
@@ -359,6 +371,24 @@
       observers.push(sxv);
       cleanups.push(clear);
       goTo(reduce ? 4 : 0);
+    }
+
+    // Where you work: a three-step setup journey that plays by itself
+    const wk = el.querySelector('#wk');
+    if (wk) {
+      const tabs = [...wk.querySelectorAll('.wk-tab')]; const WD = 6500; let wc = 0; let wvis = false; let wh = false; let wt = null;
+      const wgo = (i) => {
+        clearTimeout(wt); wc = i; wk.dataset.s = String(i);
+        tabs.forEach((t, k) => { t.classList.toggle('on', k === i); t.classList.toggle('done', k < i); t.style.setProperty('--dur', `${WD}ms`); t.setAttribute('aria-selected', k === i); });
+        wk.classList.toggle('paused', wh || !wvis || reduce);
+        if (!reduce && wvis && !wh) wt = setTimeout(() => wgo((i + 1) % 3), WD);
+      };
+      tabs.forEach((t, i) => t.addEventListener('click', () => wgo(i)));
+      wk.addEventListener('mouseenter', () => { wh = true; wgo(wc); });
+      wk.addEventListener('mouseleave', () => { wh = false; wgo(wc); });
+      const wv = new IntersectionObserver((en) => { const v = en[0].isIntersecting; if (v === wvis) return; wvis = v; wgo(v && !reduce ? 0 : wc); }, { threshold: 0.4 });
+      wv.observe(wk); observers.push(wv); cleanups.push(() => clearTimeout(wt));
+      wgo(0);
     }
 
     const rv = new IntersectionObserver((entries) => entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); rv.unobserve(en.target); } }), { threshold: 0.18 });
