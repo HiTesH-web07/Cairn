@@ -1,5 +1,5 @@
 {
-  "name": "proof-of-impact",
+  "name": "cairn",
   "version": "0.1.0",
   "description": "Measure the value of work, not the number of tasks.",
   "main": "src/main.js",

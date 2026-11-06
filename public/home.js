@@ -2,7 +2,7 @@
 // Home: explains the app in about 30 seconds, mostly through motion.
 // Everything is plain HTML and CSS animation; the only script is the step player and scroll reveals.
 (function () {
-  const { icon, logo, ring } = window.UI;
+  const { icon, logo, ring, brand, cairn } = window.UI;
   let timers = [];
   let observers = [];
 
@@ -63,11 +63,12 @@
       : '<a class="btn ghost" href="#/signin">Sign in</a><a class="btn primary" href="#/signup">Get started</a>';
     return `<div class="hp">
     <header class="hp-nav"><div class="hp-wrap">
-      <a class="brand" href="#/home">${logo()}Proof of Impact</a>
+      <a class="brand" href="#/home">${logo()}${brand.name}</a>
       <nav class="hp-links" aria-label="Sections"><a data-go="hp-how">How it works</a><a data-go="hp-vs">Why it's different</a><a data-go="hp-fair">Fairness</a><a data-go="hp-where">Where you work</a></nav>
       <div class="hp-cta">${cta}</div>
     </div></header>
 
+    <div class="hp-herowrap"><div class="hp-deco" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
     <section class="hp-wrap hp-hero">
       <div>
         <div class="hp-eyebrow"><i></i>Measure value, not busyness</div>
@@ -95,6 +96,13 @@
         <div class="hp-float b">★ Rated by 2 people</div>
       </div>
     </section>
+      <div class="hp-wrap hp-strip">
+        <div class="hp-pr reveal"><span class="tile-ico t-acc">${icon('eye')}</span><div><b>No screenshots</b><span>We measure results, never screens.</span></div></div>
+        <div class="hp-pr reveal" style="--rd:.08s"><span class="tile-ico t-teal">${icon('score')}</span><div><b>Task count never counts</b><span>Only ranked priorities score.</span></div></div>
+        <div class="hp-pr reveal" style="--rd:.16s"><span class="tile-ico t-pink">${icon('team')}</span><div><b>Rated in the open</b><span>Two raters on top work, with reasons.</span></div></div>
+        <div class="hp-pr reveal" style="--rd:.24s"><span class="tile-ico t-good">${icon('shield')}</span><div><b>An open formula</b><span>Everyone can see how the score works.</span></div></div>
+      </div>
+    </div>
 
     <section class="hp-sec alt" id="hp-how"><div class="hp-wrap">
       <div class="hp-kicker reveal">How it works</div>
@@ -149,9 +157,21 @@
       </div>
     </div></section>
 
-    <section class="hp-wrap hp-final"><div class="box reveal"><h2>See your own week in two minutes.</h2><p>Create a workspace, invite your team, and rank the first week. No setup call needed.</p>
+    <section class="hp-wrap hp-final"><div class="box reveal">${cairn()}<h2>See your own week in two minutes.</h2><p>Create a workspace, invite your team, and rank the first week. No setup call needed.</p>
       ${signedIn ? '<a class="btn" href="#/week">Open my week</a>' : '<a class="btn" href="#/signup">Create a workspace</a>'}</div></section>
-    <footer class="hp-foot">Proof of Impact · measure value, not busyness</footer>
+    <footer class="hp-end"><div class="hp-wrap">
+      <div class="hp-fgrid">
+        <div class="hp-fbrand"><a class="brand" href="#/home">${logo()}${brand.name}</a>
+          <p>${brand.tagline} A weekly priority stack, rated by the people who used the work, for every team in the company.</p>
+          <div class="hp-tags"><span>No screenshots</span><span>No time tracking</span><span>Open formula</span></div></div>
+        <div><h4>Product</h4><ul><li><a data-go="hp-how">How it works</a></li><li><a data-go="hp-vs">Why it's different</a></li><li><a data-go="hp-fair">Fairness</a></li><li><a data-go="hp-where">Where you work</a></li></ul></div>
+        <div><h4>${signedIn ? 'Your workspace' : 'Get started'}</h4><ul>${signedIn
+          ? '<li><a href="#/week">My Week</a></li><li><a href="#/how">How we score</a></li><li><a href="#/team">Team</a></li>'
+          : '<li><a href="#/signup">Create a workspace</a></li><li><a href="#/signin">Sign in</a></li>'}</ul></div>
+        <div><h4>Our promises</h4><ul class="hp-pledge"><li>No screenshots, ever</li><li>Task count never counts</li><li>Every rating has a reason</li><li>AI never scores anyone</li></ul></div>
+      </div>
+      <div class="hp-fbar"><span class="stones">${logo()}© ${new Date().getFullYear()} ${brand.name}</span><span>${brand.tagline}</span></div>
+    </div></footer>
     </div>`;
   }
 

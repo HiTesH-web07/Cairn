@@ -60,7 +60,7 @@ function init(ctx) {
     db.prepare('UPDATE users SET slack_id = NULL, slack_checked_at = NULL WHERE id = ?').run(req.user.id);
     const sid = await slack.slackIdFor(req.ws, getUser(req));
     if (!sid) throw bad(`Slack has nobody with your work email (${req.user.email}), so the test cannot reach you. Use the same email in Slack as here.`);
-    await slack.dm(req.ws, sid, 'Test from Proof of Impact: Slack messages work. Nothing needs doing.');
+    await slack.dm(req.ws, sid, `Test from ${require('./brand').NAME}: Slack messages work. Nothing needs doing.`);
     vs.markVerified(req.ws.id, 'slack');
     audit(req.ws.id, req.user.id, 'integration.tested', 'integration', 'slack', null);
     return { ok: true, message: 'Sent you a direct message in Slack. Check that it arrived.' };

@@ -1,5 +1,5 @@
 'use strict';
-// Proof of Impact: single-page frontend. All data comes from the server; nothing secret lives here.
+// Cairn: single-page frontend. All data comes from the server; nothing secret lives here.
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -105,8 +105,8 @@ function layout(active, inner) {
   if (window.Home) window.Home.destroy();
   const links = NAV.filter((n) => n[0] === 'sep' || n[2]()).map((n) => (n[0] === 'sep' ? '<div class="sep"></div>'
     : `<a href="#/${n[0]}" class="${n[0] === active ? 'on' : ''}">${UI.icon(n[0])}<span>${n[1]}</span>${n[0] === 'rate' && state.pending ? `<span class="badge">${state.pending}</span>` : ''}</a>`)).join('');
-  $('#app').innerHTML = `<div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>Proof of Impact</b></div>
-  <div class="shell"><nav class="side" id="side"><a class="brand" href="#/home">${UI.logo()}Proof of Impact</a>
+  $('#app').innerHTML = `<div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b></div>
+  <div class="shell"><nav class="side" id="side"><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
   <div class="ws"><b>${esc(state.me.workspace.name)}</b>${esc(state.me.user.name)}</div>${links}
   <div class="sep"></div><a href="#" id="signout">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}<span>Sign out</span></a></nav><main id="main">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
@@ -130,8 +130,8 @@ function authScreen(mode, extra = {}) {
     <label>Your name</label><input name="name" required maxlength="120">
     <label>Choose a password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">`;
   if (window.Home) window.Home.destroy();
-  $('#app').innerHTML = `<div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}Proof of Impact</a>
-    <p class="muted">Measure the value of work, not the number of tasks.</p>
+  $('#app').innerHTML = `<div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
+    <p class="muted">${UI.brand.tagline} Measure the value of work, not the number of tasks.</p>
     ${mode === 'join' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
     <form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : signin}<p class="err" id="autherr"></p>
     <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : 'Sign in'}</button></form></div>`;
@@ -169,6 +169,8 @@ async function weekScreen(params) {
   const weights = state.me.settings.rankWeights;
   const nav = (n) => `#/week?${new URLSearchParams({ ...(params.user ? { user: params.user } : {}), week: addDays(w.week, n) })}`;
   const who = w.isSelf ? 'My Week' : `${esc(w.person.name)}'s week`;
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const itemRow = (it) => {
     const statusCls = it.status === 'delivered' ? 'good' : it.status === 'missed' ? 'bad' : it.status === 'blocked_external' ? 'warn' : '';
@@ -186,7 +188,7 @@ async function weekScreen(params) {
     if ((it.mine || w.canRank) && w.parentOptions.length && !it.parent_item_id) acts.push(`<button class="ghost" data-act="link" data-id="${it.id}">Link to team priority</button>`);
     if (!it.rank && (it.mine || w.canRank)) acts.push(`<button class="ghost danger" data-act="delete" data-id="${it.id}">Remove</button>`);
     const parent = w.parentOptions.find((p) => p.id === it.parent_item_id);
-    return `<div class="item"><div class="rank">${it.rank ? `#${it.rank}<small>${weights[it.rank - 1]}%</small>` : '–'}</div>
+    return `<div class="item"><div class="rank ${it.rank ? `r${Math.min(it.rank, 3)}` : ''}">${it.rank ? `#${it.rank}<small>${weights[it.rank - 1]}%</small>` : '–'}</div>
       <div><h3>${esc(it.title)} ${it.stretch ? '<span class="pill acc">⭐ Stretch</span>' : ''}</h3>
       <div><span class="pill ${statusCls}">${STATUS[it.status]}</span>${it.kind !== 'work' ? `<span class="pill">${it.kind === 'helping' ? 'Helping others' : 'Unplanned'}</span>` : ''}
       ${parent ? `<span class="pill">↑ supports: ${esc(parent.title)}</span>` : ''}</div>
@@ -197,17 +199,17 @@ async function weekScreen(params) {
       </div><div class="actions">${acts.join('')}</div></div>`;
   };
 
-  layout('week', `<div class="row spread"><div><h1>${who}</h1><p class="muted">${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div>
+  layout('week', `<div class="hello">${UI.cairn()}<div class="who">${w.isSelf ? '' : UI.avatar(w.person.name, 'lg')}<div><h1>${w.isSelf ? `${greet}, ${esc(state.me.user.name.split(' ')[0])}` : who}</h1><p>${w.isSelf ? 'My Week · ' : ''}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div></div>
     <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a></div></div>
     <div class="grid">
-      <div class="tile has-ring"><div><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
-      <div class="tile"><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
-      <div class="tile"><div class="k">Coins received</div><div class="v">${w.coins}</div><div class="s">shown beside the score, never added</div></div>
-      <div class="tile"><div class="k">Alignment</div><div class="v">${w.alignment === null ? '–' : `${w.alignment}%`}</div><div class="s">of priority weight linked upward</div></div>
+      <div class="tile has-ring"><div><span class="tile-ico t-acc">${UI.icon('score')}</span><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
+      <div class="tile"><span class="tile-ico t-good">${UI.icon('check')}</span><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
+      <div class="tile"><span class="tile-ico t-warn">${UI.icon('coins')}</span><div class="k">Coins received</div><div class="v">${w.coins}</div><div class="s">shown beside the score, never added</div></div>
+      <div class="tile"><span class="tile-ico t-teal">${UI.icon('link')}</span><div class="k">Alignment</div><div class="v">${w.alignment === null ? '–' : `${w.alignment}%`}</div><div class="s">of priority weight linked upward</div></div>
     </div>
     <div class="card"><div class="row spread"><h2 style="margin:0">Ranked priorities ${w.locked ? '<span class="pill good">🔒 Locked</span>' : '<span class="pill warn">Not locked yet</span>'}</h2>
       <div class="row">${w.canRank ? `<button class="primary" id="rankbtn">${w.locked ? 'Change ranking' : 'Rank this week'}</button>${!w.locked && ranked.length ? '<button id="lockbtn">Lock week</button>' : ''}` : ''}</div></div>
-      ${ranked.length ? ranked.map(itemRow).join('') : `<p class="muted">${w.canRank ? 'Nothing ranked yet. Add work below, then rank the top items.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.'}</p>`}</div>
+      ${ranked.length ? ranked.map(itemRow).join('') : UI.empty('Nothing ranked yet', w.canRank ? 'Add work below, then rank the top items. The first one counts the most.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.')}</div>
     <div class="card"><div class="row spread"><h2 style="margin:0">Not ranked <span class="small muted">(logged, earns 0)</span></h2>
       ${w.isSelf || w.canRank ? '<button id="addbtn">+ Add work</button>' : ''}</div>
       ${unranked.length ? unranked.map(itemRow).join('') : '<p class="muted small">Nothing here.</p>'}</div>
@@ -307,13 +309,13 @@ async function rateScreen() {
   const r = await api('GET', '/api/ratings/pending');
   state.pending = r.items.length;
   layout('rate', `<h1>Rate Work</h1><p class="muted">Rate the result, not the person. Needs fixes and Redo need a note.</p>
-    ${r.items.length ? r.items.map((it) => `<div class="card" data-id="${esc(it.id)}"><div class="row spread"><div><h3>${esc(it.title)}</h3>
+    ${r.items.length ? r.items.map((it) => `<div class="card" data-id="${esc(it.id)}"><div class="who" style="align-items:flex-start">${UI.avatar(it.owner.name, 'lg')}<div style="flex:1"><div class="row spread"><div><h3>${esc(it.title)}</h3>
       <p class="small muted">${esc(it.owner.name)}${it.owner.level ? ` · ${esc(it.owner.level)}` : ''} · ${it.rank ? `ranked #${it.rank} (${it.weight}%)` : 'not ranked'}${it.stretch ? ' · ⭐ Stretch' : ''} · you are the ${it.as === 'primary' ? 'main' : 'second'} rater</p></div></div>
       ${it.details ? `<p class="small">${esc(it.details)}</p>` : ''}
       <p>Proof: ${it.proof_url ? `<a href="${esc(it.proof_url)}" target="_blank" rel="noopener noreferrer">${esc(it.proof_url)}</a> ` : ''}${esc(it.proof_note || '')}</p>
       <label>Note (required for Needs fixes and Redo)</label><textarea class="note"></textarea>
-      <div class="row" style="margin-top:.5rem"><button class="primary" data-q="done_well">✅ Done well</button><button data-q="needs_fixes">⚠️ Needs fixes</button><button data-q="redo">🔁 Redo</button></div></div>`).join('')
-    : '<div class="card"><p class="muted">Nothing waiting for you.</p></div>'}`);
+      <div class="row" style="margin-top:.5rem"><button class="primary" data-q="done_well">✅ Done well</button><button data-q="needs_fixes">⚠️ Needs fixes</button><button data-q="redo">🔁 Redo</button></div></div></div></div>`).join('')
+    : `<div class="card">${UI.empty('All caught up', 'Nothing is waiting for your rating. New work appears here as soon as someone delivers it.')}</div>`}`);
   $('#main').onclick = (e) => {
     const b = e.target.closest('[data-q]');
     if (!b) return;
@@ -333,8 +335,8 @@ async function teamScreen(params) {
   layout('team', `<div class="row spread"><div><h1>Team</h1><p class="muted">${fmtWeek(t.week)} · each person against their own ranked priorities</p></div>
     <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a></div></div>
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Level</th><th>Department</th><th class="num">Score</th><th class="num">Quality</th><th class="num">Coins</th><th class="num">Alignment</th><th>Flags</th></tr></thead><tbody>
-    ${t.people.map((p) => `<tr><td><a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
-      <td class="num">${scoreText(p.score)}${p.pending ? ` <span class="pill">${p.pending} unrated</span>` : ''}</td><td class="num">${p.qualityPct === null ? '–' : `${p.qualityPct}%`}</td>
+    ${t.people.map((p) => `<tr><td><div class="who">${UI.avatar(p.name)}<a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></div></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
+      <td class="num"><b>${scoreText(p.score)}</b>${p.score === null ? '' : `<span class="sbar"><i style="width:${p.score}%"></i></span>`}${p.pending ? ` <span class="pill">${p.pending} unrated</span>` : ''}</td><td class="num">${p.qualityPct === null ? '–' : `${p.qualityPct}%`}</td>
       <td class="num">${p.coins}</td><td class="num">${p.alignment === null ? '–' : `${p.alignment}%`}</td>
       <td>${p.locked ? '' : '<span class="pill warn">not locked</span>'}${p.openBlockers ? `<span class="pill bad">${p.openBlockers} blocked</span>` : ''}${p.onLeave ? `<span class="pill">${p.onLeave}d leave</span>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">Nobody reports to you yet. Invite people from People.</td></tr>'}
     </tbody></table></div>
@@ -431,10 +433,10 @@ async function peopleScreen() {
     <p class="small muted">${admin ? `Add your managers and TLs; ${state.me.settings.managersAddTeam ? 'each of them adds and looks after their own team' : 'only admins add people in this workspace'}. People come from: <b>${src === 'keka' ? 'Keka sync' : src === 'csv' ? 'CSV upload' : 'invite links'}</b> · <a href="#/settings">Settings</a>`
       : adder ? 'Add the people in your team. You can update, move within your team, or mark people who left.' : 'Ask your manager or an admin to add or change people.'}</p>
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${adder ? '<th></th>' : ''}</tr></thead><tbody>
-    ${team.map((u) => `<tr><td><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<div class="small muted">${esc(u.email)}</div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
+    ${team.map((u) => `<tr><td><div class="who">${UI.avatar(u.name)}<div><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
       <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${adder ? `<td><div class="actions">${rowActs(u)}</div></td>` : ''}</tr>`).join('')}</tbody></table></div>
     ${former.people.length ? `<h2>Former people</h2><p class="small muted">They cannot sign in. Their past weeks, ratings and coins stay on record.</p><div class="card tablewrap"><table><tbody>
-      ${former.people.map((u) => `<tr><td>${esc(u.name)}<div class="small muted">${esc(u.email)}</div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${former.people.map((u) => `<tr><td><div class="who">${UI.avatar(u.name)}<div>${esc(u.name)}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
     <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit → Reports to.</p>`);
   const managerOptions = (sel, exclude) => (admin ? dir.people : team).filter((x) => x.id !== exclude).map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
   $('#main').addEventListener('click', (e) => {
@@ -719,7 +721,7 @@ async function phoneAlertsCard() {
   const a = await api('GET', '/api/alerts/setup');
   const answers = { blockers: "I'll unblock it · Blocked by others · Seen", unrated: "I'll rate it today · Seen", unranked: "I'll rank today · Seen", disputes: "I'll decide today · Seen" };
   el.innerHTML = `<h2 style="margin-top:0">Phone alerts</h2>
-    <p>Proof of Impact rings your managers' phones when someone is stuck on a top priority, or when work is waiting on them for days.</p>
+    <p>${UI.brand.name} rings your managers' phones when someone is stuck on a top priority, or when work is waiting on them for days.</p>
     <ol class="small"><li>Install M91: <a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener">App Store</a> · <a href="https://play.google.com/store/apps/details?id=com.msg91.m91" target="_blank" rel="noopener">Google Play</a></li>
       <li>In the app, create a channel and add the managers and TLs who should answer.</li>
       <li>Tap the paper plane on that channel, copy the link and paste it here.</li></ol>

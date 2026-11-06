@@ -1,4 +1,6 @@
-# Proof of Impact
+# Cairn
+
+*Measure what mattered.* A cairn is a small stack of stones that marks the way: three stones, biggest at the bottom, like a priority stack.
 
 Measures the value of work, not the number of tasks.
 
@@ -21,7 +23,7 @@ Secrets go only in `.env` (git-ignored) or Embarko's environment settings.
 
 ## Phone alerts (M91)
 
-Proof of Impact rings managers' phones only when something waits on them and they may not be looking:
+Cairn rings managers' phones only when something waits on them and they may not be looking:
 
 | When | Who is asked | Answers |
 |---|---|---|

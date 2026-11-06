@@ -20,15 +20,35 @@
     eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
     scale: 'M12 3v18M5 7l7-4 7 4M5 7l-3 7a3 3 0 0 0 6 0L5 7zM19 7l-3 7a3 3 0 0 0 6 0l-3-7z',
     sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
+    check: 'M20 6L9 17l-5-5',
+    lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
+    star: 'M12 2l3 6.3 7 .9-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 7-.9z',
     slack: 'M14 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM10 10H4M14 10v6M10 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM10 14v6M18 14a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM18 14h2'
   };
+  const brand = { name: 'Cairn', tagline: 'Measure what mattered.' };
   const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${P[name] || P.how}"/></svg>`;
-  const logo = () => '<span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-6 4 4 7-9"/></svg></span>';
-  // A score ring that draws itself. r = 34 in an 80 box.
+  // The mark: three stones, biggest at the bottom, like a priority stack and like the cairns that mark a path.
+  const stones = (a = 1) => `<ellipse cx="16" cy="24.2" rx="11.6" ry="5.1" transform="rotate(-3 16 24)" fill="#fff" fill-opacity="${.96 * a}"/><ellipse cx="16.9" cy="15.4" rx="8.1" ry="4.3" transform="rotate(4 17 15)" fill="#fff" fill-opacity="${.82 * a}"/><ellipse cx="15.5" cy="8.3" rx="5.1" ry="3.5" transform="rotate(-6 15 8)" fill="#fff" fill-opacity="${.64 * a}"/>`;
+  const logo = () => `<span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true">${stones()}</svg></span>`;
+  const favicon = () => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#4f46e5'/><stop offset='.55' stop-color='#8b5cf6'/><stop offset='1' stop-color='#ec4899'/></linearGradient></defs><rect width='32' height='32' rx='9' fill='url(#g)'/>${stones()}</svg>`);
+  const cairn = (cls = '') => `<svg class="cairn-art ${cls}" viewBox="0 0 120 100" aria-hidden="true"><ellipse cx="60" cy="82" rx="42" ry="14" fill="currentColor" opacity=".9"/><ellipse cx="63" cy="52" rx="30" ry="12" fill="currentColor" opacity=".6"/><ellipse cx="58" cy="26" rx="18" ry="9.5" fill="currentColor" opacity=".38"/><circle cx="96" cy="14" r="3" fill="currentColor" opacity=".25"/><circle cx="20" cy="30" r="2" fill="currentColor" opacity=".2"/></svg>`;
+  // A score ring that draws itself. Colour follows the score. r = 34 in an 80 box.
   function ring(score, extra = '') {
     const c = 2 * Math.PI * 34;
-    const v = score === null || score === undefined ? 0 : Math.max(0, Math.min(100, score));
-    return `<svg class="ring ${extra}" viewBox="0 0 80 80" aria-hidden="true"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-fg" cx="40" cy="40" r="34" style="--c:${c};--final:${c * (1 - v / 100)};stroke-dasharray:${c};stroke-dashoffset:${c * (1 - v / 100)}"/></svg>`;
+    const has = score !== null && score !== undefined;
+    const v = has ? Math.max(0, Math.min(100, score)) : 0;
+    const tone = !has ? 's-none' : v >= 85 ? 's-good' : v >= 60 ? 's-ok' : 's-low';
+    return `<svg class="ring ${tone} ${extra}" viewBox="0 0 80 80" aria-hidden="true"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-fg" cx="40" cy="40" r="34" style="--c:${c};--final:${c * (1 - v / 100)};stroke-dasharray:${c};stroke-dashoffset:${c * (1 - v / 100)}"/></svg>`;
   }
-  window.UI = { icon, logo, ring };
+  // A round avatar: initial on a colour taken from the name, so a person always looks the same.
+  function avatar(name, size = '') {
+    const n = String(name || '?').trim();
+    let h = 0;
+    for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    return `<span class="avatar ${size}" style="--h:${h}" aria-hidden="true">${esc(n.charAt(0).toUpperCase())}</span>`;
+  }
+  // An empty state with a little illustration, instead of a bare line of grey text.
+  const empty = (title, text, action = '') => `<div class="empty">${cairn()}<h3>${title}</h3><p>${text}</p>${action}</div>`;
+  window.UI = { brand, icon, logo, ring, avatar, empty, cairn, favicon };
 })();

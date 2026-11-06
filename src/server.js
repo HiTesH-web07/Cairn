@@ -1036,7 +1036,7 @@ app.post('/api/alerts/test', auth, adminOnly, async (req, res, next) => {
     if (Date.now() - (lastTest.get(req.ws.id) || 0) < 60e3) throw bad('Wait a minute between tests');
     lastTest.set(req.ws.id, Date.now());
     const r = await m91.send(alerts.linkOf(req.ws), {
-      title: `Test from Proof of Impact: ${req.user.name} checked that phone alerts work`,
+      title: `Test from ${require('./brand').NAME}: ${req.user.name} checked that phone alerts work`,
       description: 'This is a test. Nothing needs doing. Tap "It rang" so the app knows it reached you.',
       severity: 'LOW', isAutoClose: true,
       responseOptions: [{ label: 'It rang', effect: 'SHARED' }, { label: 'Seen', effect: 'PERSONAL' }]

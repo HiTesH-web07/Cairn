@@ -139,7 +139,7 @@ test('Slack messages: rating requests, locked weeks, schedule, once-only, toggle
   assert.match(locked.input.content, /35%/);
   assert.equal(F.dms.filter((d) => d.input.content.includes('Docs')).length, 0, 'aman is not in Slack: skipped, no guess');
   assert.equal(db.prepare("SELECT status FROM slack_outbox WHERE key LIKE 'locked:%' AND user_id = ?").get(aman.id).status, 'skipped');
-  assert.equal(locked.input.bot_details.bot_name, 'Proof of Impact');
+  assert.equal(locked.input.bot_details.bot_name, require('../src/brand').NAME);
   assert.equal(locked.input.isScheduledMessage, 'no');
 
   // Delivery: main rater (tl) and second rater (tl's manager) are asked, privately, once

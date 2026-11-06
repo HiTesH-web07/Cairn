@@ -11,7 +11,7 @@
 const { VsError, scrub } = require('./viasocket');
 
 const SLACK_ID_RE = /^[UW][A-Z0-9]{6,}$/;
-const BOT_NAME = 'Proof of Impact';
+const BOT_NAME = require('./brand').NAME;
 const DAY = 864e5;
 
 // Slack user ids only ever come from a lookup by exact work email, and must look like a Slack id.
