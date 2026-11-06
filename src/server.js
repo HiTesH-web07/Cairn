@@ -131,7 +131,10 @@ function visibleUsers(actor) {
   const ids = [actor.id, ...subtreeIds(actor.workspace_id, actor.id)];
   return ids.map((id) => userIn(actor.workspace_id, id)).filter((u) => u && u.active);
 }
-const publicUser = (u) => u && ({ id: u.id, name: u.name, email: u.email, role: u.role, level: u.level, department: u.department, reports_to: u.reports_to, phone: u.phone, active: !!u.active, joined: !!u.pw_hash });
+try { db.exec('ALTER TABLE users ADD COLUMN avatar TEXT'); } catch { /* already there */ }
+// A picture is stored once and served from its own address, so lists of people stay small.
+const avatarRef = (u) => (!u || !u.avatar ? null : u.avatar.startsWith('preset:') ? u.avatar : `/api/avatar/${u.id}?v=${u.avatar.length}${u.avatar.slice(-8).replace(/[^a-z0-9]/gi, '')}`);
+const publicUser = (u) => u && ({ id: u.id, name: u.name, email: u.email, role: u.role, level: u.level, department: u.department, reports_to: u.reports_to, phone: u.phone, active: !!u.active, joined: !!u.pw_hash, avatar: avatarRef(u) });
 
 // ---------- auth ----------
 function parseCookies(h) {
@@ -250,6 +253,57 @@ app.get('/api/invites/:token', wrap((req) => {
   return { email: inv.email, workspace: getWs(inv.workspace_id).name, role: inv.role };
 }));
 
+
+
+// ---------- your own profile ----------
+const AVATAR_PRESETS = 12;
+const AVATAR_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+app.patch('/api/profile', auth, wrap((req) => {
+  const b = req.body || {};
+  const upd = {};
+  if (b.name !== undefined) upd.name = str(b.name, 'Name', { max: 120 });
+  if (b.phone !== undefined) {
+    const p = String(b.phone || '').trim();
+    if (p && !/^\+?[0-9 ()-]{6,20}$/.test(p)) throw bad('Phone numbers use digits, spaces and + only, for example +91 98765 43210');
+    upd.phone = p || null;
+  }
+  if (b.avatar !== undefined) {
+    const v = b.avatar;
+    if (v === null || v === '') upd.avatar = null;
+    else if (typeof v === 'string' && /^preset:\d{1,2}$/.test(v) && Number(v.slice(7)) < AVATAR_PRESETS) upd.avatar = v;
+    else if (typeof v === 'string' && v.length <= 90000 && AVATAR_RE.test(v)) upd.avatar = v;
+    else throw bad('Pick a JPEG, PNG or WebP picture under about 60 KB, or one of the avatars');
+  }
+  const ks = Object.keys(upd);
+  if (!ks.length) return { ok: true, user: publicUser(req.user) };
+  db.prepare(`UPDATE users SET ${ks.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...ks.map((k) => upd[k]), req.user.id);
+  audit(req.ws.id, req.user.id, 'profile.updated', 'user', req.user.id, { fields: ks });
+  return { ok: true, user: publicUser(userIn(req.ws.id, req.user.id)) };
+}));
+
+app.post('/api/profile/password', auth, wrap((req) => {
+  rateLimit(`pwchange:${req.user.id}`);
+  const cur = str(req.body.current, 'Current password', { max: 200 });
+  const next = str(req.body.password, 'New password', { min: 10, max: 200 });
+  const row = db.prepare('SELECT pw_hash FROM users WHERE id = ?').get(req.user.id);
+  if (!checkPassword(cur, row.pw_hash)) throw bad('Your current password is not right');
+  if (cur === next) throw bad('Choose a password that is different from the current one');
+  const sid = parseCookies(req.headers.cookie).sid;
+  db.transaction(() => {
+    db.prepare('UPDATE users SET pw_hash = ? WHERE id = ?').run(hashPassword(next), req.user.id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(req.user.id, sid ? sha(sid) : '');
+    audit(req.ws.id, req.user.id, 'password.changed', 'user', req.user.id, null);
+  })();
+  return { ok: true };
+}));
+
+app.get('/api/avatar/:id', auth, (req, res) => {
+  const u = userIn(req.ws.id, req.params.id);
+  const m = u && u.avatar && /^data:(image\/[a-z]+);base64,(.+)$/.exec(u.avatar);
+  if (!m) return res.status(404).end();
+  res.set({ 'Content-Type': m[1], 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+  res.send(Buffer.from(m[2], 'base64'));
+});
 
 // ---------- forgotten passwords ----------
 // A reset link works once and expires. It is never put in an API answer to the person asking:
@@ -978,7 +1032,7 @@ app.get('/api/ratings/pending', auth, wrap((req) => {
     const sec = !prim && canBeSecond(req.user, it, req.settings);
     if (!prim && !sec) continue;
     const owner = userIn(req.ws.id, it.user_id);
-    out.push({ ...itemView(it, req.user), owner: { id: owner.id, name: owner.name, level: owner.level }, as: prim ? 'primary' : 'second', weight: S.weightForRank(it.rank, req.settings) });
+    out.push({ ...itemView(it, req.user), owner: { id: owner.id, name: owner.name, level: owner.level, avatar: avatarRef(owner) }, as: prim ? 'primary' : 'second', weight: S.weightForRank(it.rank, req.settings) });
   }
   return { items: out };
 }));
@@ -1134,7 +1188,7 @@ app.get('/api/team', auth, wrap((req) => {
     const openBlockers = db.prepare('SELECT COUNT(*) c FROM blockers WHERE workspace_id = ? AND user_id = ? AND resolved_at IS NULL').get(req.ws.id, u.id).c;
     const stack = stackOf(req.ws.id, u.id, week);
     return {
-      id: u.id, name: u.name, level: u.level, department: u.department, reports_to: u.reports_to, role: u.role,
+      id: u.id, name: u.name, level: u.level, department: u.department, reports_to: u.reports_to, role: u.role, avatar: avatarRef(u),
       score: c.score, pending: c.pending, qualityPct: rated ? Math.round((q.done_well / rated) * 100) : null, quality: q,
       coins: c.coins, alignment: c.alignment, openBlockers, locked: !!(stack && stack.locked_at), onLeave: c.leave.days.length
     };

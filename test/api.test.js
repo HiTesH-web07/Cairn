@@ -392,3 +392,28 @@ test('reset emails: sent to the inbox when email is set up, with the same answer
     assert.equal(status.body.mail.configured, true);
   } finally { mailMod.send = orig; delete process.env.MAIL_TRANSPORT; delete process.env.MAIL_FROM; }
 });
+
+test('profile: change name, phone and picture; change password needs the current one and signs out other devices', async () => {
+  const owner = client();
+  assert.equal((await owner('POST', '/api/auth/signup', { company: 'ProfCo', name: 'Pat Owner', email: 'pat@profco.test', password: PW, timezone: 'UTC' })).status, 200);
+  const other = client();
+  assert.equal((await other('POST', '/api/auth/login', { email: 'pat@profco.test', password: PW })).status, 200);
+  const tiny = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  let r = await owner('PATCH', '/api/profile', { name: 'Patricia Owner', phone: '+91 98765 43210', avatar: tiny });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.ok(r.body.user.avatar.startsWith('/api/avatar/'));
+  const img = await fetch(base + r.body.user.avatar, { headers: { cookie: '' } });
+  assert.equal(img.status, 401); // pictures need a signed-in session
+  assert.equal((await owner('GET', '/api/me')).body.user.name, 'Patricia Owner');
+  assert.equal((await owner('PATCH', '/api/profile', { avatar: 'data:text/html;base64,PGI+' })).status, 400);
+  assert.equal((await owner('PATCH', '/api/profile', { avatar: 'preset:99' })).status, 400);
+  assert.equal((await owner('PATCH', '/api/profile', { phone: 'call me' })).status, 400);
+  assert.equal((await owner('PATCH', '/api/profile', { avatar: 'preset:3' })).body.user.avatar, 'preset:3');
+  // password
+  assert.equal((await owner('POST', '/api/profile/password', { current: 'wrong-wrong-1', password: 'new-password-123' })).status, 400);
+  assert.equal((await owner('POST', '/api/profile/password', { current: PW, password: PW })).status, 400);
+  assert.equal((await owner('POST', '/api/profile/password', { current: PW, password: 'new-password-123' })).status, 200);
+  assert.equal((await owner('GET', '/api/me')).status, 200); // this device stays signed in
+  assert.equal((await other('GET', '/api/me')).status, 401); // the other one does not
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'pat@profco.test', password: 'new-password-123' })).status, 200);
+});

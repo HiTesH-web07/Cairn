@@ -14,6 +14,7 @@
     integrations: 'M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4',
     settings: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
     audit: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2',
+    profile: 'M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
     how: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
     link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
     shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
@@ -40,8 +41,27 @@
     const tone = !has ? 's-none' : v >= 85 ? 's-good' : v >= 60 ? 's-ok' : 's-low';
     return `<svg class="ring ${tone} ${extra}" viewBox="0 0 80 80" aria-hidden="true"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-fg" cx="40" cy="40" r="34" style="--c:${c};--final:${c * (1 - v / 100)};stroke-dasharray:${c};stroke-dashoffset:${c * (1 - v / 100)}"/></svg>`;
   }
-  // A round avatar: initial on a colour taken from the name, so a person always looks the same.
-  function avatar(name, size = '') {
+  // Twelve ready-made avatars for people who would rather not upload a photo.
+  const PRESET_BG = ['#4f46e5,#8b5cf6', '#8b5cf6,#ec4899', '#0d9488,#4f46e5', '#f59e0b,#ec4899', '#059669,#0d9488', '#2563eb,#8b5cf6', '#ec4899,#f59e0b', '#7c3aed,#2563eb', '#0ea5e9,#059669', '#db2777,#7c3aed', '#16a34a,#f59e0b', '#475569,#4f46e5'];
+  const PRESET_ART = [
+    '<ellipse cx="12" cy="18" rx="7" ry="2.6"/><ellipse cx="12" cy="12.5" rx="5" ry="2.3"/><ellipse cx="12" cy="7.6" rx="3" ry="1.9"/>',
+    '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+    '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    '<path d="M3 19 9.5 7l4 7 2.5-4L21 19z"/>',
+    '<path d="M5 19C5 10 11 5 19 5c0 8-5 14-14 14zM5 19 13 11"/>',
+    '<path d="M13 3 5 13h6l-1 8 8-10h-6z"/>',
+    '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+    '<path d="M3 9c3-3 5 3 9 0s6 3 9 0M3 15c3-3 5 3 9 0s6 3 9 0"/>',
+    '<path d="m12 3 8 9-8 9-8-9z"/>',
+    '<circle cx="9" cy="9" r="3.2"/><circle cx="16" cy="10" r="2.4"/><path d="M3.5 19c.8-3.4 3-5 5.5-5s4.7 1.6 5.5 5M14 15c2.4-.3 4.7.8 6 4"/>',
+    '<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+    '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.4A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'
+  ];
+  const presetAvatar = (i, size = '') => `<span class="avatar ${size} preset" style="background:linear-gradient(135deg,${PRESET_BG[i]})" aria-hidden="true"><svg viewBox="0 0 24 24">${PRESET_ART[i]}</svg></span>`;
+  // A round avatar: a picture or ready-made avatar when the person chose one, otherwise their initial on a colour taken from the name.
+  function avatar(name, size = '', pic = null) {
+    if (typeof pic === 'string' && pic.startsWith('/api/avatar/')) return `<span class="avatar ${size} has-img" aria-hidden="true"><img src="${pic}" alt="" loading="lazy"></span>`;
+    if (typeof pic === 'string' && /^preset:\d+$/.test(pic) && PRESET_BG[Number(pic.slice(7))]) return presetAvatar(Number(pic.slice(7)), size);
     const n = String(name || '?').trim();
     let h = 0;
     for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360;
@@ -95,5 +115,5 @@
     applyTheme(next);
     try { localStorage.setItem(THEME_KEY, next); } catch (err) { /* not saved */ }
   });
-  window.UI = { themeBtn, brand, icon, logo, ring, avatar, empty, cairn, favicon , stack, head, skeleton };
+  window.UI = { themeBtn, brand, icon, logo, ring, avatar, presetAvatar, PRESET_COUNT: PRESET_BG.length, empty, cairn, favicon , stack, head, skeleton };
 })();

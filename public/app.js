@@ -111,6 +111,7 @@ const NAV = [
   ['settings', 'Settings', isAdmin],
   ['label', 'Reference'],
   ['audit', 'History log', () => true],
+  ['profile', 'My profile', () => true],
   ['how', 'How we score', () => true]
 ];
 function layout(active, inner) {
@@ -128,7 +129,7 @@ function layout(active, inner) {
   $('#app').innerHTML = `<a class="skip" href="#" id="skip">Skip to content</a><div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b>${UI.themeBtn()}</div>
   <div class="shell"><nav class="side" id="side" aria-label="Main"><div class="brand-row"><a class="brand" href="#/week" title="My Week">${UI.logo()}${UI.brand.name}</a>${UI.themeBtn()}</div>
   <div class="ws"><span>Workspace</span><b>${esc(state.me.workspace.name)}</b></div>${links.join('')}
-  <div class="me-card">${UI.avatar(u.name)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
+  <div class="me-card"><a class="me-link" href="#/profile" title="My profile">${UI.avatar(u.name, '', u.avatar)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div></a><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
   $('#skip').onclick = (e) => { e.preventDefault(); $('#main').focus(); };
   $('#side').addEventListener('click', (e) => { if (e.target.closest('a[href^="#/"]')) $('#side').classList.remove('open'); });
@@ -256,7 +257,7 @@ async function weekScreen(params) {
       </div><div class="actions">${acts.join('')}</div></div>`;
   };
 
-  layout('week', `<div class="hello">${UI.cairn()}<div class="who">${w.isSelf ? '' : UI.avatar(w.person.name, 'lg')}<div><h1>${w.isSelf ? `${greet}, ${esc(state.me.user.name.split(' ')[0])}` : who}</h1><p>${w.isSelf ? 'My Week · ' : ''}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div></div>
+  layout('week', `<div class="hello">${UI.cairn()}<div class="who">${w.isSelf ? '' : UI.avatar(w.person.name, 'lg', w.person.avatar)}<div><h1>${w.isSelf ? `${greet}, ${esc(state.me.user.name.split(' ')[0])}` : who}</h1><p>${w.isSelf ? 'My Week · ' : ''}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div></div>
     <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a>${weekPick(w.week)}<a class="btn" href="${nav(7)}">Next →</a></div></div>
     <div class="grid">
       <div class="tile has-ring"><div><span class="tile-ico t-acc">${UI.icon('score')}</span><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
@@ -367,7 +368,7 @@ async function rateScreen() {
   const r = await api('GET', '/api/ratings/pending');
   state.pending = r.items.length;
   layout('rate', `${UI.head('Review', 'Rate work', `Rate the result, not the person. Needs fixes and Redo need a note.`)}
-    ${r.items.length ? r.items.map((it) => `<div class="card" data-id="${esc(it.id)}"><div class="who" style="align-items:flex-start">${UI.avatar(it.owner.name, 'lg')}<div style="flex:1"><div class="row spread"><div><h3>${esc(it.title)}</h3>
+    ${r.items.length ? r.items.map((it) => `<div class="card" data-id="${esc(it.id)}"><div class="who" style="align-items:flex-start">${UI.avatar(it.owner.name, 'lg', it.owner.avatar)}<div style="flex:1"><div class="row spread"><div><h3>${esc(it.title)}</h3>
       <p class="small muted">${esc(it.owner.name)}${it.owner.level ? ` · ${esc(it.owner.level)}` : ''} · ${it.rank ? `ranked #${it.rank} (${it.weight}%)` : 'not ranked'}${it.stretch ? ' · Stretch' : ''} · you are the ${it.as === 'primary' ? 'main' : 'second'} rater</p></div></div>
       ${it.details ? `<p class="small">${esc(it.details)}</p>` : ''}
       <p>Proof: ${it.proof_url ? `<a href="${esc(it.proof_url)}" target="_blank" rel="noopener noreferrer">${esc(it.proof_url)}</a> ` : ''}${esc(it.proof_note || '')}</p>
@@ -386,13 +387,67 @@ async function rateScreen() {
   };
 }
 
+
+// ---------- My profile ----------
+async function profileScreen() {
+  const u = state.me.user;
+  const days = null; void days;
+  layout('profile', `${UI.head('Account', 'My profile', 'Your picture, your details and your password.')}
+  <div class="prof">
+    <section class="card sect"><h3>Picture</h3><p class="small muted">A photo or an avatar shows beside your name for your team. Your initial is used if you pick nothing.</p>
+      <div class="pic-row"><div id="picPrev">${UI.avatar(u.name, 'xl', u.avatar)}</div>
+        <div class="pic-actions"><label class="btn primary filebtn">Upload a photo<input type="file" id="picFile" accept="image/png,image/jpeg,image/webp" hidden></label>
+          <button type="button" id="picRemove" ${u.avatar ? '' : 'disabled'}>Use my initial</button><p class="small muted" id="picMsg">JPEG, PNG or WebP. It is cropped to a square.</p></div></div>
+      <h4 class="sub">Or pick an avatar</h4>
+      <div class="presets" role="group" aria-label="Avatars">${Array.from({ length: UI.PRESET_COUNT }, (_, i) => `<button type="button" class="preset-btn${u.avatar === `preset:${i}` ? ' on' : ''}" data-preset="${i}" aria-label="Avatar ${i + 1}" aria-pressed="${u.avatar === `preset:${i}`}">${UI.presetAvatar(i, 'lg')}</button>`).join('')}</div>
+    </section>
+    <form class="card sect" id="basics"><h3>Basics</h3><p class="small muted">Your name and phone show to people in your workspace. Role, level and team are set by your admin or manager.</p>
+      <div class="inline"><div><label>Name</label><input name="name" value="${esc(u.name)}" required maxlength="120" autocomplete="name"></div>
+      <div><label>Phone (optional)</label><input name="phone" value="${esc(u.phone || '')}" placeholder="+91 98765 43210" autocomplete="tel"></div></div>
+      <div class="inline"><div><label>Email</label><input value="${esc(u.email)}" readonly></div><div><label>Role</label><input value="${esc([u.role, u.level, u.department].filter(Boolean).join(' · '))}" readonly></div></div>
+      <p class="err" id="berr"></p><button class="primary">Save changes</button></form>
+    <form class="card sect" id="pwform"><h3>Change password</h3><p class="small muted">You will stay signed in here. Other devices are signed out.</p>
+      <label>Current password</label><input name="current" type="password" required autocomplete="current-password">
+      <label>New password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">
+      <label>Type the new one again</label><input name="again" type="password" minlength="10" required autocomplete="new-password">
+      <p class="err" id="perr"></p><button class="primary">Change password</button></form>
+  </div>`);
+  addPwToggles($('#pwform'));
+  const save = async (patch, okMsg) => { const r = await api('PATCH', '/api/profile', patch); state.me.user = { ...state.me.user, ...r.user }; toast(okMsg); profileScreen(); };
+  $('#main').querySelectorAll('[data-preset]').forEach((b) => { b.onclick = () => save({ avatar: `preset:${b.dataset.preset}` }, 'Avatar saved').catch((e) => toast(e.message)); });
+  $('#picRemove').onclick = () => save({ avatar: null }, 'Using your initial').catch((e) => toast(e.message));
+  $('#picFile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const msg = $('#picMsg');
+    try {
+      if (f.size > 8 * 1024 * 1024) throw new Error('That picture is too large. Pick one under 8 MB.');
+      const bmp = await createImageBitmap(f);
+      const side = Math.min(bmp.width, bmp.height); const c = document.createElement('canvas'); c.width = c.height = 192;
+      c.getContext('2d').drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 192, 192);
+      let q = 0.85; let data = c.toDataURL('image/jpeg', q);
+      while (data.length > 80000 && q > 0.4) { q -= 0.1; data = c.toDataURL('image/jpeg', q); }
+      msg.textContent = 'Saving…';
+      await save({ avatar: data }, 'Picture saved');
+    } catch (err) { msg.textContent = err.message || 'That file could not be read as a picture.'; }
+  };
+  $('#basics').onsubmit = async (e) => { e.preventDefault(); const fd = Object.fromEntries(new FormData(e.target).entries()); try { await save({ name: fd.name, phone: fd.phone }, 'Saved'); } catch (err) { $('#berr').textContent = err.message; } };
+  $('#pwform').onsubmit = async (e) => {
+    e.preventDefault(); const fd = Object.fromEntries(new FormData(e.target).entries());
+    try {
+      if (fd.password !== fd.again) throw new Error('The two new passwords are not the same');
+      await api('POST', '/api/profile/password', { current: fd.current, password: fd.password });
+      toast('Password changed'); e.target.reset(); $('#perr').textContent = '';
+    } catch (err) { $('#perr').textContent = err.message; }
+  };
+}
+
 // ---------- Team ----------
 async function teamScreen(params) {
   const t = await api('GET', `/api/team${params.week ? `?week=${encodeURIComponent(params.week)}` : ''}`);
   const nav = (n) => `#/team?week=${addDays(t.week, n)}`;
   layout('team', `${UI.head('Manager view', 'Team', `${fmtWeek(t.week)} · each person against their own ranked priorities`, `<a class="btn" href="${nav(-7)}">← Previous</a>${weekPick(t.week)}<a class="btn" href="${nav(7)}">Next →</a>`)}
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Level</th><th>Department</th><th class="num">Score</th><th class="num">Quality</th><th class="num">Coins</th><th class="num">Alignment</th><th>Flags</th></tr></thead><tbody>
-    ${t.people.map((p) => `<tr><td><div class="who">${UI.avatar(p.name)}<a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></div></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
+    ${t.people.map((p) => `<tr><td><div class="who">${UI.avatar(p.name, '', p.avatar)}<a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></div></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
       <td class="num"><b>${scoreText(p.score)}</b>${p.score === null ? '' : `<span class="sbar"><i style="width:${p.score}%"></i></span>`}${p.pending ? ` <span class="pill">${p.pending} unrated</span>` : ''}</td><td class="num">${p.qualityPct === null ? '–' : `${p.qualityPct}%`}</td>
       <td class="num">${p.coins}</td><td class="num">${p.alignment === null ? '–' : `${p.alignment}%`}</td>
       <td>${p.locked ? '' : '<span class="pill warn">not locked</span>'}${p.openBlockers ? `<span class="pill bad">${p.openBlockers} blocked</span>` : ''}${p.onLeave ? `<span class="pill">${p.onLeave}d leave</span>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">Nobody reports to you yet. Invite people from People.</td></tr>'}
@@ -491,11 +546,11 @@ async function peopleScreen() {
     <p class="small muted">${admin ? `Add your managers and TLs; ${state.me.settings.managersAddTeam ? 'each of them adds and looks after their own team' : 'only admins add people in this workspace'}. People come from: <b>${src === 'keka' ? 'Keka sync' : src === 'csv' ? 'CSV upload' : 'invite links'}</b> · <a href="#/settings">Settings</a>`
       : adder ? 'Add the people in your team. You can update, move within your team, or mark people who left.' : 'Ask your manager or an admin to add or change people.'}</p>
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${adder ? '<th></th>' : ''}</tr></thead><tbody>
-    ${team.map((u) => `<tr><td><div class="who">${UI.avatar(u.name)}<div><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
+    ${team.map((u) => `<tr><td><div class="who">${UI.avatar(u.name, '', u.avatar)}<div><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
       <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${adder ? `<td><div class="actions">${rowActs(u)}</div></td>` : ''}</tr>`).join('')}</tbody></table></div>
     ${admin ? `<div class="card demo-card"><div><h3>Sample data</h3><p class="small muted">${demo.loaded ? 'Demo people and six weeks of ranked, rated work are loaded (their names end in “(demo)”). Open Team or Scorecard to look around. Remove them any time.' : 'Fill this workspace with a few labelled demo people and six weeks of ranked, rated work, so you can try the screens, Slack messages and phone alerts. Remove it with one click.'}</p></div><div class="actions"><button class="${demo.loaded ? 'ghost danger' : 'primary'}" id="demoBtn">${demo.loaded ? 'Remove demo data' : 'Load demo data'}</button></div></div>` : ''}
     ${former.people.length ? `<h2>Former people</h2><p class="small muted">They cannot sign in. Their past weeks, ratings and coins stay on record.</p><div class="card tablewrap"><table><tbody>
-      ${former.people.map((u) => `<tr><td><div class="who">${UI.avatar(u.name)}<div>${esc(u.name)}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${former.people.map((u) => `<tr><td><div class="who">${UI.avatar(u.name, '', u.avatar)}<div>${esc(u.name)}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
     <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit → Reports to.</p>`);
   const managerOptions = (sel, exclude) => (admin ? dir.people : team).filter((x) => x.id !== exclude).map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
   const demoBtn = $('#demoBtn');
@@ -889,7 +944,7 @@ async function route() {
       return;
     }
     if (!state.me) return authScreen(page === 'signup' ? 'signup' : 'signin', params.reset ? { notice: 'Password updated. Sign in with your new password.' } : {});
-    const screens = { week: weekScreen, rate: rateScreen, team: teamScreen, score: scoreScreen, coins: coinsScreen, disputes: disputesScreen, incidents: incidentsScreen, people: peopleScreen, integrations: integrationsScreen, settings: settingsScreen, audit: auditScreen, how: howScreen };
+    const screens = { week: weekScreen, rate: rateScreen, team: teamScreen, score: scoreScreen, coins: coinsScreen, disputes: disputesScreen, incidents: incidentsScreen, people: peopleScreen, integrations: integrationsScreen, settings: settingsScreen, profile: profileScreen, audit: auditScreen, how: howScreen };
     await (screens[page] || weekScreen)(params);
     window.scrollTo(0, 0);
   } catch (e) {
