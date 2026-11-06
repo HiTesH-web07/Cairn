@@ -1,27 +1,28 @@
 # Cairn design decision record
 
-Source of truth for visual decisions. Read this before changing any style.
-Guide: the `landing-page-design` skill (elayadesign/ai-design-skills). Where this file and the skill differ, the difference is listed under "Deliberate deviations".
+The source of truth for how Cairn looks. Read it before changing any style. Guide: the `landing-page-design` skill (elayadesign/ai-design-skills). Where the owner chose differently from the skill, it is listed at the end.
 
-## Approved (2026-11-06)
-| Area | Decision |
+## Direction
+Flat, quiet, confident. Real product visuals carry the story (the ledger, the race, the phone), not decoration. Navy dark theme, white light theme, one accent.
+
+## Files
+| File | What it holds |
 |---|---|
-| Direction | Flat, quiet, confident. Real product visuals carry the story, not decoration. |
-| Gradients | Only the logo mark, and the hero heading text (left to right: white to #9B9B9B in dark, black to #666666 in light). Nothing else. |
-| Dark theme | Navy, chosen by the owner after seeing both (2026-11-06). Page #0B0D17, surface #131728, raised #1A1F35, border #252B45, footer #0C0E22. Overrides the skill's neutral list. |
-| Copy | Allowed: one consistent primary action ("Create a workspace"), a tagline reveal and a Home FAQ reusing existing wording. Nothing else is rewritten. |
-| Legal pages | Privacy and Terms are omitted until real documents exist. No dead links. |
-| Scope | Home plus every app screen. |
+| `public/system.css` | Tokens (type, spacing, radius, colour, motion), named text styles, buttons, fields, cards, pills. Loaded after `style.css`, wins over it. Never prune it. |
+| `public/home.css` | Home: nav, hero, every section, FAQ, closing, footer, 404 |
+| `public/app.css` | The app: sidebar, page heads, banners, tiles, touch, contrast fixes |
+| `public/style.css` | Older shared rules. Pruned of unused rules; many still apply |
+| `public/phosphor.js` | Icons (Phosphor, MIT). `UI.ph('name')`, and `UI.icon(name)` for the app's older names |
 
 ## Fonts and type
-- Geist for everything, Geist Mono only for numbers and code. No italics. Weights 400, 500, 600 only.
-- Sizes from Tailwind's scale, resolved as `--text-xs` ... `--text-9xl` with paired `--lh-*`.
-- Named styles exist as classes: `heading-1..6`, `title-1..5`, `body-1..6`, `button-lg/md/sm/xsm`, `caption-1..5`.
-- Elements: h1 = Heading 4 (page titles), h2 = Heading 6, h3 = Title 2, body = Body 6 (14/20), fields 16/24 (stops phone zoom).
-- Headings `text-wrap: balance`, body `text-wrap: pretty`.
+- Geist for everything, Geist Mono for numbers and code. No italics. Weights 400, 500, 600 only (`b`, `strong`, `th` are 600).
+- Sizes come from Tailwind's scale as `--text-xs` to `--text-9xl` with paired `--lh-*`. Named styles exist as classes: `heading-1..6`, `title-1..5`, `body-1..6`, `button-lg/md/sm/xsm`, `caption-1..5`.
+- Elements: h1 = Heading 4, h2 = Heading 6, h3 = Title 2, body 14/20, fields 16/24 (stops phone zoom), `small` and `code` 12/16.
+- Display sizes (owner preference, calmer than the skill): hero heading 48 desktop / 36 tablet / 30 phone, section headings 36 / 30 / 24, tagline 36 / 30 / 24, big numerals 36 to 60.
+- Headings `text-wrap: balance`, body `text-wrap: pretty`. Heading text gradient only on the hero: black to #666666 (light), white to #9B9B9B (dark). No hyphens in copy.
 
-## Colour (light / dark)
-| Token | Light | Dark |
+## Colour
+| Token | Light | Dark (navy) |
 |---|---|---|
 | page `--bg` | #FFFFFF | #0B0D17 |
 | surface | #F7F7F7 | #131728 |
@@ -31,82 +32,33 @@ Guide: the `landing-page-design` skill (elayadesign/ai-design-skills). Where thi
 | muted | #5B5B5B | #9BA4C0 |
 | accent | #4F46E5 | #8B8CFF |
 | on accent | #FFFFFF | #0B0D17 |
-All text pairs measured at 4.5:1 or better (see the QA record).
-Semantic: good #0F7A55 / #4CC99A, warn #8A5200 / #F2B84D, bad #B3261E / #FF7D72. Tinted fills for pills in both themes (dark: #143327, #36290F, #3B1C1A). Banners in dark use the light accent with dark text.
+Semantic: good #0F7A55 / #4CC99A, warn #8A5200 / #F2B84D, bad #B3261E / #FF7D72, with flat tinted fills. Banners use the accent as a flat fill with `--on-accent` text. The only gradient anywhere is the logo mark.
 
-## Spacing, radius, borders
-- Spacing tokens only: 0, 2, 4, 8, 12, 16, 24, 32, 40, 48, 64, 80, 96 px as `--space-*`.
-- Main buttons: 8px vertical, 12px horizontal padding.
-- Radius: Tailwind values only (`--rad-sm` 2, base 4, md 6, lg 8, xl 12, 2xl 16, 3xl 24, full). Buttons and fields lg, cards 2xl, pills and avatars full.
-- Nested radius = outer radius minus gap, only when the result is above 2. Cards use 24px padding, so inner controls keep their own radius.
-- Borders go all the way round or not at all on cards. Dividers inside tables are not cards.
-- Shadows: none, except things that float (Ask Cairn panel, toast, dialogs, the sticky save bar).
+## Spacing, radius, borders, shadows
+- Spacing tokens only: 0, 2, 4, 8, 12, 16, 24, 32, 40, 48, 64, 80, 96 px as `--space-*`. Standard buttons 8 / 12. Hero and closing buttons use Button-lg with 12 / 24.
+- Radius: Tailwind values as `--rad-*` (2, 4, 6, 8, 12, 16, 24, full). Buttons and fields 8, cards 16 to 24, pills and avatars full. Nested radius = outer minus gap when above 2.
+- Cards have one full border or none. No single sided card borders.
+- Shadows only on floating things: Ask Cairn panel, toast, dialogs, the sticky save bar.
 
 ## Motion
-- One curve: `--ease` = cubic-bezier(0.22, 1, 0.36, 1). Loops use `--ease-loop`. Never the browser defaults.
-- 300ms for colour and opacity, 500ms for position changes. Nothing under 200ms.
-- Animate transform and opacity only. Reduced motion: no movement, plain opacity.
-- Scroll reveals: rise 32px and fade, 600 to 800ms, once, via IntersectionObserver.
+- One curve `--ease` cubic-bezier(0.22, 1, 0.36, 1); `--ease-loop` for loops. 300ms for colour and opacity, 500ms for movement, nothing under 200ms.
+- Transform and opacity only (bars grow with `scaleX`). Reduced motion: no movement, plain opacity, endless animations stop.
+- Scroll reveals rise 32px and fade over 700ms, once. Entrances play once; the race and walkthrough replay when scrolled back into view.
 
-## Icons
-Phosphor, inlined as SVG (no runtime download). No emoji or text glyphs as icons.
+## Icons and imagery
+Phosphor, inlined. No emoji and no text glyphs as icons. Illustrations are the product itself. Sharing image `public/og.png` (navy, Geist, logo mark, headline).
+
+## Content rules
+- Example data is plain and fictional (Riya Shah, Amit, "Ship the new onboarding flow"). No testimonials, customer logos, prices, guarantees or statistics unless real ones are supplied.
+- One primary action everywhere: "Create a workspace" (signed in: "Open my week").
+- No Privacy or Terms links until real documents exist. No risk reversal line until a real policy exists.
+- FAQ answers are existing product facts, and also feed FAQ structured data.
 
 ## Rejected
-- Purple to pink gradient surfaces, aurora backgrounds, dotted page backgrounds, glassmorphism on content.
-- Neutral grey dark theme (#181818 family). Tried, then replaced by navy at the owner's request.
-- Colourful per-feature tile icons (teal, pink). One accent plus semantic colours.
-- "Start free" (implies pricing that does not exist).
+Purple to pink gradient surfaces, aurora and dotted backgrounds, glassmorphism on content, neutral grey dark theme (tried, replaced by navy), colourful per feature icon tiles, "Start free", the four principle cards under the hero, the example selector (removed at the owner's request), a Replay button on the race, animated score rings.
 
-## Deliberate deviations from the skill
-- Footer stays light in the light theme (the skill's table suggested #111111). You rejected a dark footer on a light page earlier.
-- Dark theme is navy, not the skill's neutral list, by the owner's choice.
-
-## Home: navigation and hero (step 2)
-- Nav: compact bar, centred, sized to its content, floating 12px off the top edge. Translucent surface over a 16px blur, 1px border, radius 16 with 8px padding, so inner controls are radius 8 (nested radius rule). Firmer surface once the page has scrolled.
-- Current section is marked with `aria-current` (scroll spy, IntersectionObserver). No scroll listener.
-- Menu toggle: three lines that turn into a cross (transform and opacity, 500ms on the base curve).
-- Mobile menu (860px and below): full height panel, base surface at 94% with a 24px blur, page scroll locked, focus moves in and returns to the toggle, Escape closes. Links rise 24px and fade, 60ms apart, finished by 400ms.
-- Hero: Heading 1. 60/60 from 1024px, 48/48 from 640px, 36/40 below. Heading and sub copy capped at 680px. Heading text gradient only (black to #666666 light, white to #9B9B9B dark). Phrases are kept whole (`nowrap`) except below 370px.
-- Hero CTA uses Button-lg with 12px / 24px padding (tokens). The 8px / 12px rule stays for standard buttons. One primary action ("Create a workspace" or "Open my week" when signed in), one quiet secondary.
-- One proof line, using existing product facts. No invented logos, counts or quotes.
-- Hero visual: the product as a ledger. Weight bars share one track so widths compare honestly. Numbers in Geist Mono. One entrance (rows rise and fade, bars grow from the left, score counts up), then it rests. No floating chips, no looping motion.
-- Icons: Phosphor regular, inlined from `public/phosphor.js` (MIT, licence in `public/fonts/LICENSE-phosphor.txt`). `UI.ph('name')` returns the SVG.
-- CTA wording is now the same everywhere: "Create a workspace".
-
-## Home sections (step 3)
-- Section heading: kicker (Caption 3, uppercase, accent), Heading 2 at 48/48 from 1024px, 36/40 from 640px, 30/36 below. Heading and sub copy capped at 680px.
-- Score walkthrough: flat ledger like the hero. Mono numbers, 8px bars that grow with transform, one accent. No decorative circles, no gradient panel. One loop is about 12 seconds (was 24). Ratings and points start at 3.8s.
-- Four steps: the same scenes, flat. Emoji and text glyphs replaced by Phosphor icons. Scene card class renamed `sc-card` (it clashed with the "Where you work" `wk` class). On phones the tabs are a 2 by 2 grid and the step text shows below.
-- Why it's different: two flat cards, the winner outlined once in the accent. Numbers in mono, 25 muted and 88 in the accent.
-- Fairness: one featured statement with its bars, and a quiet hairline list. Replaces four identical cards.
-- The four principle cards under the hero are gone. The hero proof line and the Fairness section already say it.
-- Progress bars everywhere use `transform: scaleX`. Scroll reveals rise 32px over 700ms, once.
-
-## Home, lower half (step 4)
-- Tagline reveal sits after "Why it's different". Copy recombines existing phrases: "Measure what mattered, not how busy anyone looked. One fair score for every team, rated by the people who used the work." Words rise from 30% to full opacity one by one as they cross a line 30% above the bottom of the screen (IntersectionObserver, 40ms apart, capped at 400ms). Reduced motion: all words at full strength at once.
-- FAQ: nine questions, every answer is an existing product fact. Same text feeds FAQ structured data (JSON-LD) added on the Home page only. No risk reversal line (trial, guarantee) because none exists. Add one only when a real policy exists.
-- Closing call to action: flat accent panel, same label as the hero button. No decoration, no overlap with the footer.
-- Footer: light surface in light mode, navy in dark. Check icons, not glyphs. No Privacy or Terms links until real documents exist.
-- Phone alerts: handset corners 24px (radius snap bug fixed), icon list instead of rules down the side.
-- 404: branded page for unknown addresses (server) and unknown routes (in the app). Titles reset when you leave it.
-- Sharing: Open Graph and Twitter tags, a 1200 by 630 image (`public/og.png`, navy, Geist, logo mark, headline only). Theme colour follows light and dark.
-
-## Why it's different, rebuilt (follow-up to step 3)
-- Two static boxes became a short race that plays once on scroll, with a Replay button. Busy week: dots fill from 0 to 24 to 50 and the counter follows, while the score stops at 25 ("Still 25. More tasks, same score."). Focused week: three priorities land, the score counts to 88.
-- About 6 seconds end to end. Bars grow with transform, dots and slabs with transform and opacity. Reduced motion shows the final state.
-- Numbers in Geist Mono. The winning week is outlined once in the accent. All figures match the walkthrough (25 and 88).
-
-## Examples and display sizes (owner feedback)
-- "Gmail plug launch" was our own jargon. All Home demos now use plain examples from Product, Marketing, Sales and Support (fictional people and companies). One data set (`EXAMPLES` in `public/home.js`) drives the hero, score walkthrough, four step scenes, the race and the phone alert. A selector ("Example from") switches them together. Default: Product (ship the new onboarding flow). Demo data for Engineering uses the same plain titles.
-- The race has no Replay button. It plays every time it scrolls into view (45% visible) and resets when it leaves (under 5% visible).
-- Display sizes reduced because the biggest text felt heavy (owner decision, overrides the skill's Heading 1 = 60px): hero heading 48 on desktop (36 tablet, 30 phone), section headings 36 (30, 24), tagline 36 (30, 24), big numerals 48 to 60 instead of 72 to 96, race numbers 36.
-
-## The app (step 5)
-- Icons: every app icon is Phosphor (`UI.icon(name)` keeps its names and now draws Phosphor; `UI.ph(name)` for anything else). No text arrows or glyphs: Previous and Next, move up and down, sign out, menu and the back links use icons.
-- Sidebar: flat surface, Title 4 links, 20px icons, active state is a soft accent fill with accent text (the left bar is gone), workspace chip and user card are flat bordered boxes. Menu button reports its open state.
-- Page heads: outlined caption chip, Heading 4 title, hairline underneath. Section headings have no accent bar.
-- My Week banner: flat accent panel with no shapes. Sign in side panel and the scoring page banner: flat as well. Sign in list uses check icons.
-- Score tiles use a flat 6px meter that grows with transform, instead of the animated ring. Colour: green from 85, accent from 60, amber below.
-- Ready-made avatars are flat colours. Photos and initials unchanged.
-- Touch: on touch screens every control is 44px high, checkbox and radio labels are fully tappable, and the show-password and rating chips follow.
-- Left alone on purpose: all behaviour, data, API and permissions. Ask Cairn keeps its panel; only its icon changed.
+## Deliberate differences from the skill
+- Dark theme is navy, not the skill's neutral list (owner choice).
+- Footer stays light in light mode (owner dislikes a dark footer on a light page).
+- Display sizes are smaller than Heading 1 = 60 (owner found the big text heavy).
+- Pale violet banners kept, with dark text in dark mode for contrast (owner choice, contrast verified).

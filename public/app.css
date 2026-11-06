@@ -78,3 +78,15 @@ main h2 { margin: var(--space-400) 0 var(--space-100); }
   input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; flex: none; }
 }
 @media (pointer: coarse) { .pw-eye { width: 44px; height: 44px; } .how-row .opts .q, .sx-rate button { min-height: 44px; } }
+
+/* ---------- contrast fixes found by the QA scan ---------- */
+.navlabel { color: var(--muted); opacity: 1; }
+.avatar { background: hsl(var(--h) 45% 30%); color: #FFFFFF; }
+.avatar.has-img, .avatar.preset { color: inherit; }
+.how-eq span { background: color-mix(in srgb, var(--accent) 80%, var(--text)); border-color: transparent; }
+.how-eq span small, .how-eq span b { opacity: 1; }
+.how-hero .how-q { opacity: 1; }
+.how-big { font-size: var(--text-2xl); line-height: var(--lh-2xl); }
+@media (min-width: 640px) { .how-big { font-size: var(--text-3xl); line-height: var(--lh-3xl); } }
+@media (min-width: 1024px) { .how-big { font-size: var(--text-4xl); line-height: var(--lh-4xl); } }
+input[type="checkbox"], input[type="radio"] { margin: 0; }

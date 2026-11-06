@@ -321,7 +321,7 @@ async function weekScreen(params) {
       <div class="tile"><span class="tile-ico t-warn">${UI.icon('coins')}</span><div class="k">Coins received</div><div class="v">${w.coins}</div><div class="s">shown beside the score, never added</div></div>
       <div class="tile"><span class="tile-ico t-teal">${UI.icon('link')}</span><div class="k">Alignment</div><div class="v">${w.alignment === null ? '–' : `${w.alignment}%`}</div><div class="s">of priority weight linked upward</div></div>
     </div>
-    <div class="card"><div class="row spread" style="margin-bottom:.7rem"><h2 style="margin:0">Your stack</h2><span class="small muted">Each slab is as wide as its weight</span></div>${UI.stack(ranked, state.me.settings)}</div>
+    <div class="card"><div class="row spread" style="margin-bottom:var(--space-100)"><h2 style="margin:0">Your stack</h2><span class="small muted">Each slab is as wide as its weight</span></div>${UI.stack(ranked, state.me.settings)}</div>
     <div class="card"><div class="row spread"><h2 style="margin:0">Ranked priorities ${w.locked ? '<span class="pill good">🔒 Locked</span>' : '<span class="pill warn">Not locked yet</span>'}</h2>
       <div class="row">${w.canRank ? `<button class="primary" id="rankbtn">${w.locked ? 'Change ranking' : 'Rank this week'}</button>${!w.locked && ranked.length ? '<button id="lockbtn">Lock week</button>' : ''}` : ''}</div></div>
       ${ranked.length ? ranked.map(itemRow).join('') : UI.empty('Nothing ranked yet', w.canRank ? 'Add work below, then rank the top items. The first one counts the most.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.')}</div>
@@ -390,7 +390,7 @@ function rankEditor(w, people, reload) {
   const draw = () => {
     const pool = w.items.filter((i) => !order.find((o) => o.item_id === i.id) && i.status !== 'blocked_external');
     d.innerHTML = `<h3>Rank ${esc(w.person.name)}'s week</h3><p class="small muted">Top ${max} only. #1 is worth ${state.me.settings.rankWeights[0]}%. Items ranked #1–#${state.me.settings.secondRaterRanks} also get a second rater.</p>
-      ${order.map((o, i) => `<div class="card" style="padding:.6rem .8rem"><div class="row spread"><b>#${i + 1} · ${title(o.item_id)}</b>
+      ${order.map((o, i) => `<div class="card" style="padding:var(--space-75) var(--space-100)"><div class="row spread"><b>#${i + 1} · ${title(o.item_id)}</b>
         <div class="row"><button type="button" data-up="${i}" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>${UI.ph('arrow-up')}</button><button type="button" data-down="${i}" aria-label="Move down" ${i === order.length - 1 ? 'disabled' : ''}>${UI.ph('arrow-down')}</button><button type="button" class="ghost danger" data-out="${i}">✕</button></div></div>
         <div class="row small"><label style="margin:0"><input type="checkbox" data-stretch="${i}" ${o.stretch ? 'checked' : ''} style="width:auto"> <span class="star-i"></span> Stretch (above level: bonus, no penalty)</label></div>
         ${i < state.me.settings.secondRaterRanks ? `<label>Second rater (someone who uses this work; default: your own manager)</label><select data-second="${i}"><option value="">Default</option>${others.map((p) => `<option value="${esc(p.id)}" ${p.id === o.second_rater_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>` : ''}</div>`).join('') || '<p class="muted">Nothing ranked.</p>'}
@@ -429,7 +429,7 @@ async function rateScreen() {
       ${it.details ? `<p class="small">${esc(it.details)}</p>` : ''}
       <p>Proof: ${it.proof_url ? `<a href="${esc(it.proof_url)}" target="_blank" rel="noopener noreferrer">${esc(it.proof_url)}</a> ` : ''}${esc(it.proof_note || '')}</p>
       <label>Note (required for Needs fixes and Redo)</label><textarea class="note"></textarea>
-      <div class="row" style="margin-top:.5rem"><button class="q q-good" data-q="done_well"><i></i>Done well</button><button class="q q-warn" data-q="needs_fixes"><i></i>Needs fixes</button><button class="q q-bad" data-q="redo"><i></i>Redo</button></div></div></div></div>`).join('')
+      <div class="row" style="margin-top:var(--space-75)"><button class="q q-good" data-q="done_well"><i></i>Done well</button><button class="q q-warn" data-q="needs_fixes"><i></i>Needs fixes</button><button class="q q-bad" data-q="redo"><i></i>Redo</button></div></div></div></div>`).join('')
     : `<div class="card">${UI.empty('All caught up', 'Nothing is waiting for your rating. New work appears here as soon as someone delivers it.')}</div>`}`);
   $('#main').onclick = (e) => {
     const b = e.target.closest('[data-q]');
@@ -540,7 +540,7 @@ async function scoreScreen(params) {
       <div class="tile"><div class="k">3. Did others value it?</div><div class="v"><span class="coinic"></span>${c.coins}</div><div class="s">coins from colleagues</div></div>
       <div class="tile"><div class="k">Alignment</div><div class="v">${c.alignment === null ? '–' : `${c.alignment}%`}</div><div class="s">linked to the level above</div></div>
     </div>
-    <div class="card"><div class="row spread" style="margin-bottom:.7rem"><h2 style="margin:0">This week's stack</h2></div>${UI.stack(c.breakdown.map((b) => ({ rank: b.rank, title: `#${b.rank}`, status: b.status, mult: b.multiplier })), state.me.settings)}</div>
+    <div class="card"><div class="row spread" style="margin-bottom:var(--space-100)"><h2 style="margin:0">This week's stack</h2></div>${UI.stack(c.breakdown.map((b) => ({ rank: b.rank, title: `#${b.rank}`, status: b.status, mult: b.multiplier })), state.me.settings)}</div>
     <div class="card"><h3>Last 5 weeks</h3><div class="bars">${s.trend.map((t) => `<div><span style="height:${t.score || 0}px"></span>${scoreText(t.score)}<br>${esc(t.week.slice(5))}</div>`).join('')}</div></div>
     <div class="card"><h3>What was delivered this week</h3>${s.changed.length ? `<ul>${s.changed.map((x) => `<li>${x.rank ? `#${x.rank} ` : ''}${esc(x.title)} ${x.proof_url ? `· <a href="${esc(x.proof_url)}" target="_blank" rel="noopener noreferrer">proof</a>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Nothing delivered yet.</p>'}</div>
     <div class="card"><h3>Why colleagues gave coins</h3>${s.coinNotes.length ? `<ul>${s.coinNotes.map((n) => `<li><span class="coinic"></span>${n.coins} from ${esc(n.from_name)}: "${esc(n.reason)}"</li>`).join('')}</ul>` : '<p class="muted">None this week.</p>'}</div>
@@ -793,9 +793,9 @@ async function integrationsScreen() {
       <div class="row">${sl.connected ? `<button class="primary" id="slTest">Send myself a test message</button><button id="slMatch">Check who is on Slack</button><button class="ghost" data-connect="slack" disabled>Reconnect</button><button class="ghost danger" data-disc="slack">Disconnect</button>` : '<button class="primary" data-connect="slack" disabled>Connect Slack</button>'}</div>
       <p class="small" id="slOut"></p>
       ${sl.connected && sl.coverage ? `<p class="small">${sl.coverage.inSlack} of ${sl.coverage.people} people found in Slack by work email${sl.coverage.notChecked ? ` · ${sl.coverage.notChecked} not checked yet` : ''}.${sl.coverage.notFound.length ? ` Not found: ${sl.coverage.notFound.map(esc).join(', ')}. They need the same email in Slack as here.` : ''}</p>` : ''}
-      <h3 style="margin-top:1rem">Messages</h3>
-      ${msgs.map(([k, t]) => `<label style="margin:.3rem 0;color:var(--text)"><input type="checkbox" data-msg="${k}" ${sl.messages[k] ? 'checked' : ''} style="width:auto"> ${esc(t)}</label>`).join('')}
-      ${sl.recent && sl.recent.length ? `<h3 style="margin-top:1rem">Recent</h3><div class="tablewrap"><table><tbody>${sl.recent.map((m) => `<tr><td class="small">${fmtTime(m.created_at)}</td><td>${esc(m.kind)}</td><td><span class="pill ${m.status === 'sent' ? 'good' : m.status === 'pending' ? '' : 'warn'}">${esc(m.status)}</span></td><td class="small muted">${esc(m.last_error || '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <h3 style="margin-top:var(--space-200)">Messages</h3>
+      ${msgs.map(([k, t]) => `<label style="margin:var(--space-50) 0;color:var(--text)"><input type="checkbox" data-msg="${k}" ${sl.messages[k] ? 'checked' : ''} style="width:auto"> ${esc(t)}</label>`).join('')}
+      ${sl.recent && sl.recent.length ? `<h3 style="margin-top:var(--space-200)">Recent</h3><div class="tablewrap"><table><tbody>${sl.recent.map((m) => `<tr><td class="small">${fmtTime(m.created_at)}</td><td>${esc(m.kind)}</td><td><span class="pill ${m.status === 'sent' ? 'good' : m.status === 'pending' ? '' : 'warn'}">${esc(m.status)}</span></td><td class="small muted">${esc(m.last_error || '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
     </div>
 
     <div class="card"><div class="row spread"><h2 style="margin:0">Keka</h2>${pill(ke)}</div>
@@ -806,12 +806,12 @@ async function integrationsScreen() {
       <div class="row">${ke.connected ? `<button class="primary" id="keTest">Test (read-only)</button>${ke.chosen ? '<button id="kePreview">Preview sync</button><button id="keSync">Sync now</button>' : ''}<button class="ghost" data-connect="keka" disabled>Reconnect</button><button class="ghost danger" data-disc="keka">Disconnect</button>` : '<button class="primary" data-connect="keka" disabled>Connect Keka</button>'}</div>
       <p class="small" id="keOut"></p>
       <p class="small muted">Leave days from Keka are not available yet. Import them as a CSV under People.${ke.confirmedAt ? ' The sync runs by itself every night.' : ke.chosen ? ' It runs by itself every night once you have run it by hand once.' : ''}</p>
-      ${ke.runs.length ? `<h3 style="margin-top:1rem">Recent syncs</h3><div class="tablewrap"><table><tbody>${ke.runs.map(runRow).join('')}</tbody></table></div>` : ''}
+      ${ke.runs.length ? `<h3 style="margin-top:var(--space-200)">Recent syncs</h3><div class="tablewrap"><table><tbody>${ke.runs.map(runRow).join('')}</tbody></table></div>` : ''}
     </div>
 
     <div class="card"><div class="row spread"><h2 style="margin:0">Ask Cairn (AI helper)</h2><span class="pill ${s.ai.keyPresent && s.ai.on ? 'good' : 'warn'}">${!s.ai.keyPresent ? 'Not set up' : s.ai.on ? 'On' : 'Off'}</span></div>
       <p class="small">A chat box that explains a person's score, week and team in plain words, using only what that person can already see. It <b>never scores or rates anyone</b>, changes nothing, and what people ask is not stored.</p>
-      ${s.ai.keyPresent ? `<label style="margin:.4rem 0;color:var(--text)"><input type="checkbox" id="aiToggle" ${s.ai.on ? 'checked' : ''} style="width:auto"> Let people in <b>${esc(state.me.workspace.name)}</b> use Ask Cairn</label><p class="small" id="aiOut"></p>` : '<div class="notice warn">Not set up yet. The person who runs this server adds <code>GEMINI_API_KEY</code> in the app settings on Embarko.</div>'}
+      ${s.ai.keyPresent ? `<label style="margin:var(--space-75) 0;color:var(--text)"><input type="checkbox" id="aiToggle" ${s.ai.on ? 'checked' : ''} style="width:auto"> Let people in <b>${esc(state.me.workspace.name)}</b> use Ask Cairn</label><p class="small" id="aiOut"></p>` : '<div class="notice warn">Not set up yet. The person who runs this server adds <code>GEMINI_API_KEY</code> in the app settings on Embarko.</div>'}
     </div>
 
     <div class="card"><div class="row spread"><h2 style="margin:0">Email</h2><span class="pill ${s.mail.configured ? 'good' : 'warn'}">${s.mail.configured ? 'Set up' : 'Not set up'}</span></div>
@@ -893,14 +893,14 @@ async function settingsScreen() {
     <div><label>Max coins to one person</label><input name="maxCoinsPerPerson" type="number" min="1" value="${s.maxCoinsPerPerson}"></div></div>
     <label>Working days</label><div class="row">${days.map((d, i) => `<label style="margin:0"><input type="checkbox" name="wd${i}" ${s.workingDays.includes(i) ? 'checked' : ''} style="width:auto"> ${d}</label>`).join('')}</div></section>
     <section class="card sect"><h3>Who adds people</h3>
-    <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="1" ${s.managersAddTeam ? 'checked' : ''} style="width:auto"> <b>Managers add their own team</b> <span class="small muted">Admins add managers/TLs; each manager adds, moves and offboards people in their team.</span></label>
-    <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="" ${s.managersAddTeam ? '' : 'checked'} style="width:auto"> <b>Only admins</b> <span class="small muted">Managers rank and rate their team but cannot add or remove people.</span></label></section>
+    <label style="margin:var(--space-75) 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="1" ${s.managersAddTeam ? 'checked' : ''} style="width:auto"> <b>Managers add their own team</b> <span class="small muted">Admins add managers/TLs; each manager adds, moves and offboards people in their team.</span></label>
+    <label style="margin:var(--space-75) 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="" ${s.managersAddTeam ? '' : 'checked'} style="width:auto"> <b>Only admins</b> <span class="small muted">Managers rank and rate their team but cannot add or remove people.</span></label></section>
     <section class="card sect"><h3>People &amp; leave source</h3><p class="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p>
     ${[['manual', 'Invite links', 'Managers invite people one by one. Leave is added in the app.'], ['csv', 'CSV upload', 'Export from Keka, Excel or any HR tool and upload it under People. Nothing stays connected.'], ['keka', 'Keka sync', 'Read automatically every night, only the fields ticked below. Needs setup under Integrations.']]
-      .map(([v, t, h]) => `<label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="peopleSource" value="${v}" ${s.peopleSource === v ? 'checked' : ''} style="width:auto"> <b>${t}</b> <span class="small muted">${h}</span></label>`).join('')}
+      .map(([v, t, h]) => `<label style="margin:var(--space-75) 0;color:var(--text)"><input type="radio" name="peopleSource" value="${v}" ${s.peopleSource === v ? 'checked' : ''} style="width:auto"> <b>${t}</b> <span class="small muted">${h}</span></label>`).join('')}
     <div id="hrf" style="${s.peopleSource === 'keka' ? '' : 'display:none'}"><label>Fields Keka may share</label>
     ${[['reportingLine', 'Reporting line (who reports to whom)'], ['department', 'Department'], ['jobTitle', 'Job title (used as level)'], ['leave', 'Leave days (not available from Keka yet: import a CSV)'], ['phone', 'Mobile number (for serious alerts)']]
-      .map(([k, t]) => `<label style="margin:.2rem 0;color:var(--text)"><input type="checkbox" name="hr_${k}" ${s.hrFields[k] && k !== 'leave' ? 'checked' : ''} ${k === 'leave' ? 'disabled' : ''} style="width:auto"> ${t}</label>`).join('')}
+      .map(([k, t]) => `<label style="margin:var(--space-50) 0;color:var(--text)"><input type="checkbox" name="hr_${k}" ${s.hrFields[k] && k !== 'leave' ? 'checked' : ''} ${k === 'leave' ? 'disabled' : ''} style="width:auto"> ${t}</label>`).join('')}
     <p class="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p></div></section>
     <section class="card sect"><h3>Alerts</h3>
     <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" value="${s.blockerEscalationHours}">
@@ -939,8 +939,8 @@ async function phoneAlertsCard() {
     ${a.configured ? `<p class="ok-line">${UI.ph('check-circle')}Connected to <b>${esc(a.channel)}</b></p>
       <div class="row"><button type="button" id="testAlert" class="primary">Ring our phones to test</button><button type="button" id="dropAlert" class="ghost danger">Disconnect</button></div><p class="small" id="testOut"></p>`
     : `<label>Channel link</label><div class="inline"><input id="m91link" placeholder="Paste the link from M91" autocomplete="off"><button type="button" class="primary" id="saveLink" style="flex:0 0 auto">Connect</button></div><p class="err" id="linkErr"></p>`}
-    <h3 style="margin-top:1rem">You'll be asked when…</h3>
-    ${a.moments.map((x) => `<label style="margin:.3rem 0;color:var(--text)"><input type="checkbox" data-moment="${x.key}" ${x.on ? 'checked' : ''} style="width:auto"> ${esc(x.text)} <span class="small muted">→ ${answers[x.key]}</span></label>`).join('')}
+    <h3 style="margin-top:var(--space-200)">You'll be asked when…</h3>
+    ${a.moments.map((x) => `<label style="margin:var(--space-50) 0;color:var(--text)"><input type="checkbox" data-moment="${x.key}" ${x.on ? 'checked' : ''} style="width:auto"> ${esc(x.text)} <span class="small muted">→ ${answers[x.key]}</span></label>`).join('')}
     <p class="small muted">Alerts name the person they are for. Everyone in the channel needs M91 installed and the invite accepted, or their phone stays silent.</p>`;
   const save = $('#saveLink');
   if (save) save.onclick = () => run(save, async () => {
@@ -1035,7 +1035,7 @@ function howScreen() {
   <div class="how-faq">
     <details><summary>What if I only got small tasks this week?</summary><p>Nothing is lost. The score compares what you delivered with <b>your own plan</b>. If you delivered every small task well, you score 100. Managers also see the level of work in the Team view.</p></details>
     <details><summary>What if I disagree with a rating?</summary><p>Raise a dispute from the rating. The rater's manager decides. Both opinions and the decision are kept, so nothing is hidden.</p></details>
-    <details><summary>Can my manager change my priorities mid-week?</summary><p>Yes, but the week is locked once it starts. A change needs a written reason, and it is recorded in the history log for everyone to see.</p></details>
+    <details><summary>Can my manager change my priorities during the week?</summary><p>Yes, but the week is locked once it starts. A change needs a written reason, and it is recorded in the history log for everyone to see.</p></details>
     <details><summary>What are coins?</summary><p>Thank-yous from colleagues. Everyone has ${s.coinsPerWeek} a week, up to ${s.maxCoinsPerPerson} for one person, never to themselves. They show beside your score and <b>never change it</b>.</p></details>
     <details><summary>Who can see my score?</summary><p>You, your manager and the people above them. Colleagues at your level cannot see it. Raters' habits (how often they say Done well) are visible to managers, so harsh or soft raters show up.</p></details>
   </div>`);

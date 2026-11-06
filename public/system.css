@@ -193,3 +193,12 @@ tbody tr:hover { box-shadow: none; background: var(--surface-2); }
 /* footer colours follow the theme tokens (the old stylesheet's dark footer values are replaced) */
 :root[data-theme="dark"] { --fe-text: var(--muted); --fe-head: var(--text); --fe-mute: var(--muted); --fe-chip: var(--surface); --fe-line: var(--border); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fe-text: var(--muted); --fe-head: var(--text); --fe-mute: var(--muted); --fe-chip: var(--surface); --fe-line: var(--border); } }
+
+/* ---------- QA fixes: browser defaults that broke the system ---------- */
+b, strong, th { font-weight: 600; }
+em, i, cite, address, dfn { font-style: normal; }
+small { font-size: var(--text-xs); line-height: var(--lh-xs); }
+code, kbd { font-size: var(--text-xs); line-height: var(--lh-xs); }
+.row { margin-bottom: var(--space-100); }
+.coinic { margin-right: var(--space-75); }
+.m91-phone .waves, .waves, .m91-phone .waves i, .waves i { border-radius: var(--rad-3xl); }
