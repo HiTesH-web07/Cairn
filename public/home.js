@@ -5,6 +5,7 @@
   const { icon, logo, ring, brand, cairn } = window.UI;
   let timers = [];
   let observers = [];
+  let cleanups = [];
 
   const chips = ['Reply to emails', 'Fix a typo', 'Update the wiki', 'Join stand-up', 'Rename a file', 'Answer a ping', 'Tidy the board', 'Book a room'];
 
@@ -98,19 +99,38 @@
     </section>
       <div class="hp-wrap hp-strip">
         <div class="hp-pr reveal"><span class="tile-ico t-acc">${icon('eye')}</span><div><b>No screenshots</b><span>We measure results, never screens.</span></div></div>
-        <div class="hp-pr reveal" style="--rd:.08s"><span class="tile-ico t-teal">${icon('score')}</span><div><b>Task count never counts</b><span>Only ranked priorities score.</span></div></div>
+        <div class="hp-pr reveal" style="--rd:.08s"><span class="tile-ico t-teal">${icon('score')}</span><div><b>Tasks don't count</b><span>Only ranked priorities score.</span></div></div>
         <div class="hp-pr reveal" style="--rd:.16s"><span class="tile-ico t-pink">${icon('team')}</span><div><b>Rated in the open</b><span>Two raters on top work, with reasons.</span></div></div>
         <div class="hp-pr reveal" style="--rd:.24s"><span class="tile-ico t-good">${icon('shield')}</span><div><b>An open formula</b><span>Everyone can see how the score works.</span></div></div>
       </div>
     </div>
 
     <section class="hp-sec" id="hp-stack"><div class="hp-wrap">
-      <div class="hp-kicker reveal">The idea</div>
-      <h2 class="hp-h2 reveal">Your week is a stack.</h2>
-      <p class="hp-sub reveal">Your manager ranks up to five priorities. Each slab is as wide as its weight: 35, 25, 20, 12 and 8. A slab fills when the work is delivered and rated. Everything outside the stack is logged, but earns nothing.</p>
-      <div class="hp-stackbox reveal">
-        <div class="stack" role="img" aria-label="The five slabs of a priority stack, 35, 25, 20, 12 and 8 percent">${[35, 25, 20, 12, 8].map((w, k) => `<div class="seg full" style="--w:${w};--k:${k}"><i></i><span class="n">#${k + 1}</span><span class="wt">${w}</span></div>`).join('')}</div>
-        <div class="hp-ranks"><div><b>#1 · 35%</b>The one result that matters most this week.</div><div><b>#2 · 25%</b>The next most valuable thing.</div><div><b>#3 · 20%</b>Important, but it can slip a little.</div><div><b>#4 · 12%</b>Worth doing if the top three go well.</div><div><b>#5 · 8%</b>A nice-to-have.</div></div>
+      <div class="hp-kicker reveal">The score</div>
+      <h2 class="hp-h2 reveal">Watch one week become one number.</h2>
+      <p class="hp-sub reveal">This is Riya's week. Follow it from the manager's plan to the final score: no formulas to read, just watch.</p>
+      <div class="sx reveal" id="sx" data-s="0">
+        <div class="sx-board">
+          <div class="sx-head"><span>Riya's priorities this week</span><span>Worth</span></div>
+          ${[['#1', 'Gmail plug launch', 35, 100, 'Done well', 35], ['#2', 'Write the help docs', 25, 100, 'Done well', 25], ['#3', 'OAuth refresh', 20, 50, 'Needs fixes', 10]].map((r, k) => `
+          <div class="sx-row" style="--k:${k};--w:${r[2]};--fill:${r[3]}%">
+            <b class="sx-rk${k === 0 ? ' r1' : ''}">${r[0]}</b>
+            <div class="sx-main"><div class="sx-title">${r[1]}</div>
+              <div class="sx-line"><div class="sx-track"><i class="fill"></i></div><span class="worth">${r[2]} pts</span></div></div>
+            <div class="sx-state"><span class="pill p-a">Planned</span><span class="pill warn p-b">Delivered</span><span class="pill ${r[3] === 100 ? 'good' : 'warn'} p-c">${r[4]}</span></div>
+            <div class="sx-earn">+${r[5]}</div>
+          </div>`).join('')}
+          ${[4, 5].map((n) => `<div class="sx-row sx-empty"><b class="sx-rk">#${n}</b><div class="sx-main"><div class="sx-title">Empty slot</div><div class="sx-line"><div class="sx-track dashed"></div></div></div><div class="sx-state"><span class="pill">Not ranked</span></div><div></div></div>`).join('')}
+          <div class="sx-else"><div class="lab">Everything else Riya did</div>
+            <div class="sx-chips"><span style="--k:0">Replied to 40 emails<em>0 pts</em></span><span style="--k:1">Fixed a typo<em>0 pts</em></span><span style="--k:2">Joined 12 meetings<em>0 pts</em></span></div></div>
+        </div>
+        <aside class="sx-score">
+          <div><div class="sx-lab">Points earned</div><div class="sx-earned"><b data-earn>0</b><span>of 80 possible</span></div></div>
+          <div class="sx-eq"><span>70</span><i>÷</i><span>80</span><i>=</i></div>
+          <div><div class="sx-lab">Riya's score</div><div class="sx-num"><b data-n>?</b><small>/ 100</small></div></div>
+        </aside>
+        <div class="sx-cap"><span class="sx-step" data-stepno>1 / 5</span><p data-cap></p></div>
+        <div class="sx-dots" role="tablist">${['Rank', 'Weigh', 'Deliver & rate', 'The rest', 'Score'].map((t, i) => `<button type="button" role="tab" class="sx-dot${i === 0 ? ' on' : ''}" data-i="${i}"><i></i><span>${i + 1}. ${t}</span></button>`).join('')}</div>
       </div>
     </div></section>
 
@@ -206,6 +226,47 @@
     }));
 
     // reveal on scroll
+    // The score walkthrough: five steps that play by themselves, one caption each.
+    const sx = el.querySelector('#sx');
+    if (sx) {
+      const CAPS = [
+        "Your manager ranks your top priorities for the week. Up to five. Anything not ranked is not scored.",
+        "Each rank is worth a share of the score. #1 is worth the most, so it is the one to get right.",
+        "You deliver with proof, and the people who used the work rate it. Done well counts in full. Needs fixes counts half.",
+        "Everything else you did is still logged, but it is worth 0. More tasks never mean a higher score.",
+        "Score = points earned divided by points possible. 70 ÷ 80 = 88 out of 100."
+      ];
+      const DURS = [3600, 3600, 6800, 3800, 6200];
+      const dots = [...sx.querySelectorAll('.sx-dot')];
+      const earnEl = sx.querySelector('[data-earn]');
+      const numEl = sx.querySelector('[data-n]');
+      const capEl = sx.querySelector('[data-cap]');
+      const noEl = sx.querySelector('[data-stepno]');
+      let cur = 0; let inView = false; let hoverSx = false; let tms = [];
+      const clear = () => { tms.forEach(clearTimeout); tms = []; };
+      const later = (fn, ms) => tms.push(setTimeout(fn, ms));
+      const goTo = (i) => {
+        clear(); cur = i; sx.dataset.s = String(i);
+        dots.forEach((d, k) => { d.classList.toggle('on', k === i); d.classList.toggle('done', k < i); d.style.setProperty('--dur', `${DURS[i]}ms`); });
+        capEl.textContent = CAPS[i]; noEl.textContent = `${i + 1} / 5`;
+        const set = (n, v) => { if (n) { n.textContent = v; n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); } };
+        if (i < 2) { earnEl.textContent = '0'; numEl.textContent = '?'; }
+        if (i === 2) { numEl.textContent = '?'; earnEl.textContent = '0'; later(() => set(earnEl, '35'), 2700); later(() => set(earnEl, '60'), 3300); later(() => set(earnEl, '70'), 3900); }
+        if (i === 3) { earnEl.textContent = '70'; numEl.textContent = '?'; }
+        if (i === 4) { earnEl.textContent = '70'; countUp(numEl, 88, 1300); }
+        numEl.classList.toggle('dim', i < 4);
+        if (!reduce && inView && !hoverSx) later(() => goTo((i + 1) % 5), DURS[i]);
+      };
+      dots.forEach((d, i) => d.addEventListener('click', () => goTo(i)));
+      sx.addEventListener('mouseenter', () => { hoverSx = true; clear(); sx.classList.add('paused'); });
+      sx.addEventListener('mouseleave', () => { hoverSx = false; sx.classList.remove('paused'); goTo(cur); });
+      const sxv = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== inView) { inView = v; if (v) goTo(reduce ? 4 : 0); else clear(); } }, { threshold: 0.35 });
+      sxv.observe(sx);
+      observers.push(sxv);
+      cleanups.push(clear);
+      goTo(reduce ? 4 : 0);
+    }
+
     const rv = new IntersectionObserver((entries) => entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); rv.unobserve(en.target); } }), { threshold: 0.18 });
     el.querySelectorAll('.reveal').forEach((n) => rv.observe(n));
     observers.push(rv);
@@ -243,6 +304,7 @@
 
   function destroy() {
     timers.forEach(clearTimeout); timers = [];
+    cleanups.forEach((f) => f()); cleanups = [];
     observers.forEach((o) => o.disconnect()); observers = [];
   }
 
