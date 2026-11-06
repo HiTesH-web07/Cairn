@@ -402,6 +402,92 @@ function offboardCore(ws, actorId, target, newMgr, source) {
   return reports.length;
 }
 
+
+// ---------- demo data (admins): clearly labelled sample people and weeks, easy to remove ----------
+const DEMO_DOMAIN = '@demo.cairn.example';
+const DEMO_PEOPLE = [
+  { key: 'amit', name: 'Amit Verma (demo)', role: 'manager', level: 'Team lead', department: 'Engineering', boss: 'owner' },
+  { key: 'riya', name: 'Riya Shah (demo)', role: 'member', level: 'Engineer', department: 'Engineering', boss: 'amit' },
+  { key: 'sonal', name: 'Sonal Gupta (demo)', role: 'member', level: 'Engineer', department: 'Engineering', boss: 'amit' },
+  { key: 'karan', name: 'Karan Mehta (demo)', role: 'member', level: 'Intern', department: 'Engineering', boss: 'amit' },
+  { key: 'neha', name: 'Neha Rao (demo)', role: 'member', level: 'Marketer', department: 'Marketing', boss: 'owner' }
+];
+const DEMO_WORK = {
+  Engineering: [['Ship the Gmail plug launch', 'Launch checklist done, docs live'], ['Write the help docs', 'Docs published and reviewed'], ['Refresh OAuth tokens', 'Refresh flow merged'], ['Fix the sync retry bug', 'Retries tested on staging'], ['Review the API changes', 'Reviews posted']],
+  Marketing: [['Launch the October newsletter', 'Sent to 12k readers'], ['Publish the customer story', 'Story live on the blog'], ['Refresh the pricing page', 'New page shipped'], ['Plan the webinar', 'Webinar scheduled'], ['Update the sales deck', 'Deck shared with sales']]
+};
+const DEMO_QUALITY = ['done_well', 'done_well', 'needs_fixes', 'done_well', 'done_well', 'redo', 'done_well', 'needs_fixes', 'done_well', 'done_well'];
+
+app.get('/api/demo', auth, adminOnly, wrap((req) => ({
+  loaded: db.prepare('SELECT COUNT(*) c FROM users WHERE workspace_id = ? AND email LIKE ?').get(req.ws.id, `%${DEMO_DOMAIN}`).c > 0
+})));
+
+app.post('/api/demo', auth, adminOnly, idempotent, wrap((req, res) => {
+  if (db.prepare('SELECT 1 FROM users WHERE workspace_id = ? AND email LIKE ?').get(req.ws.id, `%${DEMO_DOMAIN}`)) throw bad('Demo data is already loaded');
+  const ws = req.ws; const owner = req.user; const cur = currentWeek(ws);
+  const ids = { owner: owner.id };
+  const stamp = (week, d, h) => `${addDays(week, d)}T${String(h).padStart(2, '0')}:00:00.000Z`;
+  db.transaction(() => {
+    for (const p of DEMO_PEOPLE) {
+      ids[p.key] = newId('u');
+      db.prepare('INSERT INTO users (id, workspace_id, email, name, pw_hash, role, level, department, reports_to, active, created_at) VALUES (?,?,?,?,NULL,?,?,?,?,1,?)')
+        .run(ids[p.key], ws.id, `${p.key}${DEMO_DOMAIN}`, p.name, p.role, p.level, p.department, ids[p.boss], now());
+    }
+    let q = 0;
+    DEMO_PEOPLE.forEach((p, pi) => {
+      const boss = ids[p.boss]; const second = p.boss === 'owner' ? ids.amit : owner.id;
+      for (let back = 6; back >= 0; back--) {
+        const week = addDays(cur, -7 * back); const isCur = back === 0;
+        const n = p.level === 'Intern' ? 3 : 5;
+        db.prepare('INSERT INTO stacks (workspace_id, user_id, week_start, locked_at, locked_by) VALUES (?,?,?,?,?)').run(ws.id, ids[p.key], week, stamp(week, 0, 9), boss);
+        for (let r = 1; r <= n; r++) {
+          const [title, proof] = DEMO_WORK[p.department][(r - 1 + back + pi) % 5];
+          const id = newId('it'); const secondRater = r <= 2 ? second : null;
+          const status = isCur ? (r === 1 ? 'delivered' : r === 2 && pi % 2 ? 'blocked_external' : r === 3 ? 'in_progress' : 'planned') : 'delivered';
+          const t0 = stamp(week, 0, 9);
+          db.prepare('INSERT INTO items (id, workspace_id, user_id, week_start, rank, title, stretch, status, proof_note, proof_source, delivered_at, second_rater_id, kind, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+            .run(id, ws.id, ids[p.key], week, r, `${title}${back ? '' : ''}`, r === 4 && back % 3 === 0 ? 1 : 0, status, status === 'delivered' ? proof : null, status === 'delivered' ? 'self-reported' : null, status === 'delivered' ? stamp(week, 3 + (r % 2), 15) : null, secondRater, 'work', boss, t0, t0);
+          if (status === 'blocked_external') db.prepare('INSERT INTO blockers (id, workspace_id, item_id, user_id, description, raised_at) VALUES (?,?,?,?,?,?)').run(newId('bk'), ws.id, id, ids[p.key], 'Waiting on API keys from the partner', new Date(Date.now() - 4 * 3600e3).toISOString());
+          // The current week keeps its first item waiting for a rating, so the Rate Work screen has something in it.
+          if (status === 'delivered' && !(isCur && pi === 0)) {
+            const quality = DEMO_QUALITY[(q++ + pi + back) % DEMO_QUALITY.length];
+            const note = quality === 'done_well' ? null : quality === 'needs_fixes' ? 'A few edge cases are missing' : 'Needs to be redone: it missed the brief';
+            db.prepare('INSERT INTO ratings (id, workspace_id, item_id, rater_id, rater_role, quality, note, created_at) VALUES (?,?,?,?,?,?,?,?)').run(newId('rt'), ws.id, id, boss, 'primary', quality, note, stamp(week, 4, 11));
+            if (secondRater) db.prepare('INSERT INTO ratings (id, workspace_id, item_id, rater_id, rater_role, quality, note, created_at) VALUES (?,?,?,?,?,?,?,?)').run(newId('rt'), ws.id, id, secondRater, 'second', quality === 'redo' ? 'redo' : 'done_well' === quality ? 'done_well' : 'needs_fixes', quality === 'done_well' ? null : note, stamp(week, 4, 12));
+          }
+        }
+      }
+    });
+    const coin = (from, to, c, why, back) => db.prepare('INSERT INTO coins (id, workspace_id, from_id, to_id, coins, reason, week_start, created_at) VALUES (?,?,?,?,?,?,?,?)').run(newId('cn'), ws.id, ids[from] || from, ids[to] || to, c, why, addDays(cur, -7 * back), now());
+    coin('sonal', 'riya', 3, 'Stayed late to unblock my launch', 0); coin('karan', 'sonal', 2, 'Great code review', 1); coin('riya', 'karan', 2, 'Patient pairing session', 0); coin('amit', 'neha', 3, 'Helped with the deck', 1);
+    audit(ws.id, owner.id, 'demo.loaded', 'workspace', ws.id, { people: DEMO_PEOPLE.length });
+  })();
+  res.status(201);
+  return { ok: true, people: DEMO_PEOPLE.length };
+}));
+
+app.delete('/api/demo', auth, adminOnly, wrap((req) => {
+  const demo = db.prepare('SELECT id FROM users WHERE workspace_id = ? AND email LIKE ?').all(req.ws.id, `%${DEMO_DOMAIN}`).map((u) => u.id);
+  if (!demo.length) return { ok: true, removed: 0 };
+  const ph = demo.map(() => '?').join(',');
+  db.transaction(() => {
+    const items = db.prepare(`SELECT id FROM items WHERE workspace_id = ? AND user_id IN (${ph})`).all(req.ws.id, ...demo).map((i) => i.id);
+    if (items.length) {
+      const ip = items.map(() => '?').join(',');
+      db.prepare(`DELETE FROM disputes WHERE rating_id IN (SELECT id FROM ratings WHERE item_id IN (${ip}))`).run(...items);
+      db.prepare(`DELETE FROM ratings WHERE item_id IN (${ip})`).run(...items);
+      db.prepare(`DELETE FROM blockers WHERE item_id IN (${ip})`).run(...items);
+      db.prepare(`DELETE FROM items WHERE id IN (${ip})`).run(...items);
+    }
+    db.prepare(`DELETE FROM coins WHERE workspace_id = ? AND (from_id IN (${ph}) OR to_id IN (${ph}))`).run(req.ws.id, ...demo, ...demo);
+    for (const t of ['stacks', 'leave_days', 'weekly_scores']) db.prepare(`DELETE FROM ${t} WHERE workspace_id = ? AND user_id IN (${ph})`).run(req.ws.id, ...demo);
+    db.prepare(`DELETE FROM sessions WHERE user_id IN (${ph})`).run(...demo);
+    db.prepare(`DELETE FROM users WHERE id IN (${ph})`).run(...demo);
+    audit(req.ws.id, req.user.id, 'demo.removed', 'workspace', req.ws.id, { people: demo.length });
+  })();
+  return { ok: true, removed: demo.length };
+}));
+
 // Someone leaves: their reports move to a new manager, sign-in stops at once, and every past week, rating and coin stays on record.
 app.post('/api/people/:id/offboard', auth, idempotent, wrap((req) => {
   const target = userIn(req.ws.id, req.params.id);

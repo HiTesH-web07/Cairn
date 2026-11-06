@@ -60,6 +60,17 @@ async function run(btn, fn) {
   try { await fn(); } catch (e) { toast(e.message); } finally { if (btn) btn.disabled = false; }
 }
 function addDays(ymd, n) { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+// A calendar to jump to any week. Any day works: the server snaps it to that week's Monday.
+function weekPick(week) {
+  const t = new Date(); const today = new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return `<label class="wk-pick" title="Pick any date to jump to its week"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>Pick week</span><input type="date" data-wkpick value="${week}" max="${addDays(today, 60)}" aria-label="Pick a week"></label>`;
+}
+document.addEventListener('change', (e) => {
+  const i = e.target.closest && e.target.closest('[data-wkpick]');
+  if (!i || !i.value) return;
+  const h = location.hash.split('?'); const q = new URLSearchParams(h[1] || ''); q.set('week', i.value);
+  location.hash = `${h[0]}?${q}`;
+});
 function fmtWeek(w) { const d = new Date(`${w}T00:00:00Z`); return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }) + ' – ' + new Date(`${addDays(w, 6)}T00:00:00Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }); }
 function fmtTime(iso) { return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
 const scoreText = (s) => (s === null || s === undefined ? '–' : String(s));
@@ -115,8 +126,8 @@ function layout(active, inner) {
     links.push(`<a href="#/${n[0]}" class="${n[0] === active ? 'on' : ''}"${n[0] === active ? ' aria-current="page"' : ''}>${UI.icon(n[0])}<span>${n[1]}</span>${n[0] === 'rate' && state.pending ? `<span class="badge">${state.pending}</span>` : ''}</a>`);
   }
   const u = state.me.user;
-  $('#app').innerHTML = `<a class="skip" href="#" id="skip">Skip to content</a><div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b></div>
-  <div class="shell"><nav class="side" id="side" aria-label="Main"><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
+  $('#app').innerHTML = `<a class="skip" href="#" id="skip">Skip to content</a><div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>${UI.brand.name}</b>${UI.themeBtn()}</div>
+  <div class="shell"><nav class="side" id="side" aria-label="Main"><div class="brand-row"><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>${UI.themeBtn()}</div>
   <div class="ws"><span>Workspace</span><b>${esc(state.me.workspace.name)}</b></div>${links.join('')}
   <div class="me-card">${UI.avatar(u.name)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
@@ -211,7 +222,7 @@ async function weekScreen(params) {
   };
 
   layout('week', `<div class="hello">${UI.cairn()}<div class="who">${w.isSelf ? '' : UI.avatar(w.person.name, 'lg')}<div><h1>${w.isSelf ? `${greet}, ${esc(state.me.user.name.split(' ')[0])}` : who}</h1><p>${w.isSelf ? 'My Week · ' : ''}${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div></div>
-    <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a></div></div>
+    <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a>${weekPick(w.week)}<a class="btn" href="${nav(7)}">Next →</a></div></div>
     <div class="grid">
       <div class="tile has-ring"><div><span class="tile-ico t-acc">${UI.icon('score')}</span><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
       <div class="tile"><span class="tile-ico t-good">${UI.icon('check')}</span><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
@@ -344,7 +355,7 @@ async function rateScreen() {
 async function teamScreen(params) {
   const t = await api('GET', `/api/team${params.week ? `?week=${encodeURIComponent(params.week)}` : ''}`);
   const nav = (n) => `#/team?week=${addDays(t.week, n)}`;
-  layout('team', `${UI.head('Manager view', 'Team', `${fmtWeek(t.week)} · each person against their own ranked priorities`, `<a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a>`)}
+  layout('team', `${UI.head('Manager view', 'Team', `${fmtWeek(t.week)} · each person against their own ranked priorities`, `<a class="btn" href="${nav(-7)}">← Previous</a>${weekPick(t.week)}<a class="btn" href="${nav(7)}">Next →</a>`)}
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Level</th><th>Department</th><th class="num">Score</th><th class="num">Quality</th><th class="num">Coins</th><th class="num">Alignment</th><th>Flags</th></tr></thead><tbody>
     ${t.people.map((p) => `<tr><td><div class="who">${UI.avatar(p.name)}<a href="#/week?user=${esc(p.id)}&week=${t.week}">${esc(p.name)}</a></div></td><td>${esc(p.level || '')}</td><td>${esc(p.department || '')}</td>
       <td class="num"><b>${scoreText(p.score)}</b>${p.score === null ? '' : `<span class="sbar"><i style="width:${p.score}%"></i></span>`}${p.pending ? ` <span class="pill">${p.pending} unrated</span>` : ''}</td><td class="num">${p.qualityPct === null ? '–' : `${p.qualityPct}%`}</td>
@@ -427,7 +438,7 @@ async function incidentsScreen() {
 
 // ---------- People ----------
 async function peopleScreen() {
-  const [p, dir, former] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory'), api('GET', '/api/people/former')]);
+  const [p, dir, former, demo] = await Promise.all([api('GET', '/api/people'), api('GET', '/api/directory'), api('GET', '/api/people/former'), isAdmin() ? api('GET', '/api/demo') : Promise.resolve({ loaded: false })]);
   const byId = Object.fromEntries(dir.people.map((x) => [x.id, x.name]));
   const admin = isAdmin();
   const adder = canAddPeople();
@@ -447,10 +458,16 @@ async function peopleScreen() {
     <div class="card tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Department</th><th>Reports to</th><th>Phone</th>${adder ? '<th></th>' : ''}</tr></thead><tbody>
     ${team.map((u) => `<tr><td><div class="who">${UI.avatar(u.name)}<div><a href="#/week?user=${esc(u.id)}">${esc(u.name)}</a> ${u.joined ? '' : '<span class="pill warn">invited</span>'}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.role)}</td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td>
       <td>${esc(byId[u.reports_to] || '–')}</td><td>${esc(u.phone || '')}</td>${adder ? `<td><div class="actions">${rowActs(u)}</div></td>` : ''}</tr>`).join('')}</tbody></table></div>
+    ${admin ? `<div class="card demo-card"><div><h3>Sample data</h3><p class="small muted">${demo.loaded ? 'Demo people and six weeks of ranked, rated work are loaded (their names end in “(demo)”). Open Team or Scorecard to look around. Remove them any time.' : 'Fill this workspace with a few labelled demo people and six weeks of ranked, rated work, so you can try the screens, Slack messages and phone alerts. Remove it with one click.'}</p></div><div class="actions"><button class="${demo.loaded ? 'ghost danger' : 'primary'}" id="demoBtn">${demo.loaded ? 'Remove demo data' : 'Load demo data'}</button></div></div>` : ''}
     ${former.people.length ? `<h2>Former people</h2><p class="small muted">They cannot sign in. Their past weeks, ratings and coins stay on record.</p><div class="card tablewrap"><table><tbody>
       ${former.people.map((u) => `<tr><td><div class="who">${UI.avatar(u.name)}<div>${esc(u.name)}<small>${esc(u.email)}</small></div></div></td><td>${esc(u.level || '')}</td><td>${esc(u.department || '')}</td><td>${adder ? `<button data-back="${esc(u.id)}">Bring back</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
     <p class="small muted">New joiners: add them here or by CSV. Leavers: "Left the company" moves their team to a new manager. Team changes: Edit → Reports to.</p>`);
   const managerOptions = (sel, exclude) => (admin ? dir.people : team).filter((x) => x.id !== exclude).map((x) => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  const demoBtn = $('#demoBtn');
+  if (demoBtn) demoBtn.onclick = () => run(demoBtn, async () => {
+    if (demo.loaded) { if (!confirm('Remove all demo people and their weeks?')) return; await api('DELETE', '/api/demo'); toast('Demo data removed'); } else { await api('POST', '/api/demo', {}, { idem: idem() }); toast('Demo data loaded. Open Team to look around.'); }
+    peopleScreen();
+  });
   $('#main').addEventListener('click', (e) => {
     const link = e.target.closest('[data-link]');
     const off = e.target.closest('[data-off]');

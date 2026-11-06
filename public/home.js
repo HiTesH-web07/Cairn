@@ -66,7 +66,7 @@
     <header class="hp-nav"><div class="hp-wrap">
       <a class="brand" href="#/home">${logo()}${brand.name}</a>
       <nav class="hp-links" aria-label="Sections"><a data-go="hp-how">How it works</a><a data-go="hp-vs">Why it's different</a><a data-go="hp-fair">Fairness</a><a data-go="hp-where">Where you work</a></nav>
-      <div class="hp-cta">${cta}</div>
+      <div class="hp-cta">${window.UI.themeBtn()}${cta}</div>
     </div></header>
 
     <div class="hp-herowrap"><div class="hp-deco" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
