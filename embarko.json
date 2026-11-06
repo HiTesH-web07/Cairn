@@ -1,0 +1,6 @@
+{
+  "$schema": "https://embarko.ai/schema/embarko.json",
+  "schedules": [
+    { "cron": "0 * * * *", "path": "/tasks/hourly", "timezone": "UTC", "name": "refresh weekly scores" }
+  ]
+}

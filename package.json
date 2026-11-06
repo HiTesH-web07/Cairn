@@ -1,0 +1,19 @@
+{
+  "name": "proof-of-impact",
+  "version": "0.1.0",
+  "description": "Measure the value of work, not the number of tasks.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "better-sqlite3": "11.10.0",
+    "express": "4.21.2"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
