@@ -274,6 +274,9 @@ app.post('/api/invites/:token/accept', wrap((req, res) => {
 }));
 
 // ---------- me / settings / people ----------
+// A quiet answer for the front end: never an error, so signed-out visitors see nothing odd in the console.
+app.get('/api/session', (req, res) => res.json({ signedIn: !!currentUser(req) }));
+
 app.get('/api/me', auth, wrap((req) => ({
   user: publicUser(req.user),
   workspace: { id: req.ws.id, name: req.ws.name, timezone: req.ws.timezone, country: req.ws.country, allowed_domain: req.ws.allowed_domain },

@@ -86,6 +86,7 @@ function modal(html, onSubmit) {
 
 // ---------- layout ----------
 const NAV = [
+  ['home', 'Home', () => true],
   ['week', 'My Week', () => true],
   ['rate', 'Rate Work', () => true],
   ['team', 'Team', isManager],
@@ -101,14 +102,16 @@ const NAV = [
   ['how', 'How we score', () => true]
 ];
 function layout(active, inner) {
+  if (window.Home) window.Home.destroy();
   const links = NAV.filter((n) => n[0] === 'sep' || n[2]()).map((n) => (n[0] === 'sep' ? '<div class="sep"></div>'
-    : `<a href="#/${n[0]}" class="${n[0] === active ? 'on' : ''}">${n[1]}${n[0] === 'rate' && state.pending ? `<span class="badge">${state.pending}</span>` : ''}</a>`)).join('');
+    : `<a href="#/${n[0]}" class="${n[0] === active ? 'on' : ''}">${UI.icon(n[0])}<span>${n[1]}</span>${n[0] === 'rate' && state.pending ? `<span class="badge">${state.pending}</span>` : ''}</a>`)).join('');
   $('#app').innerHTML = `<div class="topbar"><button class="ghost" id="menu" aria-label="Menu">☰</button><b>Proof of Impact</b></div>
-  <div class="shell"><nav class="side" id="side"><div class="brand"><i></i>Proof of Impact</div>
-  <div class="ws">${esc(state.me.workspace.name)} · ${esc(state.me.user.name)}</div>${links}
-  <div class="sep"></div><a href="#" id="signout">Sign out</a></nav><main id="main">${inner}</main></div>`;
+  <div class="shell"><nav class="side" id="side"><a class="brand" href="#/home">${UI.logo()}Proof of Impact</a>
+  <div class="ws"><b>${esc(state.me.workspace.name)}</b>${esc(state.me.user.name)}</div>${links}
+  <div class="sep"></div><a href="#" id="signout">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}<span>Sign out</span></a></nav><main id="main">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
-  $('#signout').onclick = async (e) => { e.preventDefault(); await api('POST', '/api/auth/logout'); state.me = null; location.hash = '#/signin'; };
+  $('#side').addEventListener('click', (e) => { if (e.target.closest('a[href^="#/"]')) $('#side').classList.remove('open'); });
+  $('#signout').onclick = async (e) => { e.preventDefault(); await api('POST', '/api/auth/logout'); state.me = null; location.hash = '#/home'; };
 }
 
 // ---------- auth screens ----------
@@ -126,7 +129,8 @@ function authScreen(mode, extra = {}) {
   const join = `<p>You're invited to <b>${esc(extra.workspace)}</b> as ${esc(extra.email)}.</p>
     <label>Your name</label><input name="name" required maxlength="120">
     <label>Choose a password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">`;
-  $('#app').innerHTML = `<div class="auth"><div class="brand" style="padding:0 0 1rem"><i></i>Proof of Impact</div>
+  if (window.Home) window.Home.destroy();
+  $('#app').innerHTML = `<div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}Proof of Impact</a>
     <p class="muted">Measure the value of work, not the number of tasks.</p>
     ${mode === 'join' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
     <form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : signin}<p class="err" id="autherr"></p>
@@ -196,7 +200,7 @@ async function weekScreen(params) {
   layout('week', `<div class="row spread"><div><h1>${who}</h1><p class="muted">${fmtWeek(w.week)}${w.manager ? ` · ranked by ${esc(w.manager.name)}` : ''}</p></div>
     <div class="row"><a class="btn" href="${nav(-7)}">← Previous</a><a class="btn" href="${nav(7)}">Next →</a></div></div>
     <div class="grid">
-      <div class="tile"><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>
+      <div class="tile has-ring"><div><div class="k">Priority score</div><div class="v">${scoreText(w.score)}</div><div class="s">${w.pending ? `${w.pending} waiting for rating` : 'out of 100'}</div></div>${UI.ring(w.score)}</div>
       <div class="tile"><div class="k">Quality</div><div class="v">${w.quality.done_well}<span class="small muted"> / ${w.quality.done_well + w.quality.needs_fixes + w.quality.redo}</span></div><div class="s">rated "Done well"</div></div>
       <div class="tile"><div class="k">Coins received</div><div class="v">${w.coins}</div><div class="s">shown beside the score, never added</div></div>
       <div class="tile"><div class="k">Alignment</div><div class="v">${w.alignment === null ? '–' : `${w.alignment}%`}</div><div class="s">of priority weight linked upward</div></div>
@@ -348,7 +352,7 @@ async function scoreScreen(params) {
   const rated = c.quality.done_well + c.quality.needs_fixes + c.quality.redo;
   layout('score', `<h1>${esc(s.person.name)} · Scorecard</h1><p class="muted">${fmtWeek(s.week)}${s.person.level ? ` · ${esc(s.person.level)}` : ''}</p>
     <div class="grid">
-      <div class="tile"><div class="k">1. Did what mattered most?</div><div class="v">${scoreText(c.score)}</div><div class="s">priority score out of 100${c.pending ? ` · ${c.pending} waiting for rating` : ''}</div></div>
+      <div class="tile has-ring"><div><div class="k">1. Did what mattered most?</div><div class="v">${scoreText(c.score)}</div><div class="s">priority score out of 100${c.pending ? ` · ${c.pending} waiting for rating` : ''}</div></div>${UI.ring(c.score)}</div>
       <div class="tile"><div class="k">2. Was it done well?</div><div class="v">${rated ? `${c.quality.done_well}/${rated}` : '–'}</div><div class="s">rated Done well</div></div>
       <div class="tile"><div class="k">3. Did others value it?</div><div class="v">🪙 ${c.coins}</div><div class="s">coins from colleagues</div></div>
       <div class="tile"><div class="k">Alignment</div><div class="v">${c.alignment === null ? '–' : `${c.alignment}%`}</div><div class="s">linked to the level above</div></div>
@@ -781,6 +785,7 @@ function howScreen() {
 // ---------- router ----------
 async function route() {
   document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+  if (window.Home) window.Home.destroy();
   const [p, qs] = (location.hash.slice(2) || '').split('?');
   const params = Object.fromEntries(new URLSearchParams(qs || ''));
   const [page, arg] = p.split('/');
@@ -790,7 +795,12 @@ async function route() {
       return authScreen('join', { ...inv, token: arg });
     }
     if (!state.me) {
-      try { await loadMe(); } catch { /* not signed in */ }
+      try { if ((await api('GET', '/api/session')).signedIn) await loadMe(); } catch { /* not signed in */ }
+    }
+    if (page === 'home' || (!state.me && !page)) {
+      window.Home.render($('#app'), { signedIn: !!state.me });
+      window.scrollTo(0, 0);
+      return;
     }
     if (!state.me) return authScreen(page === 'signup' ? 'signup' : 'signin');
     const screens = { week: weekScreen, rate: rateScreen, team: teamScreen, score: scoreScreen, coins: coinsScreen, disputes: disputesScreen, incidents: incidentsScreen, people: peopleScreen, integrations: integrationsScreen, settings: settingsScreen, audit: auditScreen, how: howScreen };

@@ -325,3 +325,11 @@ test('joiners, movers and leavers keep the hierarchy and the history intact', as
   const tlb = await join(admin, 'tlb@churn.co', 'admin', adminId);
   assert.equal((await tlb.c('POST', `/api/people/${adminId}/offboard`, {})).status, 403);
 });
+
+test('the session check never errors and says whether someone is signed in', async () => {
+  const anon = client();
+  assert.deepEqual((await anon('GET', '/api/session')).body, { signedIn: false });
+  assert.equal((await anon('GET', '/api/session')).status, 200);
+  await anon('POST', '/api/auth/signup', { company: 'SessCo', name: 'S', email: 's@sess.co', password: PW });
+  assert.deepEqual((await anon('GET', '/api/session')).body, { signedIn: true });
+});
