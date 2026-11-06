@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS = {
   // Which moments may ring a phone (M91). All on by default; an admin can switch any off.
   alertMoments: { blockers: true, unrated: true, unranked: true, disputes: true },
   // Which Slack messages may be sent. Each only goes to the person it is about, as a direct message.
+  // Ask Cairn, the AI helper. It explains and drafts. It never scores or rates anyone.
+  aiHelper: true,
   slackMessages: { plan: true, locked: true, rating: true, morning: true, evening: true, digest: true },
   // With Keka, only the fields ticked here are ever read. Salary, payroll, bank, tax, documents and attendance never are.
   hrFields: { reportingLine: true, department: true, jobTitle: true, leave: true, phone: false },
@@ -34,6 +36,7 @@ function mergeSettings(raw) {
 
 function validateSettings(s) {
   const errors = [];
+  if (typeof s.aiHelper !== 'boolean') errors.push('aiHelper must be true or false');
   const w = s.rankWeights;
   if (!Array.isArray(w) || w.length < 1 || w.length > 10 || w.some((x) => typeof x !== 'number' || x < 0)) {
     errors.push('rankWeights must be a list of 1-10 non-negative numbers');

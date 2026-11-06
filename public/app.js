@@ -132,9 +132,56 @@ function layout(active, inner) {
   <div class="ws"><span>Workspace</span><b>${esc(state.me.workspace.name)}</b></div>${links.join('')}
   <div class="me-card"><a class="me-link" href="#/profile" title="My profile">${UI.avatar(u.name, '', u.avatar)}<div class="me-t"><b>${esc(u.name)}</b><span>${esc(u.role)}</span></div></a><button class="ghost" id="signout" title="Sign out" aria-label="Sign out">${UI.icon('how').replace(/<path[^>]*>/, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')}</button></div></nav><main id="main" tabindex="-1">${inner}</main></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
+  initAsk();
   $('#skip').onclick = (e) => { e.preventDefault(); $('#main').focus(); };
   $('#side').addEventListener('click', (e) => { if (e.target.closest('a[href^="#/"]')) $('#side').classList.remove('open'); });
-  $('#signout').onclick = async (e) => { e.preventDefault(); await api('POST', '/api/auth/logout'); state.me = null; location.hash = '#/home'; };
+  $('#signout').onclick = async (e) => { e.preventDefault(); await api('POST', '/api/auth/logout'); state.me = null; askTurns = []; document.getElementById('askFab')?.remove(); document.getElementById('askPanel')?.remove(); location.hash = '#/home'; };
+}
+
+// ---------- Ask Cairn ----------
+let askTurns = [];
+function askHtml(t) {
+  const e = (x) => x.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const lines = e(t).split('\n'); let out = ''; let list = false;
+  for (const l of lines) {
+    const m = /^\s*[-*•]\s+(.*)$/.exec(l);
+    if (m) { if (!list) { out += '<ul>'; list = true; } out += `<li>${m[1]}</li>`; continue; }
+    if (list) { out += '</ul>'; list = false; }
+    if (l.trim()) out += `<p>${l}</p>`;
+  }
+  if (list) out += '</ul>';
+  return out.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+}
+function initAsk() {
+  if (!state.me || !state.me.ai || document.getElementById('askFab')) return;
+  const mgr = state.me.reports > 0;
+  const chips = ['Why is my score what it is?', 'What should I do next?', 'Is anything of mine blocked or waiting?'].concat(mgr ? ['Who in my team needs help this week?'] : []);
+  document.body.insertAdjacentHTML('beforeend', `<button id="askFab" class="ask-fab" aria-expanded="false" aria-controls="askPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg><span>Ask Cairn</span></button>
+  <section id="askPanel" class="ask-panel" hidden aria-label="Ask Cairn"><header><div><b>Ask Cairn</b><small>Explains your week. Never scores anyone.</small></div><button class="ghost" id="askClose" aria-label="Close">×</button></header>
+    <div class="ask-log" id="askLog" aria-live="polite"><div class="ask-msg bot"><p>Hi ${esc(state.me.user.name.split(' ')[0])}. Ask me about your score, your week or ${mgr ? 'your team' : 'what to do next'}.</p></div>
+    <div class="ask-chips">${chips.map((c) => `<button type="button" class="ask-chip">${esc(c)}</button>`).join('')}</div></div>
+    <form id="askForm"><input id="askInput" maxlength="400" placeholder="Ask in your own words…" autocomplete="off" aria-label="Your question"><button class="primary">Ask</button></form>
+    <p class="ask-foot">AI-written explanation from your own data. Check anything important with your manager.</p></section>`);
+  const fab = $('#askFab'); const panel = $('#askPanel'); const log = $('#askLog'); const input = $('#askInput');
+  const toggle = (open) => { panel.hidden = !open; fab.setAttribute('aria-expanded', String(open)); fab.classList.toggle('on', open); if (open) input.focus(); };
+  fab.onclick = () => toggle(panel.hidden); $('#askClose').onclick = () => toggle(false);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) toggle(false); });
+  const add = (cls, html) => { const d = document.createElement('div'); d.className = `ask-msg ${cls}`; d.innerHTML = html; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; };
+  const send = async (q) => {
+    if (!q.trim()) return;
+    log.querySelector('.ask-chips')?.remove();
+    add('me', `<p>${esc(q)}</p>`); input.value = '';
+    const wait = add('bot', '<p class="typing-dots"><i></i><i></i><i></i></p>');
+    try {
+      const wk = location.hash.includes('week=') ? new URLSearchParams(location.hash.split('?')[1]).get('week') : undefined;
+      const r = await api('POST', '/api/ask', { question: q, history: askTurns.slice(-6), week: wk });
+      askTurns.push({ role: 'user', text: q }, { role: 'model', text: r.answer });
+      wait.innerHTML = askHtml(r.answer);
+    } catch (e) { wait.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+    log.scrollTop = log.scrollHeight;
+  };
+  $('#askForm').onsubmit = (e) => { e.preventDefault(); send(input.value); };
+  log.addEventListener('click', (e) => { const c = e.target.closest('.ask-chip'); if (c) send(c.textContent); });
 }
 
 // ---------- auth screens ----------
@@ -754,6 +801,11 @@ async function integrationsScreen() {
       ${ke.runs.length ? `<h3 style="margin-top:1rem">Recent syncs</h3><div class="tablewrap"><table><tbody>${ke.runs.map(runRow).join('')}</tbody></table></div>` : ''}
     </div>
 
+    <div class="card"><div class="row spread"><h2 style="margin:0">Ask Cairn (AI helper)</h2><span class="pill ${s.ai.keyPresent && s.ai.on ? 'good' : 'warn'}">${!s.ai.keyPresent ? 'Not set up' : s.ai.on ? 'On' : 'Off'}</span></div>
+      <p class="small">A chat box that explains a person's score, week and team in plain words, using only what that person can already see. It <b>never scores or rates anyone</b>, changes nothing, and what people ask is not stored.</p>
+      ${s.ai.keyPresent ? `<label style="margin:.4rem 0;color:var(--text)"><input type="checkbox" id="aiToggle" ${s.ai.on ? 'checked' : ''} style="width:auto"> Let people in <b>${esc(state.me.workspace.name)}</b> use Ask Cairn</label><p class="small" id="aiOut"></p>` : '<div class="notice warn">Not set up yet. The person who runs this server adds <code>GEMINI_API_KEY</code> in the app settings on Embarko.</div>'}
+    </div>
+
     <div class="card"><div class="row spread"><h2 style="margin:0">Email</h2><span class="pill ${s.mail.configured ? 'good' : 'warn'}">${s.mail.configured ? 'Set up' : 'Not set up'}</span></div>
       <p class="small">Sends password reset links to people's inboxes${s.mail.from ? `, from <b>${esc(s.mail.from)}</b>` : ''}. This is a setting of the whole server, so it works for every workspace.</p>
       ${s.mail.configured ? '<div class="row"><button class="primary" id="mailTest">Send myself a test email</button></div><p class="small" id="mailOut"></p>' : '<div class="notice warn">Not set up yet. The person who runs this server adds <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> and <code>MAIL_FROM</code> in the app settings on Embarko. Until then reset links go to Slack when Slack is connected.</div>'}
@@ -789,6 +841,8 @@ async function integrationsScreen() {
   const out = (id, t) => { const el = $(id); if (el) el.textContent = t; };
   const t1 = $('#slTest');
   if (t1) t1.onclick = () => run(t1, async () => { out('#slOut', 'Sending…'); try { const r = await api('POST', '/api/integrations/slack/test', {}); out('#slOut', r.message); setTimeout(integrationsScreen, 1500); } catch (e) { out('#slOut', e.message); } });
+  const ai = $('#aiToggle');
+  if (ai) ai.onchange = async () => { try { await api('PUT', '/api/settings', { settings: { aiHelper: ai.checked } }); state.me = await api('GET', '/api/me'); out('#aiOut', ai.checked ? 'Ask Cairn is on.' : 'Ask Cairn is off.'); } catch (e) { out('#aiOut', e.message); ai.checked = !ai.checked; } };
   const tm = $('#mailTest');
   if (tm) tm.onclick = () => run(tm, async () => { out('#mailOut', 'Sending…'); try { const r = await api('POST', '/api/mail/test', {}); out('#mailOut', `Sent to ${r.to}. Check the inbox, and spam too.`); } catch (e) { out('#mailOut', e.message); } });
   const t2 = $('#slMatch');
