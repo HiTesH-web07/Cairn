@@ -333,3 +333,27 @@ test('the session check never errors and says whether someone is signed in', asy
   await anon('POST', '/api/auth/signup', { company: 'SessCo', name: 'S', email: 's@sess.co', password: PW });
   assert.deepEqual((await anon('GET', '/api/session')).body, { signedIn: true });
 });
+
+test('forgotten password: generic answer, admin link works once, old password and sessions stop working', async () => {
+  const owner = client();
+  const su = await owner('POST', '/api/auth/signup', { company: 'ResetCo', name: 'Olive Owner', email: 'olive@resetco.test', password: PW, timezone: 'UTC' });
+  assert.equal(su.status, 200, JSON.stringify(su.body));
+  const { c: mia, id: miaId } = await join(owner, 'mia@resetco.test', 'member', (await owner('GET', '/api/me')).body.user.id, 'Engineer', 'Eng');
+  // asking for a reset never reveals whether an email exists
+  const a = await client()('POST', '/api/auth/forgot', { email: 'mia@resetco.test' });
+  const b = await client()('POST', '/api/auth/forgot', { email: 'nobody@resetco.test' });
+  assert.equal(a.status, 200); assert.deepEqual(a.body, b.body);
+  assert.ok(!JSON.stringify(a.body).includes('/reset/'));
+  // a member cannot hand out reset links; the owner can
+  assert.equal((await mia('POST', `/api/people/${(await owner('GET', '/api/me')).body.user.id}/reset-link`, {})).status, 403);
+  const rl = await owner('POST', `/api/people/${miaId}/reset-link`, {});
+  assert.equal(rl.status, 200, JSON.stringify(rl.body));
+  const token = rl.body.link.split('/reset/')[1];
+  assert.equal((await client()('POST', `/api/auth/reset/${token}`, { password: 'short' })).status, 400);
+  const ok = await client()('POST', `/api/auth/reset/${token}`, { password: 'a-brand-new-pass-1' });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.equal((await client()('POST', `/api/auth/reset/${token}`, { password: 'another-pass-2222' })).status, 404); // works once
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'mia@resetco.test', password: PW })).status, 401);
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'mia@resetco.test', password: 'a-brand-new-pass-1' })).status, 200);
+  assert.equal((await mia('GET', '/api/me')).status, 401); // the old session was signed out
+});

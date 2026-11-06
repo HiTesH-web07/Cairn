@@ -249,6 +249,65 @@ app.get('/api/invites/:token', wrap((req) => {
   return { email: inv.email, workspace: getWs(inv.workspace_id).name, role: inv.role };
 }));
 
+
+// ---------- forgotten passwords ----------
+// A reset link works once and expires. It is never put in an API answer to the person asking:
+// it goes to their Slack DM when Slack is connected, or an admin or their manager hands it over.
+db.exec(`CREATE TABLE IF NOT EXISTS password_resets (
+  token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_by TEXT, expires_at TEXT NOT NULL, used_at TEXT)`);
+function newReset(user, createdBy, hours) {
+  const token = crypto.randomBytes(24).toString('base64url');
+  db.transaction(() => {
+    db.prepare('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL').run(now(), user.id);
+    db.prepare('INSERT INTO password_resets (token_hash, user_id, created_by, expires_at) VALUES (?,?,?,?)')
+      .run(sha(token), user.id, createdBy, new Date(Date.now() + hours * 3600e3).toISOString());
+  })();
+  return token;
+}
+const FORGOT_ANSWER = { ok: true, message: 'If that email has an account, a reset link is on its way. It arrives as a Slack message when Slack is connected. Otherwise ask your admin or manager for a reset link.' };
+app.post('/api/auth/forgot', wrap((req) => {
+  const email = emailOf(req.body.email);
+  rateLimit(`forgot:${req.ip}`); rateLimit(`forgot:${email}`);
+  const rows = db.prepare('SELECT * FROM users WHERE email = ? AND active = 1 AND pw_hash IS NOT NULL').all(email);
+  for (const u of rows) {
+    const ws = getWs(u.workspace_id);
+    const token = newReset(u, null, 1);
+    const base = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
+    if (integ.slack.enqueue(ws, 'reset', u.id, `reset:${sha(token).slice(0, 16)}`, `Someone asked to reset your Cairn password. If it was you, use this link within 1 hour: ${base}/#/reset/${token}\nIf it was not you, ignore this message.`)) integ.slack.flushSoon(ws);
+    audit(u.workspace_id, null, 'password.reset_requested', 'user', u.id, null);
+  }
+  return FORGOT_ANSWER; // the same answer whether or not the email exists
+}));
+
+app.post('/api/auth/reset/:token', wrap((req) => {
+  rateLimit(`reset:${req.ip}`);
+  const r = db.prepare('SELECT * FROM password_resets WHERE token_hash = ?').get(sha(req.params.token));
+  if (!r || r.used_at || r.expires_at < now()) throw notFound('This reset link is not valid any more. Ask for a new one.');
+  const password = str(req.body.password, 'Password', { min: 10, max: 200 });
+  const u = db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(r.user_id);
+  if (!u) throw notFound('This reset link is not valid any more. Ask for a new one.');
+  db.transaction(() => {
+    db.prepare('UPDATE users SET pw_hash = ? WHERE id = ?').run(hashPassword(password), u.id);
+    db.prepare('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL').run(now(), u.id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id); // signs out every other device
+    audit(u.workspace_id, u.id, 'password.reset', 'user', u.id, null);
+  })();
+  return { ok: true };
+}));
+
+// An admin, or a manager for their own team, can hand someone a reset link directly.
+app.post('/api/people/:id/reset-link', auth, wrap((req) => {
+  const target = userIn(req.ws.id, req.params.id);
+  if (!target || !target.active) throw notFound();
+  if (!target.pw_hash) throw bad('This person has not joined yet. Use "New invite link" instead.');
+  if (target.id === req.user.id) throw bad('Use "Forgot password?" on the sign-in page for your own password');
+  if (target.role === 'owner' && req.user.role !== 'owner') throw forbidden('Only an owner can reset an owner');
+  if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && inMyTeam(req.user, target)))) throw forbidden();
+  const token = newReset(target, req.user.id, 24);
+  audit(req.ws.id, req.user.id, 'password.reset_link', 'user', target.id, null);
+  return { ok: true, link: `/#/reset/${token}` };
+}));
+
 app.post('/api/invites/:token/accept', wrap((req, res) => {
   rateLimit(`invite:${req.ip}`);
   const inv = db.prepare('SELECT * FROM invites WHERE token_hash = ?').get(sha(req.params.token));

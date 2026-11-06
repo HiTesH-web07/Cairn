@@ -137,6 +137,18 @@ function layout(active, inner) {
 }
 
 // ---------- auth screens ----------
+// A show/hide button on every password field.
+function addPwToggles(root) {
+  const eye = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const off = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  root.querySelectorAll('input[type="password"]').forEach((inp) => {
+    const wrap = document.createElement('div'); wrap.className = 'pw';
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pw-eye'; b.setAttribute('aria-label', 'Show password'); b.setAttribute('aria-pressed', 'false'); b.innerHTML = eye;
+    b.onclick = () => { const show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; b.innerHTML = show ? off : eye; b.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); b.setAttribute('aria-pressed', String(show)); inp.focus(); };
+    wrap.appendChild(b);
+  });
+}
 function authScreen(mode, extra = {}) {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const signup = `<label>Company name</label><input name="company" required maxlength="120">
@@ -146,21 +158,34 @@ function authScreen(mode, extra = {}) {
     <label>Only allow emails from this domain (optional)</label><input name="allowed_domain" placeholder="yourcompany.com">
     <label>Time zone</label><input name="timezone" value="${esc(tz)}">`;
   const signin = `<label>Email</label><input name="email" type="email" required autocomplete="email">
-    <label>Password</label><input name="password" type="password" required autocomplete="current-password">
+    <label class="pwlab">Password <a href="#/forgot" class="forgot">Forgot password?</a></label><input name="password" type="password" required autocomplete="current-password">
+    ${extra.notice ? `<p class="notice ok">${esc(extra.notice)}</p>` : ''}
     ${extra.choose ? `<label>Workspace</label><select name="workspace_id">${extra.choose.map((w) => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}</select>` : ''}`;
+  const forgot = `<p class="small muted">Enter your work email. If it has an account, we send a reset link as a Slack message when Slack is connected. Otherwise ask your admin or manager for a link.</p>
+    <label>Work email</label><input name="email" type="email" required autocomplete="email">`;
+  const reset = `<p class="small muted">Choose a new password. This signs you out everywhere else.</p>
+    <label>New password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">
+    <label>Type it again</label><input name="again" type="password" minlength="10" required autocomplete="new-password">`;
   const join = `<p>You're invited to <b>${esc(extra.workspace)}</b> as ${esc(extra.email)}.</p>
     <label>Your name</label><input name="name" required maxlength="120">
     <label>Choose a password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">`;
   if (window.Home) window.Home.destroy();
   $('#app').innerHTML = `<div class="auth2"><aside class="auth-art" aria-hidden="true"><div class="auth-art-in">${UI.cairn()}<h2>Measure what mattered.</h2><ul><li><b>Ranked, not counted</b><span>Only your manager's top five priorities score.</span></li><li><b>Rated in the open</b><span>Two raters on the biggest work, with reasons.</span></li><li><b>Open formula</b><span>Everyone can read how the score works.</span></li></ul></div></aside><div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
     <p class="muted">${UI.brand.tagline} Measure the value of work, not the number of tasks.</p>
-    ${mode === 'join' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
-    <form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : signin}<p class="err" id="autherr"></p>
-    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : 'Sign in'}</button></form></div></div>`;
+    ${mode === 'join' || mode === 'forgot' || mode === 'reset' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
+    ${mode === 'forgot' ? '<h2 class="auth-h">Forgot your password?</h2>' : mode === 'reset' ? '<h2 class="auth-h">Set a new password</h2>' : ''}<form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : mode === 'forgot' ? forgot : mode === 'reset' ? reset : signin}<p class="err" id="autherr"></p>
+    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : mode === 'forgot' ? 'Send reset link' : mode === 'reset' ? 'Save new password' : 'Sign in'}</button>${mode === 'forgot' || mode === 'reset' ? '<a class="back" style="display:block;margin:.9rem 0 0;text-align:center" href="#/signin">← Back to sign in</a>' : ''}</form></div></div>`;
+  addPwToggles($('#authform'));
   $('#authform').onsubmit = async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     try {
+      if (mode === 'forgot') { const r = await api('POST', '/api/auth/forgot', fd); $('#authform').innerHTML = `<p class="notice ok">${esc(r.message)}</p><a class="btn" href="#/signin">Back to sign in</a>`; return; }
+      if (mode === 'reset') {
+        if (fd.password !== fd.again) throw new Error('The two passwords are not the same');
+        await api('POST', `/api/auth/reset/${encodeURIComponent(extra.token)}`, { password: fd.password });
+        location.hash = '#/signin?reset=1'; return;
+      }
       if (mode === 'signup') await api('POST', '/api/auth/signup', fd);
       else if (mode === 'join') await api('POST', `/api/invites/${extra.token}/accept`, fd);
       else {
@@ -448,7 +473,7 @@ async function peopleScreen() {
   const rowActs = (u) => {
     if (u.id === me || !adder || u.role === 'owner' && !admin) return '';
     const a = [`<button data-edit="${esc(u.id)}">Edit</button>`];
-    if (!u.joined) a.push(`<button data-link="${esc(u.id)}">New invite link</button>`);
+    if (!u.joined) a.push(`<button data-link="${esc(u.id)}">New invite link</button>`); else a.push(`<button data-resetpw="${esc(u.id)}">Reset password</button>`);
     a.push(`<button class="ghost danger" data-off="${esc(u.id)}">Left the company</button>`);
     return a.join(' ');
   };
@@ -469,6 +494,11 @@ async function peopleScreen() {
     peopleScreen();
   });
   $('#main').addEventListener('click', (e) => {
+    const rpw = e.target.closest('[data-resetpw]');
+    if (rpw) return run(rpw, async () => {
+      const r = await api('POST', `/api/people/${rpw.dataset.resetpw}/reset-link`, {});
+      modal(`<h3>Password reset link</h3><p class="small muted">Send this to them privately. It works once and expires in 24 hours. Opening it lets them choose a new password and signs them out everywhere else.</p><input readonly value="${esc(location.origin + r.link)}" onclick="this.select()">`, async () => {});
+    });
     const link = e.target.closest('[data-link]');
     const off = e.target.closest('[data-off]');
     const back = e.target.closest('[data-back]');
@@ -831,6 +861,8 @@ async function route() {
       const inv = await api('GET', `/api/invites/${encodeURIComponent(arg)}`);
       return authScreen('join', { ...inv, token: arg });
     }
+    if (page === 'forgot') return authScreen('forgot');
+    if (page === 'reset') return authScreen('reset', { token: arg });
     if (!state.me) {
       try { if ((await api('GET', '/api/session')).signedIn) await loadMe(); } catch { /* not signed in */ }
     }
@@ -839,7 +871,7 @@ async function route() {
       window.scrollTo(0, 0);
       return;
     }
-    if (!state.me) return authScreen(page === 'signup' ? 'signup' : 'signin');
+    if (!state.me) return authScreen(page === 'signup' ? 'signup' : 'signin', params.reset ? { notice: 'Password updated. Sign in with your new password.' } : {});
     const screens = { week: weekScreen, rate: rateScreen, team: teamScreen, score: scoreScreen, coins: coinsScreen, disputes: disputesScreen, incidents: incidentsScreen, people: peopleScreen, integrations: integrationsScreen, settings: settingsScreen, audit: auditScreen, how: howScreen };
     await (screens[page] || weekScreen)(params);
     window.scrollTo(0, 0);

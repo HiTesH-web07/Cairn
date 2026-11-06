@@ -1025,3 +1025,15 @@ nav.side { background: linear-gradient(180deg, color-mix(in srgb, var(--surface)
 .me-card { box-shadow: 0 6px 18px -10px rgba(60, 50, 140, .35); }
 :root[data-theme="dark"] .auth-art { background: linear-gradient(135deg, #312e81 0%, #6d28d9 58%, #be185d 100%); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .auth-art { background: linear-gradient(135deg, #312e81 0%, #6d28d9 58%, #be185d 100%); } }
+
+/* password fields: show/hide, and the forgot link */
+.pw { position: relative; display: block; }
+.pw input { padding-right: 2.9rem; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); border-radius: 10px; display: grid; place-items: center; cursor: pointer; }
+.pw-eye:hover { background: var(--surface-2); color: var(--text); border: 0; }
+.pw-eye svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.pwlab { display: flex; justify-content: space-between; align-items: baseline; }
+.forgot { font-size: .82rem; font-weight: 600; text-decoration: none; }
+.forgot:hover { text-decoration: underline; }
+.auth-h { margin: 1rem 0 .8rem; } .auth-h::before { display: none; }
+.notice.ok { background: var(--good-bg); color: var(--good); border-radius: 12px; padding: .7rem .9rem; font-size: .9rem; margin: .8rem 0 0; }
