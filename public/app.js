@@ -152,11 +152,11 @@ function authScreen(mode, extra = {}) {
     <label>Your name</label><input name="name" required maxlength="120">
     <label>Choose a password (10+ characters)</label><input name="password" type="password" minlength="10" required autocomplete="new-password">`;
   if (window.Home) window.Home.destroy();
-  $('#app').innerHTML = `<div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
+  $('#app').innerHTML = `<div class="auth2"><aside class="auth-art" aria-hidden="true"><div class="auth-art-in">${UI.cairn()}<h2>Measure what mattered.</h2><ul><li><b>Ranked, not counted</b><span>Only your manager's top five priorities score.</span></li><li><b>Rated in the open</b><span>Two raters on the biggest work, with reasons.</span></li><li><b>Open formula</b><span>Everyone can read how the score works.</span></li></ul></div></aside><div class="auth"><a class="back" href="#/home">← Back to home</a><a class="brand" href="#/home">${UI.logo()}${UI.brand.name}</a>
     <p class="muted">${UI.brand.tagline} Measure the value of work, not the number of tasks.</p>
     ${mode === 'join' ? '' : `<div class="tabs"><button class="${mode === 'signin' ? 'on' : ''}" onclick="location.hash='#/signin'">Sign in</button><button class="${mode === 'signup' ? 'on' : ''}" onclick="location.hash='#/signup'">Create a workspace</button></div>`}
     <form class="card" id="authform">${mode === 'signup' ? signup : mode === 'join' ? join : signin}<p class="err" id="autherr"></p>
-    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : 'Sign in'}</button></form></div>`;
+    <button class="primary">${mode === 'signup' ? 'Create workspace' : mode === 'join' ? 'Join' : 'Sign in'}</button></form></div></div>`;
   $('#authform').onsubmit = async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
@@ -211,7 +211,7 @@ async function weekScreen(params) {
     if (!it.rank && (it.mine || w.canRank)) acts.push(`<button class="ghost danger" data-act="delete" data-id="${it.id}">Remove</button>`);
     const parent = w.parentOptions.find((p) => p.id === it.parent_item_id);
     return `<div class="item"><div class="rank ${it.rank ? `r${Math.min(it.rank, 3)}` : ''}">${it.rank ? `#${it.rank}<small>${weights[it.rank - 1]}%</small>` : '–'}</div>
-      <div><h3>${esc(it.title)} ${it.stretch ? '<span class="pill acc">⭐ Stretch</span>' : ''}</h3>
+      <div><h3>${esc(it.title)} ${it.stretch ? '<span class="pill acc star">Stretch</span>' : ''}</h3>
       <div><span class="pill ${statusCls}">${STATUS[it.status]}</span>${it.kind !== 'work' ? `<span class="pill">${it.kind === 'helping' ? 'Helping others' : 'Unplanned'}</span>` : ''}
       ${parent ? `<span class="pill">↑ supports: ${esc(parent.title)}</span>` : ''}</div>
       ${it.details ? `<p class="small muted">${esc(it.details)}</p>` : ''}
@@ -300,7 +300,7 @@ function rankEditor(w, people, reload) {
     d.innerHTML = `<h3>Rank ${esc(w.person.name)}'s week</h3><p class="small muted">Top ${max} only. #1 is worth ${state.me.settings.rankWeights[0]}%. Items ranked #1–#${state.me.settings.secondRaterRanks} also get a second rater.</p>
       ${order.map((o, i) => `<div class="card" style="padding:.6rem .8rem"><div class="row spread"><b>#${i + 1} · ${title(o.item_id)}</b>
         <div class="row"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-down="${i}" ${i === order.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="ghost danger" data-out="${i}">✕</button></div></div>
-        <div class="row small"><label style="margin:0"><input type="checkbox" data-stretch="${i}" ${o.stretch ? 'checked' : ''} style="width:auto"> ⭐ Stretch (above level: bonus, no penalty)</label></div>
+        <div class="row small"><label style="margin:0"><input type="checkbox" data-stretch="${i}" ${o.stretch ? 'checked' : ''} style="width:auto"> <span class="star-i"></span> Stretch (above level: bonus, no penalty)</label></div>
         ${i < state.me.settings.secondRaterRanks ? `<label>Second rater (someone who uses this work; default: your own manager)</label><select data-second="${i}"><option value="">Default</option>${others.map((p) => `<option value="${esc(p.id)}" ${p.id === o.second_rater_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>` : ''}</div>`).join('') || '<p class="muted">Nothing ranked.</p>'}
       ${pool.length && order.length < max ? `<label>Add to ranking</label><select id="addpool"><option value="">Choose…</option>${pool.map((i) => `<option value="${esc(i.id)}">${esc(i.title)}</option>`).join('')}</select>` : ''}
       ${w.locked ? '<label>Reason for changing a locked week (kept in the history log)</label><input id="reason" required>' : ''}
@@ -333,11 +333,11 @@ async function rateScreen() {
   state.pending = r.items.length;
   layout('rate', `${UI.head('Review', 'Rate work', `Rate the result, not the person. Needs fixes and Redo need a note.`)}
     ${r.items.length ? r.items.map((it) => `<div class="card" data-id="${esc(it.id)}"><div class="who" style="align-items:flex-start">${UI.avatar(it.owner.name, 'lg')}<div style="flex:1"><div class="row spread"><div><h3>${esc(it.title)}</h3>
-      <p class="small muted">${esc(it.owner.name)}${it.owner.level ? ` · ${esc(it.owner.level)}` : ''} · ${it.rank ? `ranked #${it.rank} (${it.weight}%)` : 'not ranked'}${it.stretch ? ' · ⭐ Stretch' : ''} · you are the ${it.as === 'primary' ? 'main' : 'second'} rater</p></div></div>
+      <p class="small muted">${esc(it.owner.name)}${it.owner.level ? ` · ${esc(it.owner.level)}` : ''} · ${it.rank ? `ranked #${it.rank} (${it.weight}%)` : 'not ranked'}${it.stretch ? ' · Stretch' : ''} · you are the ${it.as === 'primary' ? 'main' : 'second'} rater</p></div></div>
       ${it.details ? `<p class="small">${esc(it.details)}</p>` : ''}
       <p>Proof: ${it.proof_url ? `<a href="${esc(it.proof_url)}" target="_blank" rel="noopener noreferrer">${esc(it.proof_url)}</a> ` : ''}${esc(it.proof_note || '')}</p>
       <label>Note (required for Needs fixes and Redo)</label><textarea class="note"></textarea>
-      <div class="row" style="margin-top:.5rem"><button class="primary" data-q="done_well">✅ Done well</button><button data-q="needs_fixes">⚠️ Needs fixes</button><button data-q="redo">🔁 Redo</button></div></div></div></div>`).join('')
+      <div class="row" style="margin-top:.5rem"><button class="q q-good" data-q="done_well"><i></i>Done well</button><button class="q q-warn" data-q="needs_fixes"><i></i>Needs fixes</button><button class="q q-bad" data-q="redo"><i></i>Redo</button></div></div></div></div>`).join('')
     : `<div class="card">${UI.empty('All caught up', 'Nothing is waiting for your rating. New work appears here as soon as someone delivers it.')}</div>`}`);
   $('#main').onclick = (e) => {
     const b = e.target.closest('[data-q]');
@@ -378,13 +378,13 @@ async function scoreScreen(params) {
     <div class="grid">
       <div class="tile has-ring"><div><div class="k">1. Did what mattered most?</div><div class="v">${scoreText(c.score)}</div><div class="s">priority score out of 100${c.pending ? ` · ${c.pending} waiting for rating` : ''}</div></div>${UI.ring(c.score)}</div>
       <div class="tile"><div class="k">2. Was it done well?</div><div class="v">${rated ? `${c.quality.done_well}/${rated}` : '–'}</div><div class="s">rated Done well</div></div>
-      <div class="tile"><div class="k">3. Did others value it?</div><div class="v">🪙 ${c.coins}</div><div class="s">coins from colleagues</div></div>
+      <div class="tile"><div class="k">3. Did others value it?</div><div class="v"><span class="coinic"></span>${c.coins}</div><div class="s">coins from colleagues</div></div>
       <div class="tile"><div class="k">Alignment</div><div class="v">${c.alignment === null ? '–' : `${c.alignment}%`}</div><div class="s">linked to the level above</div></div>
     </div>
     <div class="card"><div class="row spread" style="margin-bottom:.7rem"><h2 style="margin:0">This week's stack</h2></div>${UI.stack(c.breakdown.map((b) => ({ rank: b.rank, title: `#${b.rank}`, status: b.status, mult: b.multiplier })), state.me.settings)}</div>
     <div class="card"><h3>Last 5 weeks</h3><div class="bars">${s.trend.map((t) => `<div><span style="height:${t.score || 0}px"></span>${scoreText(t.score)}<br>${esc(t.week.slice(5))}</div>`).join('')}</div></div>
     <div class="card"><h3>What was delivered this week</h3>${s.changed.length ? `<ul>${s.changed.map((x) => `<li>${x.rank ? `#${x.rank} ` : ''}${esc(x.title)} ${x.proof_url ? `· <a href="${esc(x.proof_url)}" target="_blank" rel="noopener noreferrer">proof</a>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Nothing delivered yet.</p>'}</div>
-    <div class="card"><h3>Why colleagues gave coins</h3>${s.coinNotes.length ? `<ul>${s.coinNotes.map((n) => `<li>🪙 ${n.coins} from ${esc(n.from_name)}: "${esc(n.reason)}"</li>`).join('')}</ul>` : '<p class="muted">None this week.</p>'}</div>
+    <div class="card"><h3>Why colleagues gave coins</h3>${s.coinNotes.length ? `<ul>${s.coinNotes.map((n) => `<li><span class="coinic"></span>${n.coins} from ${esc(n.from_name)}: "${esc(n.reason)}"</li>`).join('')}</ul>` : '<p class="muted">None this week.</p>'}</div>
     <p class="small"><a href="#/how">How is this calculated?</a> · Task count never counts.</p>`);
 }
 
@@ -395,8 +395,8 @@ async function coinsScreen() {
     <form class="card form" id="coinform"><label>To</label><select name="to_id" required>${dir.people.filter((p) => p.id !== state.me.user.id).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${p.department ? ` · ${esc(p.department)}` : ''}</option>`).join('')}</select>
       <label>Coins</label><input name="coins" type="number" min="1" max="${c.maxPerPerson}" value="1" required><label>What did they do for you?</label><input name="reason" required maxlength="300">
       <p class="err" id="coinerr"></p><button class="primary">Give coins</button></form>
-    <h2>Received</h2><div class="card">${c.received.length ? `<ul>${c.received.map((x) => `<li>🪙 ${x.coins} from ${esc(x.from_name)}: "${esc(x.reason)}" <span class="small muted">${fmtTime(x.created_at)}</span></li>`).join('')}</ul>` : '<p class="muted">None yet.</p>'}</div>
-    <h2>Given</h2><div class="card">${c.given.length ? `<ul>${c.given.map((x) => `<li>🪙 ${x.coins} to ${esc(x.to_name)}: "${esc(x.reason)}"</li>`).join('')}</ul>` : '<p class="muted">None yet.</p>'}</div>`);
+    <h2>Received</h2><div class="card">${c.received.length ? `<ul>${c.received.map((x) => `<li><span class="coinic"></span>${x.coins} from ${esc(x.from_name)}: "${esc(x.reason)}" <span class="small muted">${fmtTime(x.created_at)}</span></li>`).join('')}</ul>` : UI.empty('No coins yet', 'When a colleague thanks you, it shows up here. Coins sit beside your score and never change it.')}</div>
+    <h2>Given</h2><div class="card">${c.given.length ? `<ul>${c.given.map((x) => `<li><span class="coinic"></span>${x.coins} to ${esc(x.to_name)}: "${esc(x.reason)}"</li>`).join('')}</ul>` : UI.empty('Nothing given yet', 'Thank someone whose work helped you, using the form above.')}</div>`);
   const key = idem();
   $('#coinform').onsubmit = async (e) => {
     e.preventDefault();
@@ -412,7 +412,7 @@ async function disputesScreen() {
     ${d.disputes.length ? d.disputes.map((x) => `<div class="card"><div class="row spread"><h3>${esc(x.title)}</h3><span class="pill ${x.status === 'open' ? 'warn' : 'good'}">${esc(x.status)}</span></div>
       <p class="small muted">${esc(x.owner_name)} disputes ${esc(x.rater_name)}'s rating "${QUALITY[x.original_quality]}" · ${fmtTime(x.created_at)}</p><p>"${esc(x.reason)}"</p>
       ${x.status !== 'open' ? `<p class="small">Decision: ${x.status === 'changed' ? `changed to ${QUALITY[x.new_quality]}` : 'rating kept'} · "${esc(x.resolution_note)}"</p>` : ''}
-      ${x.canResolve ? `<button class="primary" data-resolve="${esc(x.id)}">Decide</button>` : ''}</div>`).join('') : '<div class="card"><p class="muted">No disputes.</p></div>'}`);
+      ${x.canResolve ? `<button class="primary" data-resolve="${esc(x.id)}">Decide</button>` : ''}</div>`).join('') : `<div class="card">${UI.empty('No disputes', 'If someone thinks a rating is unfair, they can raise it here. It goes to the rater\'s manager, and both versions are kept.')}</div>`}`);
   $('#main').onclick = (e) => {
     const b = e.target.closest('[data-resolve]');
     if (!b) return;
@@ -698,32 +698,36 @@ async function settingsScreen() {
   const s = state.me.settings;
   const ws = state.me.workspace;
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  layout('settings', `${UI.head('Manage', 'Settings', 'How scoring, people and alerts work in this workspace.')}<form class="card form" id="sform">
+  layout('settings', `${UI.head('Manage', 'Settings', 'How scoring, people and alerts work in this workspace.')}<form class="form settings" id="sform">
+    <section class="card sect"><h3>Company</h3><p class="small muted">Basic details for this workspace.</p>
     <label>Company name</label><input name="name" value="${esc(ws.name)}" required>
     <label>Time zone</label><input name="timezone" value="${esc(ws.timezone)}">
-    <label>Only allow emails from this domain</label><input name="allowed_domain" value="${esc(ws.allowed_domain || '')}" placeholder="yourcompany.com">
+    <label>Only allow emails from this domain</label><input name="allowed_domain" value="${esc(ws.allowed_domain || '')}" placeholder="yourcompany.com"></section>
+    <section class="card sect"><h3>How the score works</h3><p class="small muted">The weights and quality multipliers behind every score. Everyone can read these on the “How we score” page.</p>
     <label>Rank weights in % (#1 first, must add up to 100)</label><input name="rankWeights" value="${s.rankWeights.join(', ')}">
     <div class="inline"><div><label>Done well ×</label><input name="q_done_well" type="number" step="0.05" min="0" max="1" value="${s.quality.done_well}"></div>
     <div><label>Needs fixes ×</label><input name="q_needs_fixes" type="number" step="0.05" min="0" max="1" value="${s.quality.needs_fixes}"></div>
     <div><label>Redo ×</label><input name="q_redo" type="number" step="0.05" min="0" max="1" value="${s.quality.redo}"></div></div>
     <div class="inline"><div><label>Second rater for ranks #1 to #</label><input name="secondRaterRanks" type="number" min="0" max="10" value="${s.secondRaterRanks}"></div>
-    <div><label>Stretch bonus (0–1)</label><input name="stretchBonus" type="number" step="0.05" min="0" max="1" value="${s.stretchBonus}"></div></div>
+    <div><label>Stretch bonus (0–1)</label><input name="stretchBonus" type="number" step="0.05" min="0" max="1" value="${s.stretchBonus}"></div></div></section>
+    <section class="card sect"><h3>Coins and working days</h3><p class="small muted">Coins are thanks between colleagues. They sit beside the score and never change it.</p>
     <div class="inline"><div><label>Coins per week</label><input name="coinsPerWeek" type="number" min="0" max="100" value="${s.coinsPerWeek}"></div>
     <div><label>Max coins to one person</label><input name="maxCoinsPerPerson" type="number" min="1" value="${s.maxCoinsPerPerson}"></div></div>
-    <label>Working days</label><div class="row">${days.map((d, i) => `<label style="margin:0"><input type="checkbox" name="wd${i}" ${s.workingDays.includes(i) ? 'checked' : ''} style="width:auto"> ${d}</label>`).join('')}</div>
-    <h2>Who adds people</h2>
+    <label>Working days</label><div class="row">${days.map((d, i) => `<label style="margin:0"><input type="checkbox" name="wd${i}" ${s.workingDays.includes(i) ? 'checked' : ''} style="width:auto"> ${d}</label>`).join('')}</div></section>
+    <section class="card sect"><h3>Who adds people</h3>
     <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="1" ${s.managersAddTeam ? 'checked' : ''} style="width:auto"> <b>Managers add their own team</b> <span class="small muted">Admins add managers/TLs; each manager adds, moves and offboards people in their team.</span></label>
-    <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="" ${s.managersAddTeam ? '' : 'checked'} style="width:auto"> <b>Only admins</b> <span class="small muted">Managers rank and rate their team but cannot add or remove people.</span></label>
-    <h2>People &amp; leave source</h2><p class="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p>
+    <label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="managersAddTeam" value="" ${s.managersAddTeam ? '' : 'checked'} style="width:auto"> <b>Only admins</b> <span class="small muted">Managers rank and rate their team but cannot add or remove people.</span></label></section>
+    <section class="card sect"><h3>People &amp; leave source</h3><p class="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p>
     ${[['manual', 'Invite links', 'Managers invite people one by one. Leave is added in the app.'], ['csv', 'CSV upload', 'Export from Keka, Excel or any HR tool and upload it under People. Nothing stays connected.'], ['keka', 'Keka sync', 'Read automatically every night, only the fields ticked below. Needs setup under Integrations.']]
       .map(([v, t, h]) => `<label style="margin:.4rem 0;color:var(--text)"><input type="radio" name="peopleSource" value="${v}" ${s.peopleSource === v ? 'checked' : ''} style="width:auto"> <b>${t}</b> <span class="small muted">${h}</span></label>`).join('')}
     <div id="hrf" style="${s.peopleSource === 'keka' ? '' : 'display:none'}"><label>Fields Keka may share</label>
     ${[['reportingLine', 'Reporting line (who reports to whom)'], ['department', 'Department'], ['jobTitle', 'Job title (used as level)'], ['leave', 'Leave days (not available from Keka yet: import a CSV)'], ['phone', 'Mobile number (for serious alerts)']]
       .map(([k, t]) => `<label style="margin:.2rem 0;color:var(--text)"><input type="checkbox" name="hr_${k}" ${s.hrFields[k] && k !== 'leave' ? 'checked' : ''} ${k === 'leave' ? 'disabled' : ''} style="width:auto"> ${t}</label>`).join('')}
-    <p class="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p></div>
-    <h2>Alerts</h2>
+    <p class="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p></div></section>
+    <section class="card sect"><h3>Alerts</h3>
     <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" value="${s.blockerEscalationHours}">
-    <p class="err" id="serr"></p><button class="primary">Save settings</button></form>
+    </section>
+    <div class="savebar"><p class="err" id="serr"></p><button class="primary">Save settings</button></div></form>
     <div class="card form" id="alertsCard"><p class="muted">Loading phone alerts…</p></div>`);
   phoneAlertsCard();
   $('#sform').addEventListener('change', (e) => { if (e.target.name === 'peopleSource') $('#hrf').style.display = e.target.value === 'keka' ? '' : 'none'; });
@@ -805,7 +809,7 @@ function howScreen() {
     <div class="card"><h3>The idea</h3><p>Every week, your manager ranks your top ${s.rankWeights.length} pieces of work. You are measured on delivering the most important ones, and on how well they were done. <b>The number of tasks never counts.</b></p></div>
     <div class="card"><h3>1. Priority score (out of 100)</h3><table><thead><tr><th>Rank</th><th class="num">Weight</th></tr></thead><tbody>${s.rankWeights.map((w, i) => `<tr><td>#${i + 1}</td><td class="num">${w}%</td></tr>`).join('')}</tbody></table>
       <p>Score = sum of (weight × quality) for delivered priorities, divided by the weight of what was ranked. Each person's #1 is their most important work, so an intern and a senior are both scored out of 100.</p>
-      <ul><li>Work outside the ranked list is logged but earns 0.</li><li>⭐ Stretch work (above your level): +${Math.round(s.stretchBonus * 100)}% if done well, no penalty if missed.</li>
+      <ul><li>Work outside the ranked list is logged but earns 0.</li><li>Stretch work (above your level): +${Math.round(s.stretchBonus * 100)}% if done well, no penalty if missed.</li>
       <li>Work your manager marks "blocked by others" does not count against you.</li><li>Leave days lower what is expected that week.</li><li>The score is capped at 100.</li></ul></div>
     <div class="card"><h3>2. Quality</h3><p>Done well ×${s.quality.done_well} · Needs fixes ×${s.quality.needs_fixes} · Redo ×${s.quality.redo}. Ranks #1–#${s.secondRaterRanks} are rated by two people: your manager and someone who used the work (or your manager's manager). Needs fixes and Redo always come with a note.</p></div>
     <div class="card"><h3>3. Coins from colleagues</h3><p>Everyone gives up to ${s.coinsPerWeek} coins a week, at most ${s.maxCoinsPerPerson} to one person, never to themselves. Coins are shown next to the score, never added to it.</p></div>

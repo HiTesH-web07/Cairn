@@ -21,7 +21,7 @@
       <div class="sc-title">Amit ranks Riya's week · Intern</div>
       <div class="rk st" style="--y:90px;--dl:.1s"><b>#1</b><span>Gmail plug launch</span><em>35%</em></div>
       <div class="rk" style="--y:-50px;--dl:.25s"><b>#2</b><span>Write the help docs</span><em>25%</em></div>
-      <div class="rk" style="--y:-50px;--dl:.4s"><b>#3</b><span>OAuth refresh ⭐ Stretch</span><em>20%</em></div>
+      <div class="rk" style="--y:-50px;--dl:.4s"><b>#3</b><span>OAuth refresh · Stretch</span><em>20%</em></div>
       <div class="lock">🔒 Week locked. Nobody can quietly change it.</div>
       <div class="dm sc-pop" style="--dl:2.6s"><span class="av">PI</span><div><p><b>Your week is ready, Riya.</b> Your #1: Gmail plug launch (35% of your score).</p><small>Slack · private message</small></div></div>
     </div>
@@ -54,7 +54,7 @@
           <div style="--dl:.8s"><span>Alignment</span><i style="--w:60%;--dl:.8s"></i></div>
         </div>
       </div>
-      <div class="coin">🪙 3 coins from Aman: "helped me debug the plug"</div>
+      <div class="coin"><span class="coinic"></span>3 coins from Aman: "helped me debug the plug"</div>
       <div class="muted small sc-pop" style="--dl:2.4s">Coins sit beside the score. They are never added to it.</div>
     </div>`;
 
@@ -88,7 +88,7 @@
               <div class="hp-prio">
                 <div class="hp-card" style="--i:0"><b>#1</b><span>Gmail plug launch</span><u>35%</u><s style="--i:0">Done well</s></div>
                 <div class="hp-card" style="--i:1"><b>#2</b><span>Write the help docs</span><u>25%</u><s style="--i:1">Done well</s></div>
-                <div class="hp-card" style="--i:2"><b>#3</b><span>OAuth refresh ⭐</span><u>20%</u><s class="w" style="--i:2">Needs fixes</s></div>
+                <div class="hp-card" style="--i:2"><b>#3</b><span>OAuth refresh · Stretch</span><u>20%</u><s class="w" style="--i:2">Needs fixes</s></div>
               </div></div>
             <div class="hp-score">${ring(88)}<div><strong>88</strong><small>score out of 100, against her own list</small></div></div>
           </div>
