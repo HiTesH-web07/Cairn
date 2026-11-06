@@ -1355,6 +1355,10 @@ app.get('/tasks/hourly', async (req, res) => {
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 app.use(express.static(path.join(__dirname, '..', 'public'), { index: 'index.html', maxAge: '5m' }));
+// Plain addresses such as /home or /signin open the right page (the app itself routes with #/ after the slash).
+app.get(/^\/(home|signin|signup|forgot|week|rate|team|score|coins|disputes|incidents|people|integrations|settings|profile|audit|how)\/?$/, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars

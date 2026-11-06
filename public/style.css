@@ -1061,3 +1061,57 @@ nav.side { background: linear-gradient(180deg, color-mix(in srgb, var(--surface)
 .preset-btn .avatar { width: 48px; height: 48px; }
 .presets { grid-template-columns: repeat(6, minmax(0, 60px)); justify-content: start; gap: .7rem; }
 @media (max-width: 480px) { .presets { grid-template-columns: repeat(4, minmax(0, 60px)); } }
+
+/* How we score: a plain-language page */
+.how-hero { background: var(--grad-hero); color: #fff; border-radius: 24px; padding: 2rem 2rem 1.6rem; position: relative; overflow: hidden; box-shadow: 0 24px 60px -24px rgba(124, 58, 237, .55); }
+.how-hero::before { content: ""; position: absolute; width: 340px; height: 340px; border-radius: 50%; right: -110px; top: -150px; background: rgba(255, 255, 255, .15); }
+.how-q { font-size: .8rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .85; position: relative; }
+.how-big { display: block; color: #fff; font-size: clamp(1.6rem, 3.6vw, 2.5rem); line-height: 1.15; letter-spacing: -.03em; margin: .4rem 0 1.3rem; max-width: 36rem; position: relative; }
+.how-big::before { display: none; }
+.how-eq { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; position: relative; }
+.how-eq span { display: grid; gap: .1rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .3); border-radius: 14px; padding: .7rem 1rem; }
+.how-eq span b { font-size: 1rem; } .how-eq span small { opacity: .85; font-size: .78rem; }
+.how-eq i { font-style: normal; font-weight: 800; font-size: 1.3rem; opacity: .9; }
+.how-note { margin: 1.2rem 0 0; position: relative; opacity: .95; }
+.how-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; counter-reset: s; }
+.how-step { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 1.1rem 1.2rem; position: relative; }
+.how-step .n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--grad-hero); color: #fff; font-weight: 800; margin-bottom: .6rem; }
+.how-step h3 { margin: 0 0 .25rem; } .how-step p { margin: 0; color: var(--muted); font-size: .92rem; }
+.how-bars { display: grid; gap: .8rem; }
+.how-bar { display: grid; grid-template-columns: 44px 1fr; gap: .9rem; align-items: center; }
+.how-bar .how-rk { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.how-bar .how-rk.r1 { background: var(--grad-hero); color: #fff; }
+.how-bar .lab { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: .3rem; } .how-bar .lab em { font-style: normal; color: var(--accent); font-variant-numeric: tabular-nums; }
+.how-bar .track { height: 14px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.how-bar .track i { display: block; height: 100%; border-radius: 99px; background: var(--grad-hero); }
+.how-q3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; }
+.how-card { border-radius: 20px; padding: 1.1rem 1.2rem; border: 1px solid transparent; }
+.how-card .dot { display: block; width: 12px; height: 12px; border-radius: 50%; background: currentColor; margin-bottom: .5rem; }
+.how-card h3 { margin: 0; color: var(--text); } .how-card b { display: block; font-size: 1.25rem; margin: .1rem 0 .3rem; } .how-card p { margin: 0; color: var(--text); opacity: .8; font-size: .9rem; }
+.how-card.good { background: var(--good-bg); color: var(--good); } .how-card.warn { background: var(--warn-bg); color: var(--warn); } .how-card.bad { background: var(--bad-bg); color: var(--bad); }
+.how-rows { display: grid; gap: .7rem; }
+.how-row { display: grid; grid-template-columns: 44px 1fr auto 56px; gap: .9rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--border); }
+.how-row:last-child { border-bottom: 0; }
+.how-row .how-rk { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 700; } .how-row .how-rk.r1 { background: var(--grad-hero); color: #fff; }
+.how-row .t span { font-weight: 600; display: block; } .how-row .t small { color: var(--muted); }
+.how-row .opts { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.how-row .opts .q { opacity: .55; min-height: 34px; padding: .3rem .8rem; font-size: .84rem; } .how-row .opts .q.on { opacity: 1; box-shadow: 0 0 0 2px currentColor inset; }
+.how-row .pts { text-align: right; font-weight: 800; color: var(--good); font-variant-numeric: tabular-nums; }
+.how-result { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; margin-top: 1rem; padding: 1.1rem 1.3rem; border-radius: 18px; background: var(--grad-hero); color: #fff; }
+.how-result small { display: block; font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; opacity: .85; }
+.how-result b { font-size: 2.6rem; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; display: inline-block; } .how-result span { opacity: .9; margin-left: .4rem; }
+.how-result .how-sc b { font-size: 3.6rem; }
+.how-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+.how-two .card { margin: 0; }
+.how-list { list-style: none; margin: .6rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.how-list li { display: grid; grid-template-columns: 22px 1fr; gap: .5rem; align-items: start; font-size: .94rem; }
+.how-list svg { width: 20px; height: 20px; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.how-list.yes svg, .how-list.no svg { stroke: var(--good); } .how-list.none svg { stroke: var(--muted); }
+.how-faq { display: grid; gap: .6rem; }
+.how-faq details { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: .2rem 1.1rem; }
+.how-faq summary { cursor: pointer; font-weight: 600; padding: .85rem 0; list-style: none; display: flex; justify-content: space-between; gap: 1rem; }
+.how-faq summary::-webkit-details-marker { display: none; }
+.how-faq summary::after { content: "+"; font-size: 1.3rem; color: var(--accent); transition: transform .2s; }
+.how-faq details[open] summary::after { transform: rotate(45deg); }
+.how-faq p { margin: 0 0 1rem; color: var(--muted); }
+@media (max-width: 640px) { .how-row { grid-template-columns: 40px 1fr 52px; } .how-row .opts { grid-column: 1 / -1; justify-content: flex-start; order: 3; } .how-hero { padding: 1.4rem 1.2rem; } }

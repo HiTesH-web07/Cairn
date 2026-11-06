@@ -112,7 +112,8 @@ const NAV = [
   ['label', 'Reference'],
   ['audit', 'History log', () => true],
   ['profile', 'My profile', () => true],
-  ['how', 'How we score', () => true]
+  ['how', 'How we score', () => true],
+  ['home', 'Home page', () => true]
 ];
 function layout(active, inner) {
   if (window.Home) window.Home.destroy();
@@ -920,16 +921,75 @@ async function auditScreen() {
 // ---------- How we score ----------
 function howScreen() {
   const s = state.me.settings;
-  layout('how', `${UI.head('Reference', 'How we score', `Generated from ${esc(state.me.workspace.name)}'s live settings.`)}
-    <div class="card"><h3>The idea</h3><p>Every week, your manager ranks your top ${s.rankWeights.length} pieces of work. You are measured on delivering the most important ones, and on how well they were done. <b>The number of tasks never counts.</b></p></div>
-    <div class="card"><h3>1. Priority score (out of 100)</h3><table><thead><tr><th>Rank</th><th class="num">Weight</th></tr></thead><tbody>${s.rankWeights.map((w, i) => `<tr><td>#${i + 1}</td><td class="num">${w}%</td></tr>`).join('')}</tbody></table>
-      <p>Score = sum of (weight × quality) for delivered priorities, divided by the weight of what was ranked. Each person's #1 is their most important work, so an intern and a senior are both scored out of 100.</p>
-      <ul><li>Work outside the ranked list is logged but earns 0.</li><li>Stretch work (above your level): +${Math.round(s.stretchBonus * 100)}% if done well, no penalty if missed.</li>
-      <li>Work your manager marks "blocked by others" does not count against you.</li><li>Leave days lower what is expected that week.</li><li>The score is capped at 100.</li></ul></div>
-    <div class="card"><h3>2. Quality</h3><p>Done well ×${s.quality.done_well} · Needs fixes ×${s.quality.needs_fixes} · Redo ×${s.quality.redo}. Ranks #1–#${s.secondRaterRanks} are rated by two people: your manager and someone who used the work (or your manager's manager). Needs fixes and Redo always come with a note.</p></div>
-    <div class="card"><h3>3. Coins from colleagues</h3><p>Everyone gives up to ${s.coinsPerWeek} coins a week, at most ${s.maxCoinsPerPerson} to one person, never to themselves. Coins are shown next to the score, never added to it.</p></div>
-    <div class="card"><h3>Fairness</h3><ul><li>Priorities are locked before the work; changes need a reason and are logged.</li><li>Each rater's pattern (how often they say Done well) is visible to managers.</li>
-      <li>Any rating can be disputed; the rater's manager decides and both opinions are kept.</li><li>AI never scores anyone.</li><li>No screenshots, time tracking or activity monitoring. Ever.</li></ul></div>`);
+  const W = s.rankWeights; const Q = s.quality; const pct = (n) => `${Math.round(n * 100)}%`;
+  const maxW = Math.max(...W);
+  const rankName = ['Most important', 'Very important', 'Important', 'Useful', 'Nice to have'];
+  const ex = [['Launch the new feature', 'done_well'], ['Write the help page', 'done_well'], ['Fix the login bug', 'needs_fixes']];
+  const label = { done_well: 'Done well', needs_fixes: 'Needs fixes', redo: 'Redo' };
+  const check = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+  const cross = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  layout('how', `${UI.head('Reference', 'How we score', 'A short, plain explanation. Anyone can read it, and the numbers come from this workspace\'s live settings.')}
+  <section class="how-hero"><div class="how-q">Your weekly score is</div>
+    <h2 class="how-big">how much of your plan you delivered, and how well.</h2>
+    <div class="how-eq" aria-label="Score equals points earned divided by points possible times 100"><span><b>Points you earned</b><small>from the work you delivered</small></span><i>÷</i><span><b>Points your plan was worth</b><small>your manager's top ${W.length}</small></span><i>× 100</i></div>
+    <p class="how-note"><b>The number of tasks never counts.</b> Doing 50 small things does not beat doing one thing that mattered.</p></section>
+
+  <h2>How a week works</h2>
+  <div class="how-steps">
+    <div class="how-step"><span class="n">1</span><h3>Plan</h3><p>At the start of the week, your manager picks your top ${W.length} pieces of work and puts them in order.</p></div>
+    <div class="how-step"><span class="n">2</span><h3>Deliver</h3><p>You do the work and mark it delivered, with a link or a note as proof.</p></div>
+    <div class="how-step"><span class="n">3</span><h3>Rate</h3><p>Someone who used the work rates it. Ranks #1${s.secondRaterRanks > 1 ? ` to #${s.secondRaterRanks}` : ''} get a second opinion.</p></div>
+    <div class="how-step"><span class="n">4</span><h3>Score</h3><p>The points add up into one number out of 100. Always the same formula.</p></div>
+  </div>
+
+  <h2>What each priority is worth</h2>
+  <div class="card"><p class="small muted" style="margin-top:0">The higher a piece of work is in your list, the more of your score it carries. Everyone's list has its own #1, so a new joiner and a team lead are both scored out of 100.</p>
+    <div class="how-bars">${W.map((w, i) => `<div class="how-bar"><b class="how-rk${i === 0 ? ' r1' : ''}">#${i + 1}</b><div><div class="lab"><span>${rankName[i] || 'Priority'}</span><em>${w}%</em></div><div class="track"><i style="width:${(w / maxW) * 100}%"></i></div></div></div>`).join('')}</div></div>
+
+  <h2>How well it was done</h2>
+  <div class="how-q3">
+    <div class="how-card good"><span class="dot"></span><h3>Done well</h3><b>${pct(Q.done_well)} of the points</b><p>It worked and it did the job.</p></div>
+    <div class="how-card warn"><span class="dot"></span><h3>Needs fixes</h3><b>${pct(Q.needs_fixes)} of the points</b><p>Mostly there, a few things to fix. The rater says what.</p></div>
+    <div class="how-card bad"><span class="dot"></span><h3>Redo</h3><b>${pct(Q.redo)} of the points</b><p>It missed the brief. The rater says why.</p></div>
+  </div>
+
+  <h2>Try it yourself</h2>
+  <div class="card how-try" id="howTry"><p class="small muted" style="margin-top:0">Three priorities for one week. Tap a rating and watch the score.</p>
+    <div class="how-rows">${ex.map((e, i) => `<div class="how-row" data-i="${i}"><b class="how-rk${i === 0 ? ' r1' : ''}">#${i + 1}</b><div class="t"><span>${e[0]}</span><small>worth ${W[i]} points</small></div>
+      <div class="opts" role="group" aria-label="Rating for ${e[0]}">${['done_well', 'needs_fixes', 'redo'].map((q) => `<button type="button" class="q q-${q === 'done_well' ? 'good' : q === 'needs_fixes' ? 'warn' : 'bad'}${e[1] === q ? ' on' : ''}" data-q="${q}"><i></i>${label[q]}</button>`).join('')}</div><div class="pts" data-pts></div></div>`).join('')}</div>
+    <div class="how-result"><div><small>Points earned</small><b data-earn>0</b><span>of <em data-poss>0</em></span></div><div class="how-sc"><small>Weekly score</small><b data-score>0</b><span>/ 100</span></div></div></div>
+
+  <h2>What counts, and what never does</h2>
+  <div class="how-two">
+    <div class="card"><h3>Helps your score</h3><ul class="how-list yes">
+      <li>${check}Finishing your top priorities</li><li>${check}Doing them well, as rated by others</li><li>${check}A stretch task above your level: +${pct(s.stretchBonus)} if done well</li></ul></div>
+    <div class="card"><h3>Never lowers it</h3><ul class="how-list no">
+      <li>${check}Work blocked by someone else</li><li>${check}A missed stretch task</li><li>${check}Leave days: less is expected that week</li><li>${check}Being given only small tasks</li></ul></div>
+    <div class="card"><h3>Never counts</h3><ul class="how-list none">
+      <li>${cross}How many tasks you did</li><li>${cross}Hours worked, screenshots or activity tracking</li><li>${cross}Work that was not in your top ${W.length}. It is logged, not scored</li><li>${cross}AI. It never scores anyone</li></ul></div>
+  </div>
+
+  <h2>Common questions</h2>
+  <div class="how-faq">
+    <details><summary>What if I only got small tasks this week?</summary><p>Nothing is lost. The score compares what you delivered with <b>your own plan</b>. If you delivered every small task well, you score 100. Managers also see the level of work in the Team view.</p></details>
+    <details><summary>What if I disagree with a rating?</summary><p>Raise a dispute from the rating. The rater's manager decides. Both opinions and the decision are kept, so nothing is hidden.</p></details>
+    <details><summary>Can my manager change my priorities mid-week?</summary><p>Yes, but the week is locked once it starts. A change needs a written reason, and it is recorded in the history log for everyone to see.</p></details>
+    <details><summary>What are coins?</summary><p>Thank-yous from colleagues. Everyone has ${s.coinsPerWeek} a week, up to ${s.maxCoinsPerPerson} for one person, never to themselves. They show beside your score and <b>never change it</b>.</p></details>
+    <details><summary>Who can see my score?</summary><p>You, your manager and the people above them. Colleagues at your level cannot see it. Raters' habits (how often they say Done well) are visible to managers, so harsh or soft raters show up.</p></details>
+  </div>`);
+  const box = $('#howTry');
+  const recompute = () => {
+    let earned = 0; let poss = 0;
+    box.querySelectorAll('.how-row').forEach((r, i) => {
+      const q = r.querySelector('.q.on').dataset.q; const pts = Math.round(W[i] * Q[q] * 10) / 10;
+      earned += pts; poss += W[i]; r.querySelector('[data-pts]').textContent = `+${pts}`;
+    });
+    const bump = (n, v) => { n.textContent = v; n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); };
+    bump(box.querySelector('[data-earn]'), Math.round(earned * 10) / 10); box.querySelector('[data-poss]').textContent = poss;
+    bump(box.querySelector('[data-score]'), poss ? Math.min(100, Math.round((earned / poss) * 100)) : 0);
+  };
+  box.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (!b) return; b.parentNode.querySelectorAll('.q').forEach((x) => x.classList.toggle('on', x === b)); recompute(); });
+  recompute();
 }
 
 // ---------- router ----------
