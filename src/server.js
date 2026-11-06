@@ -832,7 +832,3 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 module.exports = { app, helpers: { mondayOf, addDays, localDate } };
 
-if (require.main === module) {
-  const port = Number(process.env.PORT) || 3000;
-  app.listen(port, '0.0.0.0', () => console.log(`listening on ${port}`));
-}

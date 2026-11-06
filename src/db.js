@@ -1,13 +1,25 @@
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite');
 
 const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
+console.log('opening database in', dataDir);
 
-const db = new Database(process.env.DB_FILE || path.join(dataDir, 'impact.db'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Node's built-in SQLite: no native add-on to build, so it runs in any slim image.
+const db = new DatabaseSync(process.env.DB_FILE || path.join(dataDir, 'impact.db'));
+db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+db.transaction = (fn) => (...args) => {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const out = fn(...args);
+    db.exec('COMMIT');
+    return out;
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+};
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS workspaces (
