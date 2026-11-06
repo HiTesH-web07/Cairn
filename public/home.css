@@ -130,3 +130,9 @@ html.nv-lock { overflow: hidden; }
 @media (max-width: 1023px) { .hero { padding-top: calc(var(--space-800) + var(--space-100)); } }
 @media (max-width: 520px) { .hero { padding-top: calc(var(--space-800) + var(--space-100)); } }
 @media (max-width: 860px) { .nv-mactions .btn.ghost { border-color: var(--border-strong); } }
+
+/* ---------- M91 phone: a handset, not an oval (corner radius 24, ripples follow it) ---------- */
+.m91-phone { border-radius: var(--rad-3xl); }
+.m91-phone .waves, .waves { border-radius: calc(var(--rad-3xl) + 18px); }
+.m91-phone .waves i, .waves i { border-radius: calc(var(--rad-3xl) + 18px); }
+.m91-phone::before { border-radius: var(--rad-full); }
