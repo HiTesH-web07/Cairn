@@ -35,8 +35,9 @@ export default function AppShell({ children }) {
   const active = pathname.split('/')[1] || 'week';
   const [open, setOpen] = useState(false);
   const mainRef = useRef(null);
+  const leaving = useRef(false); // signing out goes to the home page, not the sign-in page
 
-  useEffect(() => { if (me === null) router.replace('/signin'); }, [me, router]);
+  useEffect(() => { if (me === null && !leaving.current) router.replace('/signin'); }, [me, router]);
   useEffect(() => { setOpen(false); window.scrollTo(0, 0); }, [pathname]);
 
   if (!me) return <div id="app"><p className="boot">Loading…</p></div>;
@@ -54,7 +55,7 @@ export default function AppShell({ children }) {
       </Link>,
     );
   }
-  const signOut = async () => { await api('POST', '/api/auth/logout'); setMe(null); router.replace('/home'); };
+  const signOut = async () => { await api('POST', '/api/auth/logout'); leaving.current = true; router.replace('/home'); setMe(null); };
   const u = me.user;
   return (
     <div id="app">
