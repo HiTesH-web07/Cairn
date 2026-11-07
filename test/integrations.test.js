@@ -12,8 +12,8 @@ process.env.APP_SECRET = 'test-app-secret-0123456789';
 process.env.APP_URL = 'https://impact.example.com';
 process.env.VIASOCKET_ORG_ID = '1'; process.env.VIASOCKET_PROJECT_ID = 'p'; process.env.VIASOCKET_EMBED_SECRET = 'SECRET-EMBED-VALUE-123';
 
-const vsmod = require('../src/viasocket');
-const keka = require('../src/keka');
+const vsmod = require('../server/viasocket');
+const keka = require('../server/keka');
 
 // ---- stand-in viaSocket ----
 const slackIds = { 'f@int.co': 'U0FOUNDER1', 'tl@int.co': 'U0TLTLTL01', 'riya@int.co': 'U0RIYARIYA' };
@@ -50,8 +50,8 @@ vsmod.setClientForTests({
   }
 });
 
-const { app, integ } = require('../src/server');
-const db = require('../src/db');
+const { app, integ } = require('../server/server');
+const db = require('../server/db');
 const realFetch = global.fetch;
 let base;
 const server = app.listen(0);
@@ -139,7 +139,7 @@ test('Slack messages: rating requests, locked weeks, schedule, once-only, toggle
   assert.match(locked.input.content, /35%/);
   assert.equal(F.dms.filter((d) => d.input.content.includes('Docs')).length, 0, 'aman is not in Slack: skipped, no guess');
   assert.equal(db.prepare("SELECT status FROM slack_outbox WHERE key LIKE 'locked:%' AND user_id = ?").get(aman.id).status, 'skipped');
-  assert.equal(locked.input.bot_details.bot_name, require('../src/brand').NAME);
+  assert.equal(locked.input.bot_details.bot_name, require('../server/brand').NAME);
   assert.equal(locked.input.isScheduledMessage, 'no');
 
   // Delivery: main rater (tl) and second rater (tl's manager) are asked, privately, once
@@ -149,7 +149,7 @@ test('Slack messages: rating requests, locked weeks, schedule, once-only, toggle
   await wait();
   const rate = F.dms.filter((d) => d.input.content.includes('delivered'));
   assert.deepEqual(rate.map((d) => d.input.userId).sort(), ['U0FOUNDER1', 'U0TLTLTL01']);
-  assert.match(rate[0].input.content, /https:\/\/impact\.example\.com\/#\/rate/);
+  assert.match(rate[0].input.content, /https:\/\/impact\.example\.com\/rate/);
   assert.match(rate[0].input.content, /github\.com\/x\/pr\/1/);
   await riya.c('POST', `/api/items/${a}/deliver`, { proof_url: 'https://github.com/x/pr/1' });
   await wait();

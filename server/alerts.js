@@ -52,7 +52,7 @@ function init(ctx) {
         out.push({
           customId: `blocker-${b.id}`, kind: 'blocker', entityId: b.id, ownerId: mgr ? mgr.id : null, severity: 'MEDIUM',
           title: `${owner.name} is blocked on their #${b.rank} priority${mgr ? ` (for ${mgr.name})` : ''}`,
-          description: short(`"${b.title}" has been blocked for ${hoursAgo(b.raised_at)}h: ${b.description}`, 1500) + (url ? `\nOpen: ${url}/#/week?user=${owner.id}` : ''),
+          description: short(`"${b.title}" has been blocked for ${hoursAgo(b.raised_at)}h: ${b.description}`, 1500) + (url ? `\nOpen: ${url}/week?user=${owner.id}` : ''),
           responseOptions: [
             { label: "I'll unblock it", effect: 'SHARED' },
             { label: 'Blocked by others', effect: 'SHARED', optional: ['note'] },
@@ -71,7 +71,7 @@ function init(ctx) {
         out.push({
           customId: `rate-${it.id}`, kind: 'rating', entityId: it.id, ownerId: rater.id, severity: 'LOW',
           title: `${rater.name}: ${owner.name}'s work has waited ${Math.floor(hoursAgo(it.delivered_at) / 24)} days for your rating`,
-          description: short(`"${it.title}"${it.rank ? ` (ranked #${it.rank})` : ''}. Their score cannot count it until it is rated.`, 1500) + (url ? `\nRate it: ${url}/#/rate` : ''),
+          description: short(`"${it.title}"${it.rank ? ` (ranked #${it.rank})` : ''}. Their score cannot count it until it is rated.`, 1500) + (url ? `\nRate it: ${url}/rate` : ''),
           responseOptions: [{ label: "I'll rate it today", effect: 'SHARED' }, { label: 'Seen', effect: 'PERSONAL' }]
         });
       }
@@ -91,7 +91,7 @@ function init(ctx) {
           out.push({
             customId: `rank-${mgr.id}-${week}`, kind: 'ranking', entityId: mgr.id, ownerId: mgr.id, severity: 'LOW',
             title: `${mgr.name}: ${r.n} ${r.n === 1 ? 'person on your team has' : 'people on your team have'} no locked week yet`,
-            description: 'Until you rank and lock their top priorities, their work this week cannot be scored.' + (url ? `\nRank: ${url}/#/team` : ''),
+            description: 'Until you rank and lock their top priorities, their work this week cannot be scored.' + (url ? `\nRank: ${url}/team` : ''),
             responseOptions: [{ label: "I'll rank today", effect: 'SHARED' }, { label: 'Seen', effect: 'PERSONAL' }]
           });
         }
@@ -107,7 +107,7 @@ function init(ctx) {
         out.push({
           customId: `dispute-${d.id}`, kind: 'dispute', entityId: d.id, ownerId: decider ? decider.id : null, severity: 'LOW',
           title: `${decider ? `${decider.name}: ` : ''}${owner.name} disputes a rating and is waiting for your decision`,
-          description: short(`"${d.title}": "${d.reason}"`, 1500) + (url ? `\nDecide: ${url}/#/disputes` : ''),
+          description: short(`"${d.title}": "${d.reason}"`, 1500) + (url ? `\nDecide: ${url}/disputes` : ''),
           responseOptions: [{ label: "I'll decide today", effect: 'SHARED' }, { label: 'Seen', effect: 'PERSONAL' }]
         });
       }

@@ -92,7 +92,7 @@ function create(ctx) {
           const token = crypto.randomBytes(24).toString('base64url');
           db.prepare('INSERT INTO invites (token_hash, workspace_id, email, role, level, department, created_by, expires_at) VALUES (?,?,?,?,?,?,?,?)')
             .run(sha(token), ws.id, p.email, 'member', hr.jobTitle ? p.title : null, hr.department ? p.dept : null, actorId || (owner && owner.id) || 'keka', new Date(Date.now() + 30 * 864e5).toISOString());
-          slack.enqueue(ws, 'join', id, `join:${id}`, `Welcome to ${require('./brand').NAME}, ${p.name.split(' ')[0] || 'there'}. Set your password here (the link works once): ${appUrl() || ''}/#/join/${token}`);
+          slack.enqueue(ws, 'join', id, `join:${id}`, `Welcome to ${require('./brand').NAME}, ${p.name.split(' ')[0] || 'there'}. Set your password here (the link works once): ${appUrl() || ''}/join/${token}`);
           created.push(id);
           sum.created += 1;
           note(`New: ${p.name || p.email}`);

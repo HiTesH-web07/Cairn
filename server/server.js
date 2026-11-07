@@ -1,15 +1,14 @@
 const path = require('path');
 const crypto = require('crypto');
-const express = require('express');
+const { createRouter, listen } = require('./router');
 const mail = require('./mail');
 const gemini = require('./gemini');
 const db = require('./db');
 const S = require('./scoring');
 
-const app = express();
-app.disable('x-powered-by');
-app.set('trust proxy', true);
-app.use(express.json({ limit: '100kb' }));
+// Every API route below is served through Next.js route handlers (app/api/[...path]/route.js).
+const app = createRouter();
+app.listen = (port) => listen(app, port); // used by the tests
 
 // ---------- helpers ----------
 const now = () => new Date().toISOString();
@@ -160,7 +159,7 @@ function currentUser(req) {
 
 // CSRF: every state-changing API call must come from our own page (custom header, SameSite cookie).
 app.use('/api', (req, res, next) => {
-  if (req.method !== 'GET' && !req.path.startsWith('/m91/callback/') && req.get('x-requested-with') !== 'impact') return next(forbidden('Missing request header'));
+  if (req.method !== 'GET' && !req.path.startsWith('/api/m91/callback/') && req.get('x-requested-with') !== 'impact') return next(forbidden('Missing request header'));
   next();
 });
 
@@ -412,7 +411,7 @@ app.post('/api/auth/forgot', wrap((req) => {
     const ws = getWs(u.workspace_id);
     const token = newReset(u, null, 1);
     const base = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
-    const link = `${base}/#/reset/${token}`;
+    const link = `${base}/reset/${token}`;
     if (mail.configured()) {
       // sent in the background so the answer takes the same time whether or not the email exists
       const m = mail.resetEmail(u.name, link);
@@ -442,7 +441,7 @@ app.post('/api/auth/recover', wrap((req) => {
   }
   const token = newReset(u, null, 1);
   audit(u.workspace_id, null, 'password.recovery_used', 'user', u.id, null);
-  return { ok: true, link: `/#/reset/${token}` };
+  return { ok: true, link: `/reset/${token}` };
 }));
 
 app.post('/api/mail/test', auth, adminOnly, wrap(async (req) => {
@@ -479,7 +478,7 @@ app.post('/api/people/:id/reset-link', auth, wrap((req) => {
   if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && inMyTeam(req.user, target)))) throw forbidden();
   const token = newReset(target, req.user.id, 24);
   audit(req.ws.id, req.user.id, 'password.reset_link', 'user', target.id, null);
-  return { ok: true, link: `/#/reset/${token}` };
+  return { ok: true, link: `/reset/${token}` };
 }));
 
 app.post('/api/invites/:token/accept', wrap((req, res) => {
@@ -567,7 +566,7 @@ app.post('/api/invites', auth, idempotent, wrap((req) => {
       .run(sha(token), req.ws.id, email, role, level, department, reportsTo, req.user.id, new Date(Date.now() + 14 * 864e5).toISOString());
     audit(req.ws.id, req.user.id, 'invite.created', 'user', uid, { role, reports_to: reportsTo });
   })();
-  return { ok: true, link: `/#/join/${token}` };
+  return { ok: true, link: `/join/${token}` };
 }));
 
 app.patch('/api/people/:id', auth, wrap((req) => {
@@ -778,7 +777,7 @@ app.post('/api/people/:id/invite-link', auth, wrap((req) => {
       .run(sha(token), req.ws.id, target.email, target.role, target.level, target.department, target.reports_to, req.user.id, new Date(Date.now() + 30 * 864e5).toISOString());
   })();
   audit(req.ws.id, req.user.id, 'invite.reissued', 'user', target.id, null);
-  return { ok: true, link: `/#/join/${token}` };
+  return { ok: true, link: `/join/${token}` };
 }));
 
 // People who have left, for admins and their former managers' chain.
@@ -854,7 +853,7 @@ app.post('/api/people/import', auth, idempotent, wrap((req) => {
         const token = crypto.randomBytes(24).toString('base64url');
         db.prepare('INSERT INTO invites (token_hash, workspace_id, email, role, level, department, created_by, expires_at) VALUES (?,?,?,?,?,?,?,?)')
           .run(sha(token), req.ws.id, c.email, c.role, c.level, c.department, req.user.id, new Date(Date.now() + 30 * 864e5).toISOString());
-        links.push({ email: c.email, name: c.name, link: `/#/join/${token}` });
+        links.push({ email: c.email, name: c.name, link: `/join/${token}` });
       }
     }
     for (const c of clean) {
@@ -1449,18 +1448,7 @@ app.get('/tasks/hourly', async (req, res) => {
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
-app.use(express.static(path.join(__dirname, '..', 'public'), { index: 'index.html', maxAge: '5m' }));
-// Plain addresses such as /home or /signin open the right page (the app itself routes with #/ after the slash).
-app.get(/^\/(home|signin|signup|forgot|week|rate|team|score|coins|disputes|incidents|people|integrations|settings|profile|audit|how)\/?$/, (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
-
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
-// Any other address that is not a file or a page: a branded 404 instead of plain text.
-app.use((req, res, next) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-  res.status(404).sendFile(path.join(__dirname, '..', 'public', '404.html'));
-});
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   const status = err.status || (err.type === 'entity.parse.failed' ? 400 : 500);
   if (status >= 500) console.error('error', req.method, req.path, err.message);

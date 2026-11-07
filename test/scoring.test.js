@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const S = require('../src/scoring');
+const S = require('../server/scoring');
 const st = S.mergeSettings({});
 const r = (q) => ({ quality: q });
 

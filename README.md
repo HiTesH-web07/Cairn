@@ -8,11 +8,24 @@ Measures the value of work, not the number of tasks.
 - **Quality check:** one or two raters rate each delivery.
 - **Peer coins:** colleagues give each other coins, shown next to the score.
 
+## Stack
+
+A full-stack **Next.js** app (App Router, React 19) on **Node.js**, with **SQLite** for data.
+
+| Layer | What it uses |
+|---|---|
+| Frontend | Next.js pages and React components in `app/` and `components/` |
+| Backend | Next.js route handlers on the Node.js runtime: `app/api/[...path]/route.js` serves every `/api/*` route defined in `server/server.js` |
+| Database | SQLite (Node's built-in `node:sqlite`), file under `DATA_DIR` |
+| AI chatbot | **Ask Cairn**: a Gemini-powered assistant (`server/gemini.js`, `POST /api/ask`) that explains your week and score from your own data, with a prompt-injection guard and rate limits |
+| Integrations | Slack and Keka through viaSocket, phone alerts through M91, email through SMTP |
+
 ## Run
 
 ```bash
 npm install
-npm start          # http://localhost:3000
+npm run dev        # http://localhost:3000
+npm run build && npm start
 npm test           # scoring unit tests + full API flow
 ```
 
@@ -90,7 +103,7 @@ Names only. Values go in `.env` (git-ignored) or the host's environment settings
 
 ## Design
 
-Every visual decision is recorded in [`docs/design-decisions.md`](docs/design-decisions.md) and the sign off in [`docs/qa-record.md`](docs/qa-record.md). Styles live in `public/system.css` (tokens and shared parts), `home.css`, `app.css` and the older `style.css`. Icons are Phosphor (MIT), see `public/fonts/LICENSE-phosphor.txt`. Fonts are Geist (OFL), see `public/fonts/LICENSE-geist.txt`.
+Every visual decision is recorded in [`docs/design-decisions.md`](docs/design-decisions.md) and the sign off in [`docs/qa-record.md`](docs/qa-record.md). Styles live in `app/styles/system.css` (tokens and shared parts), `home.css`, `app.css` and the older `style.css`. Icons are Phosphor (MIT), see `public/fonts/LICENSE-phosphor.txt`. Fonts are Geist (OFL), see `public/fonts/LICENSE-geist.txt`.
 
 ## Demo data
 

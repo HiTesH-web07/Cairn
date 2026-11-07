@@ -8,7 +8,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'impact-'));
 process.env.DATA_DIR = dir;
 process.env.CRON_SECRET = 'test-cron';
 process.env.RATE_LIMIT_MAX = '1000';
-const { app } = require('../src/server');
+const { app } = require('../server/server');
 
 let base;
 const server = app.listen(0);
@@ -158,7 +158,7 @@ test('full flow: hierarchy, ranking, delivery, ratings, scores, privacy', async 
   await senior.c('POST', `/api/items/${am1}/rate`, { quality: 'done_well' });
   const before = (await aman.c('GET', '/api/week')).body.score;
   const wkStart = (await aman.c('GET', '/api/me')).body.week;
-  const H = require('../src/server').helpers;
+  const H = require('../server/server').helpers;
   await aman.c('POST', '/api/leave', { days: [H.addDays(wkStart, 0), H.addDays(wkStart, 1)] });
   const after = (await aman.c('GET', '/api/week')).body.score;
   assert.ok(after > before, `${after} > ${before}`);
@@ -171,7 +171,7 @@ test('full flow: hierarchy, ranking, delivery, ratings, scores, privacy', async 
   assert.equal((await other('GET', '/api/people')).body.people.length, 1);
 
   // Audit is append-only
-  const db = require('../src/db');
+  const db = require('../server/db');
   assert.throws(() => db.prepare('DELETE FROM audit_log').run(), /append-only/);
   assert.ok((await founder('GET', '/api/audit')).body.entries.length > 10);
 
@@ -374,7 +374,7 @@ test('operator recovery key: off unless set, rejects a wrong key, issues a one-t
 
 test('reset emails: sent to the inbox when email is set up, with the same answer for unknown addresses', async () => {
   process.env.MAIL_TRANSPORT = 'json'; process.env.MAIL_FROM = 'Cairn <no-reply@example.test>';
-  const mailMod = require('../src/mail');
+  const mailMod = require('../server/mail');
   const sent = []; const orig = mailMod.send;
   mailMod.send = async (m) => { sent.push(m); return { ok: true }; };
   try {
@@ -384,7 +384,7 @@ test('reset emails: sent to the inbox when email is set up, with the same answer
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(a.status, 200); assert.deepEqual(a.body, b.body);
     assert.equal(sent.length, 1); assert.equal(sent[0].to, 'olive@resetco.test');
-    assert.match(sent[0].text, /#\/reset\//); assert.match(sent[0].html, /Choose a new password/);
+    assert.match(sent[0].text, /reset\//); assert.match(sent[0].html, /Choose a new password/);
     assert.ok(!JSON.stringify(a.body).includes('/reset/')); // the link is never in the answer
     const owner = client();
     await owner('POST', '/api/auth/login', { email: 'olive@resetco.test', password: 'olive-new-password-9' });
@@ -420,7 +420,7 @@ test('profile: change name, phone and picture; change password needs the current
 
 test('Ask Cairn: sees only what the asker may see, ignores nothing it should not, and can be switched off', async () => {
   process.env.GEMINI_API_KEY = 'test-key';
-  const gem = require('../src/gemini'); const orig = gem.generate; const seen = [];
+  const gem = require('../server/gemini'); const orig = gem.generate; const seen = [];
   gem.generate = async ({ system, turns }) => { seen.push({ system, turns }); return 'Your score is 0 because nothing is ranked yet.'; };
   try {
     const owner = client();
@@ -459,14 +459,9 @@ test('the test-email button reports a clear error when email is not set up, and 
   finally { delete process.env.MAIL_TRANSPORT; delete process.env.MAIL_FROM; }
 });
 
-test('unknown addresses get the branded 404 page, API misses stay JSON, real pages still load', async () => {
-  const nope = await fetch(base + '/no-such-page');
-  assert.equal(nope.status, 404); assert.match(nope.headers.get('content-type'), /html/);
-  assert.match(await nope.text(), /We can't find that page/);
+test('API misses stay JSON 404s (pages and the branded 404 are served by Next.js, covered by the e2e check)', async () => {
   const api = await fetch(base + '/api/nothing-here'); assert.equal(api.status, 404); assert.match(api.headers.get('content-type'), /json/);
-  assert.equal((await fetch(base + '/home')).status, 200);
-  assert.equal((await fetch(base + '/og.png')).status, 200);
-  const idx = await (await fetch(base + '/')).text(); assert.match(idx, /og:image/);
+  const health = await fetch(base + '/healthz'); assert.equal(health.status, 200);
 });
 
 test('demo data: off by default; when switched on, twelve labelled people across four teams, removable in one go', async () => {

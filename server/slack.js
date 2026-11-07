@@ -108,7 +108,7 @@ function create(ctx) {
         const r = userIn(ws.id, rid);
         if (!r || !r.active) continue;
         enqueue(ws, 'rating', rid, `rate:${it.id}:${rid}`,
-          `*${owner.name}* delivered "${short(it.title, 120)}"${it.rank ? ` (ranked #${it.rank})` : ''}.\nProof: ${proof}\nYou are the ${role} rater. Rate it: ${base()}/#/rate`);
+          `*${owner.name}* delivered "${short(it.title, 120)}"${it.rank ? ` (ranked #${it.rank})` : ''}.\nProof: ${proof}\nYou are the ${role} rater. Rate it: ${base()}/rate`);
       }
       flushSoon(ws);
     } catch (e) { console.error('slack onDelivered failed', e.code || e.message); }
@@ -121,7 +121,7 @@ function create(ctx) {
       const top = db.prepare('SELECT title, rank FROM items WHERE workspace_id = ? AND user_id = ? AND week_start = ? AND rank = 1').get(ws.id, userId, week);
       if (!u || !u.active || !top) return;
       const w = ctx.settingsOf(ws).rankWeights[0];
-      enqueue(ws, 'locked', userId, `locked:${userId}:${week}`, `Your week is ready, ${first(u)}. Your #1: *${short(top.title, 140)}* (${w}% of your score).\n${base()}/#/week`);
+      enqueue(ws, 'locked', userId, `locked:${userId}:${week}`, `Your week is ready, ${first(u)}. Your #1: *${short(top.title, 140)}* (${w}% of your score).\n${base()}/week`);
       flushSoon(ws);
     } catch (e) { console.error('slack onLocked failed', e.code || e.message); }
   }
@@ -150,20 +150,20 @@ function create(ctx) {
       for (const m of people) {
         const reports = people.filter((p) => p.reports_to === m.id);
         const waiting = reports.filter((p) => !lockedWeek(p.id)).length;
-        if (waiting) q('plan', m.id, `plan:${m.id}:${week}`, `*Plan this week*, ${first(m)}: ${waiting === 1 ? '1 person on your team has' : `${waiting} people on your team have`} no locked week yet. Rank their top priorities: ${base()}/#/team`);
+        if (waiting) q('plan', m.id, `plan:${m.id}:${week}`, `*Plan this week*, ${first(m)}: ${waiting === 1 ? '1 person on your team has' : `${waiting} people on your team have`} no locked week yet. Rank their top priorities: ${base()}/team`);
       }
     }
     if (hour >= 10 && hour < 12) {
       for (const u of people) {
         if (onLeave(u.id) || !lockedWeek(u.id)) continue;
         const items = open(u.id);
-        if (items.length) q('morning', u.id, `morning:${u.id}:${today}`, `Good morning ${first(u)}. Your #${items[0].rank} to deliver: *${short(items[0].title, 140)}*.\n${base()}/#/week`);
+        if (items.length) q('morning', u.id, `morning:${u.id}:${today}`, `Good morning ${first(u)}. Your #${items[0].rank} to deliver: *${short(items[0].title, 140)}*.\n${base()}/week`);
       }
     }
     if (hour >= 19 && hour < 21) {
       for (const u of people) {
         if (onLeave(u.id) || !lockedWeek(u.id) || !open(u.id).length) continue;
-        q('evening', u.id, `evening:${u.id}:${today}`, `Anything delivered today, ${first(u)}? Add the proof so it can be rated: ${base()}/#/week`);
+        q('evening', u.id, `evening:${u.id}:${today}`, `Anything delivered today, ${first(u)}? Add the proof so it can be rated: ${base()}/week`);
       }
     }
     if (today === lastDay && hour >= 18 && hour < 21) {
@@ -174,7 +174,7 @@ function create(ctx) {
           const c = computeWeek(ws, s, p.id, week);
           return `• ${p.name}: ${c.score === null ? 'no score yet' : c.score}${c.pending ? ` (${c.pending} waiting for a rating)` : ''}`;
         });
-        q('digest', m.id, `digest:${m.id}:${week}`, `*Your team this week*, ${first(m)}:\n${lines.join('\n')}\nDetails: ${base()}/#/team`);
+        q('digest', m.id, `digest:${m.id}:${week}`, `*Your team this week*, ${first(m)}:\n${lines.join('\n')}\nDetails: ${base()}/team`);
       }
     }
     return { queued };
