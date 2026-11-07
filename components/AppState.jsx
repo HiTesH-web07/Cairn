@@ -50,13 +50,13 @@ export function AppProvider({ children }) {
    * Opens a form dialog. `body` is JSX with named fields; `onSubmit(values)` saves them.
    * The dialog stays open and shows the error if saving fails.
    */
-  const modal = useCallback((body, onSubmit, opts = {}) => setDialog({ body, onSubmit, opts, key: Date.now() }), []);
+  const modal = useCallback((body, onSubmit, opts = {}) => setDialog({ body, onSubmit, opts, key: `${Date.now()}-${Math.random()}` }), []);
 
   const value = { me, setMe, pending, setPending, loadMe, refreshSession, toast, run, modal };
   return (
     <Ctx.Provider value={value}>
       {children}
-      {dialog && <FormDialog key={dialog.key} {...dialog} onClose={() => setDialog(null)} />}
+      {dialog && <FormDialog key={dialog.key} {...dialog} onClose={() => setDialog((d) => (d && d.key === dialog.key ? null : d))} />}
       <div id="toast" role="status" aria-live="polite" className={toastMsg ? 'on' : ''}>{toastMsg}</div>
     </Ctx.Provider>
   );
