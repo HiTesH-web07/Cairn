@@ -88,7 +88,8 @@ function weekParam(ws, v) {
 // ---------- workspace + hierarchy ----------
 const getWs = (id) => db.prepare('SELECT * FROM workspaces WHERE id = ?').get(id);
 const settingsOf = (ws) => S.mergeSettings(JSON.parse(ws.settings_json || '{}'));
-const userIn = (wsId, id) => db.prepare('SELECT * FROM users WHERE workspace_id = ? AND id = ?').get(wsId, id);
+// A missing or non-text id simply finds nobody (SQLite cannot bind undefined, objects or arrays).
+const userIn = (wsId, id) => (typeof id === 'string' && id ? db.prepare('SELECT * FROM users WHERE workspace_id = ? AND id = ?').get(wsId, id) : undefined);
 const isAdmin = (u) => u.role === 'owner' || u.role === 'admin';
 
 function ancestors(u) {
@@ -889,7 +890,7 @@ app.post('/api/leave/import', auth, wrap((req) => {
 }));
 
 // ---------- items, stacks, scoring ----------
-const getItem = (wsId, id) => db.prepare('SELECT * FROM items WHERE workspace_id = ? AND id = ?').get(wsId, id);
+const getItem = (wsId, id) => (typeof id === 'string' && id ? db.prepare('SELECT * FROM items WHERE workspace_id = ? AND id = ?').get(wsId, id) : undefined);
 const ratingsFor = (itemId) => db.prepare('SELECT r.*, u.name AS rater_name FROM ratings r JOIN users u ON u.id = r.rater_id WHERE r.item_id = ? ORDER BY r.created_at').all(itemId);
 const stackOf = (wsId, userId, week) => db.prepare('SELECT * FROM stacks WHERE workspace_id = ? AND user_id = ? AND week_start = ?').get(wsId, userId, week);
 

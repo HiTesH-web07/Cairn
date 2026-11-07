@@ -459,6 +459,15 @@ test('the test-email button reports a clear error when email is not set up, and 
   finally { delete process.env.MAIL_TRANSPORT; delete process.env.MAIL_FROM; }
 });
 
+test('coins: a missing or wrong person or amount gets a clear 400, never a server error', async () => {
+  const c = client(); await c('POST', '/api/auth/signup', { company: 'CoinCo', name: 'Cora', email: 'cora@coinco.test', password: PW, timezone: 'UTC' });
+  for (const body of [{}, { to_user_id: 'x', amount: 2, reason: 'Covered my review' }, { to_id: { a: 1 }, coins: 1, reason: 'Covered my review' }, { to_id: ['u'], coins: 1, reason: 'Covered my review' }]) {
+    const r = await c('POST', '/api/coins', body);
+    assert.equal(r.status, 400, JSON.stringify(body)); assert.equal(r.body.error, 'Pick a person');
+  }
+  for (const parent of [{ x: 1 }, ['a'], true]) assert.ok((await c('POST', '/api/items', { title: 'Write the docs', parent_item_id: parent })).status < 500, JSON.stringify(parent));
+});
+
 test('API misses stay JSON 404s (pages and the branded 404 are served by Next.js, covered by the e2e check)', async () => {
   const api = await fetch(base + '/api/nothing-here'); assert.equal(api.status, 404); assert.match(api.headers.get('content-type'), /json/);
   const health = await fetch(base + '/healthz'); assert.equal(health.status, 200);
