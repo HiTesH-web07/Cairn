@@ -64,8 +64,8 @@ function answer(customId, label, note = null) {
   return a;
 }
 
-const { app } = require('../src/server');
-const db = require('../src/db');
+const { app } = require('../server/server');
+const db = require('../server/db');
 let base;
 const server = app.listen(0);
 test.before(() => { base = `http://127.0.0.1:${server.address().port}`; });
