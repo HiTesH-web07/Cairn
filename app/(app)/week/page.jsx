@@ -63,7 +63,7 @@ function Week({ w, people, user, reload }) {
   };
   const addLeave = () => modal(<><h3>Add a leave day</h3><label>Date</label><input type="date" name="day" required /></>, async (fd) => { await api('POST', '/api/leave', { days: [fd.day] }); reload(); });
 
-  const ItemRow = ({ it }) => {
+  const itemRow = (it) => {
     const statusCls = it.status === 'delivered' ? 'good' : it.status === 'missed' ? 'bad' : it.status === 'blocked_external' ? 'warn' : '';
     const openBlocker = it.blockers.find((b) => !b.resolved_at);
     const parent = w.parentOptions.find((p) => p.id === it.parent_item_id);
@@ -79,7 +79,7 @@ function Week({ w, people, user, reload }) {
     if ((it.mine || w.canRank) && w.parentOptions.length && !it.parent_item_id) acts.push(<button key="link" className="ghost" onClick={() => link(it.id)}>Link to team priority</button>);
     if (!it.rank && (it.mine || w.canRank)) acts.push(<button key="delete" className="ghost danger" onClick={(e) => run(e, async () => { if (confirm('Remove this item?')) { await api('DELETE', `/api/items/${it.id}`); reload(); } })}>Remove</button>);
     return (
-      <div className="item">
+      <div className="item" key={it.id}>
         <div className={`rank ${it.rank ? `r${Math.min(it.rank, 3)}` : ''}`}>{it.rank ? <>#{it.rank}<small>{weights[it.rank - 1]}%</small></> : '–'}</div>
         <div>
           <h3>{it.title} {it.stretch && <span className="pill acc star">Stretch</span>}</h3>
@@ -124,12 +124,12 @@ function Week({ w, people, user, reload }) {
             {!w.locked && ranked.length > 0 && <button onClick={(e) => run(e, async () => { await api('POST', '/api/stacks/lock', { user_id: w.person.id, week: w.week }, { idem: idem() }); toast('Week locked'); reload(); })}>Lock week</button>}
           </>}</div>
         </div>
-        {ranked.length ? ranked.map((it) => <ItemRow key={it.id} it={it} />) : <Empty title="Nothing ranked yet" text={w.canRank ? 'Add work below, then rank the top items. The first one counts the most.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.'} />}
+        {ranked.length ? ranked.map(itemRow) : <Empty title="Nothing ranked yet" text={w.canRank ? 'Add work below, then rank the top items. The first one counts the most.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.'} />}
       </div>
       <div className="card">
         <div className="row spread"><h2 style={{ margin: 0 }}>Not ranked <span className="small muted">(logged, earns 0)</span></h2>
           {(w.isSelf || w.canRank) && <button onClick={addWork}>+ Add work</button>}</div>
-        {unranked.length ? unranked.map((it) => <ItemRow key={it.id} it={it} />) : <p className="muted small">Nothing here.</p>}
+        {unranked.length ? unranked.map(itemRow) : <p className="muted small">Nothing here.</p>}
       </div>
       {w.leave.days.length > 0 && <p className="small muted">Leave this week: {w.leave.days.join(', ')} (expectations reduced to {w.leave.available} of {w.leave.working} working days)</p>}
       {w.isSelf && <button className="ghost small" onClick={addLeave}>Add a leave day</button>}
