@@ -4,7 +4,6 @@ import './styles/system.css';
 import './styles/home.css';
 import './styles/app.css';
 import { AppProvider } from '@/components/AppState';
-import { faviconSvg } from '@/components/ui';
 
 const SITE = 'https://proof-of-impact.embarko.app';
 export const metadata = {
@@ -12,7 +11,6 @@ export const metadata = {
   title: 'Cairn · Measure what mattered',
   description: 'Cairn: measure what mattered. A weekly priority stack, rated by the people who used the work.',
   alternates: { canonical: '/' },
-  icons: { icon: `data:image/svg+xml,${encodeURIComponent(faviconSvg)}` },
   openGraph: {
     type: 'website', siteName: 'Cairn', url: SITE, title: 'Cairn: measure what mattered',
     description: 'Each week a manager ranks the few priorities that matter. People deliver them with proof, the people who used the work rate them, and everyone gets one fair score.',

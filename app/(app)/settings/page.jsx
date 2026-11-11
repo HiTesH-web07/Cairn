@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useApp } from '@/components/AppState';
 import { Head } from '@/components/ui';
 import PhoneAlertsCard from '@/components/settings/PhoneAlertsCard';
-import { api } from '@/lib/client';
+import { api, isAdmin } from '@/lib/client';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SOURCES = [['manual', 'Invite links', 'Managers invite people one by one. Leave is added in the app.'], ['csv', 'CSV upload', 'Export from Keka, Excel or any HR tool and upload it under People. Nothing stays connected.'], ['keka', 'Keka sync', 'Read automatically every night, only the fields ticked below. Needs setup under Integrations.']];
@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0); // remounts the form with the saved values
+  // The server refuses changes from anyone but an admin; the page says so instead of showing a form that cannot be saved.
+  if (!isAdmin(me)) return <><Head eyebrow="Manage" title="Settings" /><div className="card"><p className="muted">Only admins can change workspace settings.</p></div></>;
 
   const submit = async (e) => {
     e.preventDefault();

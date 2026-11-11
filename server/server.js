@@ -127,6 +127,13 @@ function canAddPeople(actor, settings) {
   return isAdmin(actor) || (actor.role === 'manager' && settings.managersAddTeam);
 }
 const inMyTeam = (actor, target) => isAdmin(actor) || isAncestorOf(actor, target);
+// Privileged accounts are only changed by their peers or above: an owner only by an owner, an admin only by an admin or owner.
+// Every route that changes, removes, brings back or hands out a sign-in link for another person calls this first.
+function protectPrivileged(actor, target) {
+  if (target.role === 'owner' && actor.role !== 'owner') throw forbidden('Only an owner can change an owner');
+  if (target.role === 'admin' && !isAdmin(actor)) throw forbidden('Only admins can change admins');
+}
+const ownerCount = (wsId) => db.prepare("SELECT COUNT(*) c FROM users WHERE workspace_id = ? AND role = 'owner' AND active = 1").get(wsId).c;
 function visibleUsers(actor) {
   if (isAdmin(actor)) return db.prepare('SELECT * FROM users WHERE workspace_id = ? AND active = 1 ORDER BY name').all(actor.workspace_id);
   const ids = [actor.id, ...subtreeIds(actor.workspace_id, actor.id)];
@@ -475,8 +482,8 @@ app.post('/api/people/:id/reset-link', auth, wrap((req) => {
   if (!target || !target.active) throw notFound();
   if (!target.pw_hash) throw bad('This person has not joined yet. Use "New invite link" instead.');
   if (target.id === req.user.id) throw bad('Use "Forgot password?" on the sign-in page for your own password');
-  if (target.role === 'owner' && req.user.role !== 'owner') throw forbidden('Only an owner can reset an owner');
   if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && inMyTeam(req.user, target)))) throw forbidden();
+  protectPrivileged(req.user, target); // a reset link signs in as that person
   const token = newReset(target, req.user.id, 24);
   audit(req.ws.id, req.user.id, 'password.reset_link', 'user', target.id, null);
   return { ok: true, link: `/reset/${token}` };
@@ -587,6 +594,9 @@ app.patch('/api/people/:id', auth, wrap((req) => {
       if (!m || (m.id !== req.user.id && !isAncestorOf(req.user, m))) throw forbidden('You can only move people within your own team');
     }
   } else if (!isAdmin(req.user) && !(selfEdit && keys0.every((k) => ['name', 'phone'].includes(k)))) throw forbidden('Only admins or their manager can change this');
+  // Who someone is, whether they can sign in and who manages them are privileged: an owner only by an owner, an admin only by an admin.
+  if (!selfEdit && keys0.some((k) => ['role', 'active', 'reports_to'].includes(k))) protectPrivileged(req.user, target);
+  if (target.role === 'owner' && b.active !== undefined && !b.active && ownerCount(req.ws.id) < 2) throw bad('The workspace needs at least one owner');
   const upd = {};
   if (b.name !== undefined) upd.name = str(b.name, 'Name', { max: 120 });
   if (b.phone !== undefined) {
@@ -599,7 +609,7 @@ app.patch('/api/people/:id', auth, wrap((req) => {
   if (b.role !== undefined) {
     if (!ROLES.includes(b.role)) throw bad('Unknown role');
     if ((b.role === 'owner' || target.role === 'owner') && req.user.role !== 'owner') throw forbidden('Only the owner can change owners');
-    if (target.role === 'owner' && b.role !== 'owner' && db.prepare("SELECT COUNT(*) c FROM users WHERE workspace_id = ? AND role = 'owner' AND active = 1").get(req.ws.id).c < 2) throw bad('The workspace needs at least one owner');
+    if (target.role === 'owner' && b.role !== 'owner' && ownerCount(req.ws.id) < 2) throw bad('The workspace needs at least one owner');
     upd.role = b.role;
   }
   if (b.reports_to !== undefined) {
@@ -738,8 +748,8 @@ app.post('/api/people/:id/offboard', auth, idempotent, wrap((req) => {
   if (!target) throw notFound();
   if (target.id === req.user.id) throw bad('You cannot remove yourself');
   if (!canManage(req.user, target) || !(isAdmin(req.user) || canAddPeople(req.user, req.settings))) throw forbidden();
-  if (target.role === 'owner' && req.user.role !== 'owner') throw forbidden('Only an owner can remove an owner');
-  if (target.role === 'owner' && db.prepare("SELECT COUNT(*) c FROM users WHERE workspace_id = ? AND role = 'owner' AND active = 1").get(req.ws.id).c < 2) throw bad('The workspace needs at least one owner');
+  protectPrivileged(req.user, target);
+  if (target.role === 'owner' && ownerCount(req.ws.id) < 2) throw bad('The workspace needs at least one owner');
   if (!target.active) return { ok: true, already: true };
   const reports = db.prepare('SELECT id FROM users WHERE workspace_id = ? AND reports_to = ? AND active = 1').all(req.ws.id, target.id);
   let newMgr = null;
@@ -757,9 +767,14 @@ app.post('/api/people/:id/offboard', auth, idempotent, wrap((req) => {
 app.post('/api/people/:id/reactivate', auth, wrap((req) => {
   const target = userIn(req.ws.id, req.params.id);
   if (!target) throw notFound();
+  // Only people who left can be brought back, and only by an admin or by a manager they used to be under.
+  if (target.active) throw bad('This person is already active');
+  if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && isAncestorOf(req.user, target)))) throw forbidden();
+  protectPrivileged(req.user, target);
   const mgr = req.body.reports_to ? userIn(req.ws.id, req.body.reports_to) : req.user;
   if (!mgr || !mgr.active) throw bad('Manager not found');
-  if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && (mgr.id === req.user.id || isAncestorOf(req.user, mgr))))) throw forbidden();
+  if (!isAdmin(req.user) && mgr.id !== req.user.id && !isAncestorOf(req.user, mgr)) throw forbidden('Bring them back under yourself or someone in your team');
+  if (mgr.id === target.id || subtreeIds(req.ws.id, target.id).includes(mgr.id)) throw bad('That would make a loop in the reporting line');
   db.prepare('UPDATE users SET active = 1, reports_to = ? WHERE id = ?').run(mgr.id, target.id);
   audit(req.ws.id, req.user.id, 'user.reactivated', 'user', target.id, { reports_to: mgr.id });
   return { ok: true };
@@ -771,6 +786,7 @@ app.post('/api/people/:id/invite-link', auth, wrap((req) => {
   if (!target || !target.active) throw notFound();
   if (target.pw_hash) throw bad('This person has already joined');
   if (!(isAdmin(req.user) || (canAddPeople(req.user, req.settings) && inMyTeam(req.user, target)))) throw forbidden();
+  protectPrivileged(req.user, target); // an invite link signs in as that person
   const token = crypto.randomBytes(24).toString('base64url');
   db.transaction(() => {
     db.prepare('UPDATE invites SET used_at = ? WHERE workspace_id = ? AND email = ? AND used_at IS NULL').run(now(), req.ws.id, target.email);
@@ -809,17 +825,23 @@ app.post('/api/people/import', auth, idempotent, wrap((req) => {
     seen.add(email);
     const name = String(r.name || '').trim().slice(0, 120);
     if (!name && !existing.has(email)) errs.push('name is required for new people');
-    let role = String(r.role || 'member').trim().toLowerCase();
+    const cur = existing.get(email);
+    // An empty role keeps the person's current role; it never demotes anyone.
+    let role = String(r.role || '').trim().toLowerCase() || (cur ? cur.role : 'member');
     if (role === 'tl' || role === 'lead') role = 'manager';
-    if (!['member', 'manager', 'admin'].includes(role)) errs.push('role must be member, manager or admin');
+    if (!['member', 'manager', 'admin'].includes(role) && !(cur && cur.role === 'owner')) errs.push('role must be member, manager or admin');
     const phone = String(r.phone || '').replace(/[\s+-]/g, '');
     if (phone && !/^\d{8,15}$/.test(phone)) errs.push('phone must be digits with country code');
     const mgr = String(r.manager_email || '').trim().toLowerCase();
     if (mgr === email && mgr) errs.push('a person cannot report to themselves');
-    const cur = existing.get(email);
     if (cur && cur.role === 'owner') role = 'owner'; // never demote an owner through a file
+    if (cur && cur.role === 'owner' && req.user.role !== 'owner') {
+      const curMgr = cur.reports_to ? [...existing.values()].find((x) => x.id === cur.reports_to) : null;
+      if (!cur.active || (mgr && mgr !== (curMgr && curMgr.email))) errs.push('only an owner can change an owner');
+    }
     if (asManager) {
-      if (!['member', 'manager'].includes(role)) errs.push('managers can add members and managers only');
+      if (cur && (cur.role === 'admin' || cur.role === 'owner')) errs.push('only admins can change admins and owners');
+      else if (!['member', 'manager'].includes(role)) errs.push('managers can add members and managers only');
       if (cur && !myTeam.has(cur.id)) errs.push('this person is not in your team');
       if (cur && cur.id === req.user.id) errs.push('you cannot change yourself here');
     }
@@ -1321,11 +1343,22 @@ app.get('/api/audit', auth, wrap((req) => {
   return { entries: rows };
 }));
 
-app.get('/api/incidents', auth, wrap((req) => ({
-  incidents: db.prepare('SELECT * FROM incidents WHERE workspace_id = ? ORDER BY raised_at DESC LIMIT 100').all(req.ws.id),
-  blockersOverThreshold: db.prepare(`SELECT b.id, b.description, b.raised_at, i.title, i.rank, u.name FROM blockers b JOIN items i ON i.id = b.item_id JOIN users u ON u.id = b.user_id
+// Incidents name people and their blockers, so they follow the same rule as everything else:
+// admins see the whole workspace; a manager sees alerts sent to them or to managers in their team, and blockers of their team;
+// anyone without a team sees nothing.
+app.get('/api/incidents', auth, wrap((req) => {
+  const all = isAdmin(req.user);
+  const team = all ? null : new Set(subtreeIds(req.ws.id, req.user.id));
+  if (!all && !team.size) throw forbidden('Only managers and admins can see incidents');
+  const incidents = all
+    ? db.prepare('SELECT * FROM incidents WHERE workspace_id = ? ORDER BY raised_at DESC LIMIT 100').all(req.ws.id)
+    : db.prepare('SELECT * FROM incidents WHERE workspace_id = ? AND owner_id IS NOT NULL ORDER BY raised_at DESC').all(req.ws.id)
+      .filter((i) => i.owner_id === req.user.id || team.has(i.owner_id)).slice(0, 100);
+  const blockersOverThreshold = db.prepare(`SELECT b.id, b.description, b.raised_at, b.user_id, i.title, i.rank, u.name FROM blockers b JOIN items i ON i.id = b.item_id JOIN users u ON u.id = b.user_id
     WHERE b.workspace_id = ? AND b.resolved_at IS NULL AND i.rank IS NOT NULL AND i.rank <= ? AND b.raised_at <= ?`).all(req.ws.id, req.settings.secondRaterRanks, new Date(Date.now() - req.settings.blockerEscalationHours * 3600e3).toISOString())
-})));
+    .filter((r) => all || team.has(r.user_id)).map(({ user_id, ...r }) => r); // eslint-disable-line no-unused-vars
+  return { incidents, blockersOverThreshold };
+}));
 
 // ---------- phone alerts (M91) ----------
 const m91 = require('./m91');

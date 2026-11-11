@@ -22,7 +22,6 @@ const Stones = ({ a = 1 }) => (
 );
 /** The mark: three stones, biggest at the bottom, like a priority stack. */
 export const Logo = () => <span className="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><Stones /></svg></span>;
-export const faviconSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#4f46e5'/><stop offset='.55' stop-color='#8b5cf6'/><stop offset='1' stop-color='#ec4899'/></linearGradient></defs><rect width='32' height='32' rx='9' fill='url(#g)'/><ellipse cx='16' cy='24.2' rx='11.6' ry='5.1' transform='rotate(-3 16 24)' fill='#fff' fill-opacity='.96'/><ellipse cx='16.9' cy='15.4' rx='8.1' ry='4.3' transform='rotate(4 17 15)' fill='#fff' fill-opacity='.82'/><ellipse cx='15.5' cy='8.3' rx='5.1' ry='3.5' transform='rotate(-6 15 8)' fill='#fff' fill-opacity='.64'/></svg>`;
 
 /** The decorative cairn drawing used in headers and empty states. */
 export const CairnArt = ({ className = '' }) => (

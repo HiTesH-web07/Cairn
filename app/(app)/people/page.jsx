@@ -85,7 +85,8 @@ export default function PeoplePage() {
   });
 
   const rowActs = (u) => {
-    if (u.id === me || !adder || (u.role === 'owner' && !admin)) return null;
+    // Same rule as the server: an owner is changed only by an owner, an admin only by an admin.
+    if (u.id === me || !adder || (u.role === 'owner' && state.user.role !== 'owner') || (u.role === 'admin' && !admin)) return null;
     return (
       <>
         <button onClick={() => edit(u)}>Edit</button>{' '}
