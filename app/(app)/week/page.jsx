@@ -1,6 +1,6 @@
 'use client';
 // My Week: the ranked priorities, the stack meter, delivery, blockers and ratings for one person's week.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/components/AppState';
@@ -8,6 +8,7 @@ import { ScreenStatus, useScreen } from '@/components/AppShell';
 import { Avatar, CairnArt, Empty, Icon, Ph, Ring, Stack } from '@/components/ui';
 import WeekPick from '@/components/week/WeekPick';
 import RankEditor from '@/components/week/RankEditor';
+import RetroModal from '@/components/RetroModal';
 import { QCLASS, QUALITY, STATUS, addDays, api, fmtTime, fmtWeek, idem, scoreText } from '@/lib/client';
 
 export default function WeekPage() {
@@ -20,15 +21,31 @@ export default function WeekPage() {
     if (week) q.set('week', week);
     const w = await api('GET', `/api/week?${q}`);
     const dir = w.canRank ? await api('GET', '/api/directory') : { people: [] };
-    return { w, people: dir.people };
+    const retroQ = new URLSearchParams({ week: w.week });
+    if (user) retroQ.set('user', user);
+    const retro = await api('GET', `/api/retrospective?${retroQ}`).catch(() => ({ retro: null }));
+    return { w, people: dir.people, retro: retro.retro };
   }, [user, week]);
   if (!data) return <ScreenStatus error={error} />;
-  return <Week w={data.w} people={data.people} user={user} reload={reload} />;
+  return <Week w={data.w} people={data.people} user={user} reload={reload} retroExisting={data.retro} />;
 }
 
-function Week({ w, people, user, reload }) {
+function Week({ w, people, user, reload, retroExisting }) {
   const { me, toast, run, modal } = useApp();
   const [ranking, setRanking] = useState(false);
+  const [showRetro, setShowRetro] = useState(false);
+
+  // Auto-prompt for retrospective on Friday if week is locked and user hasn't filled it yet.
+  useEffect(() => {
+    const dayOfWeek = new Date().getDay(); // 0=Sun, 5=Fri
+    if (w.isSelf && w.locked && dayOfWeek === 5 && !retroExisting) {
+      const key = `retro_prompted_${w.week}`;
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1');
+        setShowRetro(true);
+      }
+    }
+  }, [w.isSelf, w.locked, w.week, retroExisting]);
   const ranked = w.items.filter((i) => i.rank).sort((a, b) => a.rank - b.rank);
   const unranked = w.items.filter((i) => !i.rank);
   const weights = me.settings.rankWeights;
@@ -133,7 +150,23 @@ function Week({ w, people, user, reload }) {
       </div>
       {w.leave.days.length > 0 && <p className="small muted">Leave this week: {w.leave.days.join(', ')} (expectations reduced to {w.leave.available} of {w.leave.working} working days)</p>}
       {w.isSelf && <button className="ghost small" onClick={addLeave}>Add a leave day</button>}
+      {w.isSelf && (
+        <div style={{ marginTop: 'var(--space-100)' }}>
+          <button className="ghost small" onClick={() => setShowRetro(true)}>
+            {retroExisting ? '✏️ Edit retrospective' : '📝 Add weekly retrospective'}
+          </button>
+          {retroExisting && (
+            <details className="card" style={{ marginTop: 'var(--space-100)' }}>
+              <summary className="small muted" style={{ cursor: 'pointer' }}>Retrospective · {w.week}</summary>
+              <p className="small"><b>Went well:</b> {retroExisting.went_well || '–'}</p>
+              <p className="small"><b>Slowed down:</b> {retroExisting.slowed_down || '–'}</p>
+              <p className="small"><b>Do differently:</b> {retroExisting.do_differently || '–'}</p>
+            </details>
+          )}
+        </div>
+      )}
       {ranking && <RankEditor w={w} people={people} onClose={() => setRanking(false)} onSaved={reload} />}
+      {showRetro && <RetroModal week={w.week} existing={retroExisting} onClose={() => { setShowRetro(false); reload(); }} />}
     </>
   );
 }

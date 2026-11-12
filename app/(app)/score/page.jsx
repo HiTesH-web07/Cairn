@@ -22,6 +22,7 @@ export default function ScorePage() {
         <div className="tile"><div className="k">2. Was it done well?</div><div className="v">{rated ? `${c.quality.done_well}/${rated}` : '–'}</div><div className="s">rated Done well</div></div>
         <div className="tile"><div className="k">3. Did others value it?</div><div className="v"><span className="coinic" />{c.coins}</div><div className="s">coins from colleagues</div></div>
         <div className="tile"><div className="k">Alignment</div><div className="v">{c.alignment === null ? '–' : `${c.alignment}%`}</div><div className="s">linked to the level above</div></div>
+        {s.consistencyBonus > 0 && <div className="tile"><div className="k">Consistency bonus</div><div className="v">+{s.consistencyBonus}</div><div className="s">≤10pt spread over 4 weeks</div></div>}
       </div>
       <div className="card"><div className="row spread" style={{ marginBottom: 'var(--space-100)' }}><h2 style={{ margin: 0 }}>This week&apos;s stack</h2></div>
         <Stack items={c.breakdown.map((b) => ({ rank: b.rank, title: `#${b.rank}`, status: b.status, mult: b.multiplier }))} settings={me.settings} /></div>

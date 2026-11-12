@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from './AppState';
 import { Avatar, Icon, Logo, Ph, Skeleton, ThemeButton, brand } from './ui';
 import AskCairn from './AskCairn';
+import OnboardingBanner from './OnboardingBanner';
 import { api, canAddPeople, isAdmin, isManager } from '@/lib/client';
 
 const NAV = [
@@ -34,11 +35,13 @@ export default function AppShell({ children }) {
   const pathname = usePathname();
   const active = pathname.split('/')[1] || 'week';
   const [open, setOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const mainRef = useRef(null);
   const leaving = useRef(false); // signing out goes to the home page, not the sign-in page
 
   useEffect(() => { if (me === null && !leaving.current) router.replace('/signin'); }, [me, router]);
   useEffect(() => { setOpen(false); window.scrollTo(0, 0); }, [pathname]);
+  useEffect(() => { if (me && me.onboarded === false) setShowOnboarding(true); }, [me]);
 
   if (!me) return <div id="app"><p className="boot">Loading…</p></div>;
 
@@ -74,7 +77,10 @@ export default function AppShell({ children }) {
             <button className="ghost" title="Sign out" aria-label="Sign out" onClick={signOut}><Ph name="sign-out" /></button>
           </div>
         </nav>
-        <main id="main" tabIndex={-1} ref={mainRef}>{children}</main>
+        <main id="main" tabIndex={-1} ref={mainRef}>
+          {showOnboarding && <OnboardingBanner onDismiss={() => setShowOnboarding(false)} />}
+          {children}
+        </main>
       </div>
       {me.ai && <AskCairn key={u.id} />}
     </div>

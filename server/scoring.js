@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS = {
   // Which Slack messages may be sent. Each only goes to the person it is about, as a direct message.
   // Ask Cairn, the AI helper. It explains and drafts. It never scores or rates anyone.
   aiHelper: true,
-  slackMessages: { plan: true, locked: true, rating: true, morning: true, evening: true, digest: true },
+  slackMessages: { plan: true, locked: true, rating: true, morning: true, evening: true, digest: true, at_risk: true },
   // With Keka, only the fields ticked here are ever read. Salary, payroll, bank, tax, documents and attendance never are.
   hrFields: { reportingLine: true, department: true, jobTitle: true, leave: true, phone: false },
   ratingReminderHours: 48,
@@ -52,7 +52,8 @@ function validateSettings(s) {
   if (!Array.isArray(s.workingDays) || !s.workingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) errors.push('workingDays must be weekday numbers 0-6');
   if (!(s.stretchBonus >= 0 && s.stretchBonus <= 1)) errors.push('stretchBonus must be 0-1');
   if (Object.keys(s.alertMoments).some((k) => !(k in DEFAULT_SETTINGS.alertMoments)) || Object.values(s.alertMoments).some((v) => typeof v !== 'boolean')) errors.push('alertMoments has unknown entries');
-  if (Object.keys(s.slackMessages).some((k) => !(k in DEFAULT_SETTINGS.slackMessages)) || Object.values(s.slackMessages).some((v) => typeof v !== 'boolean')) errors.push('slackMessages has unknown entries');
+  const allowedSlack = { ...DEFAULT_SETTINGS.slackMessages };
+  if (Object.keys(s.slackMessages).some((k) => !(k in allowedSlack)) || Object.values(s.slackMessages).some((v) => typeof v !== 'boolean')) errors.push('slackMessages has unknown entries');
   if (typeof s.managersAddTeam !== 'boolean') errors.push('managersAddTeam must be true or false');
   if (!['manual', 'csv', 'keka'].includes(s.peopleSource)) errors.push('peopleSource must be manual, csv or keka');
   const allowedHr = Object.keys(DEFAULT_SETTINGS.hrFields);
@@ -144,4 +145,13 @@ function checkCoinGift({ fromId, toId, coins, givenThisWeek, givenToThisPerson }
   return null;
 }
 
-module.exports = { DEFAULT_SETTINGS, mergeSettings, validateSettings, weightForRank, itemMultiplier, weeklyScore, qualitySummary, alignmentPct, checkCoinGift };
+// +5 bonus when last 4 scored weeks have <10 point variance (rewards reliability).
+function consistencyBonus(scores) {
+  const valid = scores.filter((s) => s !== null && s !== undefined);
+  if (valid.length < 4) return 0;
+  return Math.max(...valid) - Math.min(...valid) < 10 ? 5 : 0;
+}
+
+// Unplanned items (kind='unplanned') added after lock count at half weight (stretch bonus rate).
+// This is applied at the API layer, not here, since lock state lives outside scoring.
+module.exports = { DEFAULT_SETTINGS, mergeSettings, validateSettings, weightForRank, itemMultiplier, weeklyScore, qualitySummary, alignmentPct, checkCoinGift, consistencyBonus };

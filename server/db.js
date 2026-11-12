@@ -100,6 +100,12 @@ CREATE TABLE IF NOT EXISTS idempotency (
   workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, key TEXT NOT NULL, status INTEGER NOT NULL, body TEXT NOT NULL,
   created_at TEXT NOT NULL, PRIMARY KEY (workspace_id, user_id, key)
 );
+CREATE TABLE IF NOT EXISTS retrospectives (
+  workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, week_start TEXT NOT NULL,
+  went_well TEXT NOT NULL DEFAULT '', slowed_down TEXT NOT NULL DEFAULT '', do_differently TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  PRIMARY KEY (workspace_id, user_id, week_start)
+);
 `);
 
 module.exports = db;
