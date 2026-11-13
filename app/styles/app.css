@@ -295,9 +295,9 @@ main {
 }
 .hello .btn:hover { background: rgba(255,255,255,.22); transform: none; box-shadow: none; }
 
-/* ── page head (other pages) ── */
-.pagehead {
-  padding: 28px 32px 16px;
+/* ── page head — .pagehead (some pages) and .ph (Head component) ── */
+.pagehead, .ph {
+  padding: 28px 32px 20px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -306,10 +306,19 @@ main {
   animation: fadeUp .3s var(--ease) both;
 }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
-.pagehead .left { display: flex; flex-direction: column; gap: 3px; }
-.pagehead h1 { font-size: 22px; font-weight: 700; letter-spacing: -.03em; }
-.pagehead .sub { font-size: 13px; color: var(--muted); }
-.pagehead .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.pagehead .left, .ph > div:first-child { display: flex; flex-direction: column; gap: 4px; }
+.pagehead h1, .ph h1 { font-size: 22px; font-weight: 700; letter-spacing: -.03em; margin: 0; }
+.pagehead .sub, .ph p { font-size: 13px; color: var(--muted); margin: 0; }
+.pagehead .actions, .ph-r { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
 
 /* page body */
 .content, .pagebody { flex: 1; padding: 0 32px 40px; }
@@ -414,6 +423,10 @@ h2 {
   color: var(--muted);
   margin: 0 0 14px;
 }
+/* h2 and loose p as direct children of main (no .card wrapper) */
+main > h2 { padding: 0 32px; margin-top: 20px; }
+main > p  { padding: 0 32px; }
+main > .tablewrap { margin-left: 32px; margin-right: 32px; }
 
 /* ── tabs ── */
 .tabs {
@@ -684,7 +697,10 @@ tbody tr:hover td { background: var(--surface-2); }
     position: sticky; top: 0; z-index: 20; gap: 10px;
   }
   .content, .pagebody { padding: 0 16px 32px; }
-  .pagehead { padding: 16px 16px 10px; }
+  .pagehead, .ph { padding: 16px 16px 12px; }
+  main > h2 { padding: 0 16px; }
+  main > p  { padding: 0 16px; }
+  main > .tablewrap { margin-left: 16px; margin-right: 16px; }
   .tabs { margin: 0 16px 16px; }
   .grid { padding: 16px 16px 0; }
   .card { margin: 16px 16px 0; }
