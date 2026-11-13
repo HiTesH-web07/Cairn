@@ -49,12 +49,12 @@
 .hp-stepnav { display: flex; flex-direction: column; gap: var(--space-75); grid-column: 1; grid-row: 1; }
 .hp-stepcap { grid-column: 1; grid-row: 2; font-size: var(--text-sm); color: var(--muted); line-height: var(--lh-sm); min-height: 1.4em; }
 .hp-stage   { grid-column: 2; grid-row: 1 / 3; }
-.hp-step { text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--rad-2xl); padding: var(--space-200) var(--space-200); display: grid; grid-template-columns: 34px 1fr; gap: var(--space-100); cursor: pointer; position: relative; overflow: hidden; height: auto; min-height: unset; transition: background var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease); }
+.hp-step { text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--rad-2xl); padding: var(--space-200) var(--space-200); display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: var(--space-100); cursor: pointer; position: relative; overflow: hidden; height: auto; min-height: unset; justify-content: start; align-items: start; white-space: normal; transition: background var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease); }
 .hp-step:hover { background: var(--surface); }
 .hp-step.on { background: var(--surface); border-color: var(--border); box-shadow: none; }
 .hp-step .n { width: 34px; height: 34px; border-radius: var(--rad-xl); background: var(--surface-3); color: var(--muted); display: grid; place-items: center; font-weight: 600; transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
 .hp-step.on .n { background: var(--grad); color: var(--on-accent); }
-.hp-step b { display: block; font-size: var(--text-base); line-height: var(--lh-base);}
+.hp-step b { display: block; font-size: var(--text-base); line-height: var(--lh-base); white-space: normal; font-weight: 600; }
 .hp-step span.t { color: var(--muted); font-size: var(--text-sm); display: block; max-height: 0; opacity: 0; overflow: hidden; transition: max-height var(--dur-hover) var(--ease), opacity var(--dur-hover) var(--ease), margin var(--dur-hover) var(--ease); line-height: var(--lh-sm);}
 .hp-step.on span.t { max-height: 7rem; opacity: 1; margin-top: var(--space-50); }
 .hp-step i.pb { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--grad); }

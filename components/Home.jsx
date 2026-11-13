@@ -356,7 +356,7 @@ export default function Home({ signedIn }) {
     const box = el.querySelector('#hpSteps');
     const btns = [...box.querySelectorAll('.hp-step')];
     const scs = [...box.querySelectorAll('.sc')];
-    const DUR = 5000;
+    const DUR = 3000;
     let cur = 0; let visible = false; const hover = false;
     let stepTimers = [];
     const schedule = () => {
