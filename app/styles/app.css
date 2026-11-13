@@ -1,6 +1,6 @@
 /* ============================================================
-   Cairn app chrome v12 — modern, animated, visually sharp
-   Dark sidebar (#0F1221) · light content · smooth animations
+   Cairn app chrome v13 — UI/UX Pro Max · Minimalism & Swiss Style
+   Muted teal sidebar · pearl-white content · subtle interactions
    ============================================================ */
 
 /* ── global ── */
@@ -16,7 +16,7 @@
    SIDEBAR — always deep slate
    ============================================================ */
 nav.side {
-  background: #0F1221;
+  background: var(--nav-bg);
   border-right: 1px solid rgba(255,255,255,.07);
   display: flex;
   flex-direction: column;
@@ -54,7 +54,7 @@ nav.side::-webkit-scrollbar { display: none; }
   height: 28px;
   border-radius: 7px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #4F46E5 0%, #9333EA 100%);
+  background: var(--logo-grad);
   display: grid;
   place-items: center;
 }
@@ -152,7 +152,7 @@ nav.side > a:hover {
   color: rgba(255,255,255,.88);
 }
 nav.side > a.on {
-  background: rgba(99,102,241,.18);
+  background: var(--nav-active-bg);
   color: #fff;
   font-weight: 600;
 }
@@ -165,7 +165,7 @@ nav.side > a.on::before {
   height: 18px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: #6366F1;
+  background: var(--accent-2, #14B8A6);
 }
 /* svg icons from Phosphor */
 nav.side > a svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .6; transition: opacity var(--dur-hover) var(--ease); }
@@ -174,7 +174,7 @@ nav.side > a:hover svg, nav.side > a.on svg { opacity: 1; }
 /* pending badge */
 nav.side > a .badge {
   margin-left: auto;
-  background: #6366F1;
+  background: var(--accent);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -227,13 +227,11 @@ main {
   min-height: 100dvh;
   overflow-x: hidden;
   background: var(--bg);
-  animation: mainIn .35s var(--ease) both;
 }
-@keyframes mainIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── hello / greeting banner (actual class from week/page.jsx) ── */
 .hello {
-  background: linear-gradient(135deg, #3730A3 0%, #5B21B6 45%, #7C3AED 100%);
+  background: linear-gradient(135deg, #0C5B54 0%, #0F766E 50%, #0D9488 100%);
   padding: 24px 32px;
   display: flex;
   align-items: center;
@@ -258,9 +256,7 @@ main {
   border: 60px solid rgba(255,255,255,.04);
   top: -120px; right: -60px;
   pointer-events: none;
-  animation: slowSpin 30s linear infinite;
 }
-@keyframes slowSpin { to { transform: rotate(360deg); } }
 
 .hello .who {
   display: flex;
@@ -303,9 +299,7 @@ main {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  animation: fadeUp .3s var(--ease) both;
 }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
 
 .pagehead .left, .ph > div:first-child { display: flex; flex-direction: column; gap: 4px; }
 .pagehead h1, .ph h1 { font-size: 22px; font-weight: 700; letter-spacing: -.03em; margin: 0; }
@@ -341,7 +335,6 @@ main {
   box-shadow: var(--shadow);
   position: relative;
   overflow: hidden;
-  animation: tileIn .45s var(--ease) both;
   transition:
     box-shadow var(--dur-hover) var(--ease),
     border-color var(--dur-hover) var(--ease),
@@ -351,15 +344,6 @@ main {
   box-shadow: var(--shadow-lg);
   border-color: var(--border-strong);
   transform: translateY(-2px);
-}
-/* stagger tiles 1-4 */
-.grid > .tile:nth-child(1) { animation-delay: 0ms; }
-.grid > .tile:nth-child(2) { animation-delay: 60ms; }
-.grid > .tile:nth-child(3) { animation-delay: 120ms; }
-.grid > .tile:nth-child(4) { animation-delay: 180ms; }
-@keyframes tileIn {
-  from { opacity: 0; transform: translateY(16px) scale(.97); }
-  to   { opacity: 1; transform: none; }
 }
 .tile.has-ring {
   display: grid;
@@ -396,9 +380,7 @@ main {
   font-family: var(--mono);
   margin-top: 2px;
   line-height: 1;
-  animation: countIn .6s var(--ease) both;
 }
-@keyframes countIn { from { opacity: 0; transform: scale(.85); } }
 .tile .s { font-size: 11px; color: var(--muted); margin-top: 5px; }
 
 /* ── cards ── */
@@ -409,12 +391,16 @@ main {
   padding: 22px 24px;
   box-shadow: var(--shadow);
   margin: 20px 32px 0;
-  animation: fadeUp .4s var(--ease) both;
 }
 .card + .card { margin-top: 14px; }
 
-/* ── sections h2 ── */
-h2 {
+/* h2 and loose p as direct children of main (no .card wrapper) */
+main > h2 { padding: 0 32px; margin-top: 20px; }
+main > p  { padding: 0 32px; }
+main > .tablewrap { margin-left: 32px; margin-right: 32px; }
+
+/* section micro-label: use .label-xs in JSX instead of bare h2 */
+.card h2, .tile h2 {
   font-size: 10px;
   line-height: 16px;
   font-weight: 700;
@@ -423,10 +409,6 @@ h2 {
   color: var(--muted);
   margin: 0 0 14px;
 }
-/* h2 and loose p as direct children of main (no .card wrapper) */
-main > h2 { padding: 0 32px; margin-top: 20px; }
-main > p  { padding: 0 32px; }
-main > .tablewrap { margin-left: 32px; margin-right: 32px; }
 
 /* ── tabs ── */
 .tabs {
@@ -651,16 +633,14 @@ tbody tr:hover td { background: var(--surface-2); }
   padding: 0 18px;
   height: 44px;
   font-size: 13px; font-weight: 600;
-  box-shadow: 0 4px 16px rgba(79,70,229,.4), 0 2px 6px rgba(79,70,229,.25);
+  box-shadow: 0 4px 16px rgba(15,118,110,.4), 0 2px 6px rgba(15,118,110,.25);
   cursor: pointer;
   display: flex; align-items: center; gap: 8px;
   transition:
     transform var(--dur-hover) var(--ease),
     box-shadow var(--dur-hover) var(--ease);
-  animation: fabIn .5s .5s var(--ease) both;
 }
-.ask-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,.5); }
-@keyframes fabIn { from { opacity: 0; transform: scale(.8) translateY(10px); } }
+.ask-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15,118,110,.5); }
 
 /* ── skip link ── */
 .skip {

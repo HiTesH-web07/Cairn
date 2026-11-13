@@ -19,7 +19,7 @@ export const metadata = {
   twitter: { card: 'summary_large_image', title: 'Cairn: measure what mattered', description: 'One fair score per week, against your own ranked priorities, rated by the people who used the work.', images: ['/og.png'] },
 };
 export const viewport = {
-  themeColor: [{ media: '(prefers-color-scheme: light)', color: '#4f46e5' }, { media: '(prefers-color-scheme: dark)', color: '#0B0D17' }],
+  themeColor: [{ media: '(prefers-color-scheme: light)', color: '#0F766E' }, { media: '(prefers-color-scheme: dark)', color: '#081413' }],
 };
 
 // Applies the saved light/dark choice before the first paint, so the page never flashes.

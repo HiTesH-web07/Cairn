@@ -156,7 +156,7 @@
 .hp-final .box::after { content: ""; position: absolute; width: 380px; height: 380px; border-radius: var(--rad-full); right: -100px; top: -140px; background: color-mix(in srgb, var(--on-accent) 14%, transparent); animation: float 9s var(--ease-loop) infinite; }
 .hp-final h2 { color: inherit; margin: 0 auto var(--space-75); max-width: 30rem; font-size: clamp(1.6rem, 3.4vw, 2.5rem); letter-spacing: -.03em; line-height: 1.15; }
 .hp-final p { opacity: .9; margin: 0 auto var(--space-300); max-width: 30rem; }
-.hp-final .btn { background: var(--on-accent); color: #3b2fd1; border-color: transparent; font-weight: 600; padding: var(--space-100) var(--space-300); border-radius: var(--rad-2xl); font-size: var(--text-base); position: relative; z-index: 1; line-height: var(--lh-base);}
+.hp-final .btn { background: var(--on-accent); color: var(--accent); border-color: transparent; font-weight: 600; padding: var(--space-100) var(--space-300); border-radius: var(--rad-2xl); font-size: var(--text-base); position: relative; z-index: 1; line-height: var(--lh-base);}
 .hp-final .btn:hover { background: var(--on-accent); transform: translateY(-2px); }
 
 /* ---------- phones and tablets ---------- */
@@ -194,12 +194,12 @@
 /* ======== v2: identity, depth and a proper footer ======== */
 :root {
   --grad-hero: var(--accent);
-  --teal: #0d9488; --teal-soft: #d9f4f1; --pink: #db2777; --pink-soft: #fde4ef; --dot: rgba(79, 70, 229, .16);
+  --teal: #0d9488; --teal-soft: #d9f4f1; --pink: #db2777; --pink-soft: #fde4ef; --dot: rgba(15, 118, 110, .16);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --grad-hero: var(--accent);
-    --teal: #4fd1c5; --teal-soft: #11332f; --pink: #f472b6; --pink-soft: #3a1a2b; --dot: rgba(139, 140, 255, .16);
+    --teal: #4fd1c5; --teal-soft: #11332f; --pink: #f472b6; --pink-soft: #3a1a2b; --dot: rgba(45, 212, 191, .16);
   }
 }
 body::before {display: none;}
@@ -550,7 +550,7 @@ a.btn, button { -webkit-tap-highlight-color: transparent; }
 }
 :root[data-theme="dark"] {
     --grad-hero: var(--accent);
-    --teal: #4fd1c5; --teal-soft: #11332f; --pink: #f472b6; --pink-soft: #3a1a2b; --dot: rgba(139, 140, 255, .16);
+    --teal: #4fd1c5; --teal-soft: #11332f; --pink: #f472b6; --pink-soft: #3a1a2b; --dot: rgba(45, 212, 191, .16);
 }
 
 :root[data-theme="dark"] { color-scheme: dark; } :root[data-theme="light"] { color-scheme: light; }
@@ -576,9 +576,9 @@ a.btn, button { -webkit-tap-highlight-color: transparent; }
 .demo-card h3 { margin: 0 0 var(--space-50); } .demo-card p { margin: 0; max-width: 60ch; }
 
 /* footer: light by default, dark in dark theme */
-:root { --fe-bg: var(--surface); --fe-text: #3d4268; --fe-head: #12142e; --fe-mute: #5d6390; --fe-chip: color-mix(in srgb, var(--on-accent) 70%, transparent); --fe-line: rgba(79,70,229,.16); }
-:root[data-theme="dark"] { --fe-bg: #0c0e22; --fe-text: #c9cee9; --fe-head: var(--on-accent); --fe-mute: #9aa1cc; --fe-chip: color-mix(in srgb, var(--on-accent) 8%, transparent); --fe-line: color-mix(in srgb, var(--on-accent) 12%, transparent); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fe-bg: #0c0e22; --fe-text: #c9cee9; --fe-head: var(--on-accent); --fe-mute: #9aa1cc; --fe-chip: color-mix(in srgb, var(--on-accent) 8%, transparent); --fe-line: color-mix(in srgb, var(--on-accent) 12%, transparent); } }
+:root { --fe-bg: var(--surface); --fe-text: #1A3B37; --fe-head: #0E1F1D; --fe-mute: #4F7570; --fe-chip: color-mix(in srgb, var(--accent) 10%, transparent); --fe-line: rgba(15,118,110,.16); }
+:root[data-theme="dark"] { --fe-bg: #061210; --fe-text: #B8D4D0; --fe-head: #E0F0EE; --fe-mute: #6EA09A; --fe-chip: color-mix(in srgb, var(--accent) 12%, transparent); --fe-line: color-mix(in srgb, var(--accent) 18%, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fe-bg: #061210; --fe-text: #B8D4D0; --fe-head: #E0F0EE; --fe-mute: #6EA09A; --fe-chip: color-mix(in srgb, var(--accent) 12%, transparent); --fe-line: color-mix(in srgb, var(--accent) 18%, transparent); } }
 .hp-end { background: var(--fe-bg); }
 :root:not([data-theme="dark"]) .hp-end::before {display: none;}
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hp-end::before {display: none;} }
