@@ -1,14 +1,6 @@
 @font-face { font-family: "Geist"; src: url("/fonts/geist-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
-/* base resets — tokens and type come from system.css which loads after this */
-* { box-sizing: border-box; }
-html, body { margin: 0; }
-.boot { padding: var(--space-400); color: var(--muted); }
-code { background: var(--surface-2); padding: var(--space-25) var(--space-75); border-radius: var(--rad-md); font-size: .85em; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--rad-md); }
-
-/* logo — size/shape set here, background from system.css .logo */
-.logo svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* fonts only — all resets/tokens owned by system.css → app.css */
 
 /* home-page bars (different from app .bars) */
 .hp-bars { display: flex; gap: var(--space-75); align-items: flex-end; height: 130px; padding-top: var(--space-75); }
