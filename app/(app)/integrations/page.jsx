@@ -144,10 +144,7 @@ export default function IntegrationsPage() {
 
       {sl.connected && me && (me.user?.role === 'owner' || me.user?.role === 'admin' || me.user?.role === 'manager') && (
         <div className="card">
-          <div className="row spread">
-            <h2 style={{ margin: 0 }}>Slack Intelligence</h2>
-            <span className="pill" style={{ background: '#4a154b', color: '#fff', fontSize: 11 }}>Beta</span>
-          </div>
+          <h2 style={{ margin: 0 }}>Slack Intelligence</h2>
           <p className="small muted" style={{ marginTop: 0 }}>Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Map your team&apos;s channels below — Cairn subscribes to them automatically.</p>
           <SlackListenerSection />
         </div>
@@ -300,36 +297,17 @@ function SlackListenerSection() {
 
   return (
     <>
-      {isAdmin && sub && (
-        <>
-          <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Subscription status</h4>
-          <div style={{ display: 'flex', gap: 'var(--space-100)', alignItems: 'center', flexWrap: 'wrap' }}>
-            {sub.scriptId
-              ? <span className="pill good">Active — {sub.channels ? sub.channels.length : 0} channel{sub.channels && sub.channels.length === 1 ? '' : 's'}</span>
-              : <span className="pill warn">No subscription yet</span>}
-            {sub.error && <span className="pill warn" title={sub.error}>Last error</span>}
-            {sub.updatedAt && <span className="small muted">Updated {fmtTime(sub.updatedAt)}</span>}
-            <button className="ghost small" onClick={rebuild} disabled={rebuilding}>{rebuilding ? 'Rebuilding…' : 'Rebuild'}</button>
-          </div>
-          {sub.error && <p className="small muted" style={{ color: 'var(--warn)', marginTop: 4 }}>{sub.error}</p>}
-        </>
+      {isAdmin && sub && sub.error && (
+        <p className="small" style={{ color: 'var(--warn)', marginTop: 0 }}>{sub.error}</p>
       )}
 
-      <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Team channel mapping</h4>
-      <p className="small muted" style={{ marginBottom: 'var(--space-100)' }}>
-        {teamChannels.length === 0
-          ? 'No channels mapped yet. Pick a Slack channel and Cairn will route its messages to your team.'
-          : `${teamChannels.length} channel${teamChannels.length === 1 ? '' : 's'} mapped.`}
-      </p>
-
       {teamChannels.length > 0 && (
-        <div className="tablewrap" style={{ marginBottom: 'var(--space-100)' }}>
-          <table><thead><tr><th>Channel</th><th>ID</th>{isAdmin && <th>Team manager</th>}<th></th></tr></thead>
+        <div className="tablewrap" style={{ marginBottom: 'var(--space-150)' }}>
+          <table><thead><tr><th>Channel</th>{isAdmin && <th>Manager</th>}<th></th></tr></thead>
             <tbody>
               {teamChannels.map((c) => (
                 <tr key={c.channel_id}>
-                  <td className="small">{c.channel_name ? <strong>#{c.channel_name}</strong> : <span className="muted">unnamed</span>}</td>
-                  <td><code className="small muted">{c.channel_id}</code></td>
+                  <td className="small">{c.channel_name ? <strong>#{c.channel_name}</strong> : <code className="small muted">{c.channel_id}</code>}</td>
                   {isAdmin && <td className="small">{c.manager_name || c.manager_id}</td>}
                   <td><button className="ghost danger small" onClick={() => removeTeamChannel(c.channel_id)}>Remove</button></td>
                 </tr>
@@ -339,36 +317,25 @@ function SlackListenerSection() {
         </div>
       )}
 
-      <form onSubmit={addTeamChannel} style={{ display: 'flex', gap: 'var(--space-50)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <label className="small">
-            Slack channel
-            {loadingChannels && <span className="muted"> — loading…</span>}
-          </label>
-          {slackChannels && slackChannels.length > 0 ? (
-            <select
-              value={selectedCid}
-              onChange={(e) => setSelectedCid(e.target.value)}
-              style={{ minWidth: 220, fontSize: 13, height: 36 }}
-            >
-              <option value="">— pick a channel —</option>
-              {availableChannels.map((c) => (
-                <option key={c.id} value={c.id}>#{c.name}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              value={selectedCid}
-              onChange={(e) => setSelectedCid(e.target.value)}
-              placeholder="C0123ABC456"
-              style={{ width: 200, fontFamily: 'monospace', fontSize: 13 }}
-            />
-          )}
-          {slackChannels && slackChannels.length === 0 && !loadingChannels && (
-            <span className="small muted">Enter channel ID manually</span>
+      <form onSubmit={addTeamChannel} style={{ display: 'flex', gap: 'var(--space-100)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 220 }}>
+          <label className="small">Pick a channel to map</label>
+          <select
+            value={selectedCid}
+            onChange={(e) => setSelectedCid(e.target.value)}
+            disabled={loadingChannels}
+            style={{ fontSize: 13, height: 36 }}
+          >
+            <option value="">{loadingChannels ? 'Loading channels…' : '— pick a channel —'}</option>
+            {availableChannels.map((c) => (
+              <option key={c.id} value={c.id}>#{c.name}</option>
+            ))}
+          </select>
+          {!loadingChannels && slackChannels && slackChannels.length === 0 && (
+            <span className="small muted">No channels found — make sure Cairn is in the channel.</span>
           )}
         </div>
-        <button type="submit" disabled={adding || !selectedCid.trim()} style={{ marginBottom: 1 }}>
+        <button type="submit" className="primary" disabled={adding || !selectedCid.trim()} style={{ height: 36 }}>
           {adding ? 'Adding…' : 'Map channel'}
         </button>
       </form>
