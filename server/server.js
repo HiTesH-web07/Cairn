@@ -1019,13 +1019,13 @@ function computeWeek(ws, settings, userId, week) {
   const res = S.weeklyScore(items, settings, leave);
   const allRatings = items.flatMap((i) => i.ratings);
   const coins = db.prepare('SELECT COALESCE(SUM(coins),0) c FROM coins WHERE workspace_id = ? AND to_id = ? AND week_start = ?').get(ws.id, userId, week).c;
-  return { week, items, leave, score: res.score, earned: res.earned, possible: res.possible, pending: res.pending, breakdown: res.items, quality: S.qualitySummary(allRatings), coins, alignment: S.alignmentPct(items, settings) };
+  return { week, items, leave, score: res.score, scoreLow: res.scoreLow, scoreHigh: res.scoreHigh, earned: res.earned, possible: res.possible, pending: res.pending, breakdown: res.items, quality: S.qualitySummary(allRatings), coins, alignment: S.alignmentPct(items, settings), disagreements: res.disagreements };
 }
 
 function itemView(it, actor) {
   const ratings = (it.ratings || ratingsFor(it.id)).map((r) => ({ id: r.id, rater: r.rater_name, rater_id: r.rater_id, role: r.rater_role, quality: r.quality, note: r.note, at: r.created_at }));
   const blockers = db.prepare('SELECT id, description, raised_at, resolved_at, escalated, claimed_by FROM blockers WHERE item_id = ? ORDER BY raised_at').all(it.id);
-  return { ...it, stretch: !!it.stretch, ratings, blockers, mine: it.user_id === actor.id };
+  return { ...it, stretch: !!it.stretch, delivery_fraction: it.delivery_fraction, delivery_confirmed_by: it.delivery_confirmed_by, delivery_override_reason: it.delivery_override_reason, ratings, blockers, mine: it.user_id === actor.id };
 }
 
 app.get('/api/week', auth, wrap((req) => {
@@ -1041,8 +1041,8 @@ app.get('/api/week', auth, wrap((req) => {
     person: publicUser(target), manager: manager && { id: manager.id, name: manager.name }, week,
     locked: !!(stack && stack.locked_at), locked_at: stack && stack.locked_at,
     canRank: isRankerFor(req.user, target), isSelf: target.id === req.user.id,
-    items: w.items.map((i) => itemView(i, req.user)), score: w.score, pending: w.pending, quality: w.quality, coins: w.coins,
-    alignment: w.alignment, leave: w.leave, breakdown: w.breakdown, parentOptions
+    items: w.items.map((i) => itemView(i, req.user)), score: w.score, scoreLow: w.scoreLow, scoreHigh: w.scoreHigh, pending: w.pending, quality: w.quality, coins: w.coins,
+    alignment: w.alignment, leave: w.leave, breakdown: w.breakdown, disagreements: w.disagreements, parentOptions
   };
 }));
 
@@ -1126,6 +1126,9 @@ app.post('/api/stacks/rank', auth, idempotent, wrap((req) => {
   const order = Array.isArray(b.order) ? b.order : [];
   const max = req.settings.rankWeights.length;
   if (order.length > max) throw bad(`Rank at most ${max} items`);
+  const stretchCount = order.filter((o) => o.stretch).length;
+  const maxStretch = req.settings.maxStretchItems || 2;
+  if (stretchCount > maxStretch) throw bad(`At most ${maxStretch} stretch items per week`);
   const stack = stackOf(req.ws.id, target.id, week);
   const reason = b.reason ? str(b.reason, 'Reason', { max: 500 }) : null;
   if (stack && stack.locked_at && !reason) throw bad('This week is locked. Give a reason for the change.');
@@ -1175,10 +1178,32 @@ app.post('/api/items/:id/deliver', auth, idempotent, wrap((req) => {
   const url = urlOf(req.body.proof_url);
   const note = str(req.body.proof_note, 'Proof note', { max: 2000, optional: true });
   if (!url && !note) throw bad('Add a proof link or a note that shows the result');
-  db.prepare("UPDATE items SET status = 'delivered', proof_url = ?, proof_note = ?, proof_source = 'self-reported', delivered_at = ?, updated_at = ? WHERE id = ?").run(url, note, now(), now(), it.id);
+  const allowed = req.settings.deliveryFractions || [0, 0.25, 0.5, 0.75, 1.0];
+  let df = req.body.delivery_fraction;
+  if (df === undefined || df === null) df = 1.0;
+  df = Number(df);
+  if (!allowed.includes(df)) throw bad(`Delivery fraction must be one of: ${allowed.join(', ')}`);
+  db.prepare("UPDATE items SET status = 'delivered', proof_url = ?, proof_note = ?, proof_source = 'self-reported', delivered_at = ?, delivery_fraction = ?, delivery_proposed_by = ?, updated_at = ? WHERE id = ?").run(url, note, now(), df, req.user.id, now(), it.id);
   db.prepare('UPDATE blockers SET resolved_at = ?, resolved_by = ? WHERE item_id = ? AND resolved_at IS NULL').run(now(), req.user.id, it.id);
-  audit(req.ws.id, req.user.id, 'item.delivered', 'item', it.id, { proof_url: url, has_note: !!note });
+  audit(req.ws.id, req.user.id, 'item.delivered', 'item', it.id, { proof_url: url, has_note: !!note, delivery_fraction: df });
   integ.slack.onDelivered(req.ws, it.id);
+  return { ok: true };
+}));
+
+app.post('/api/items/:id/confirm-delivery', auth, wrap((req) => {
+  const it = getItem(req.ws.id, req.params.id);
+  if (!it) throw notFound();
+  const owner = userIn(req.ws.id, it.user_id);
+  if (!canManage(req.user, owner)) throw forbidden('Only the manager can confirm delivery');
+  if (it.status !== 'delivered') throw bad('This item has not been delivered yet');
+  const allowed = req.settings.deliveryFractions || [0, 0.25, 0.5, 0.75, 1.0];
+  let df = req.body.delivery_fraction;
+  if (df === undefined || df === null) df = it.delivery_fraction || 1.0;
+  df = Number(df);
+  if (!allowed.includes(df)) throw bad(`Delivery fraction must be one of: ${allowed.join(', ')}`);
+  const reason = (df !== it.delivery_fraction) ? str(req.body.reason, 'Reason for override', { max: 500 }) : null;
+  db.prepare('UPDATE items SET delivery_fraction = ?, delivery_confirmed_by = ?, delivery_override_reason = ?, updated_at = ? WHERE id = ?').run(df, req.user.id, reason, now(), it.id);
+  audit(req.ws.id, req.user.id, 'delivery.confirmed', 'item', it.id, { original: it.delivery_fraction, confirmed: df, override: !!reason, reason });
   return { ok: true };
 }));
 
@@ -1382,7 +1407,7 @@ app.get('/api/scorecard', auth, wrap((req) => {
   const coinNotes = db.prepare('SELECT c.coins, c.reason, f.name AS from_name FROM coins c JOIN users f ON f.id = c.from_id WHERE c.workspace_id = ? AND c.to_id = ? AND c.week_start = ? ORDER BY c.created_at DESC').all(req.ws.id, target.id, cur);
   // Plain facts only. No AI here, and nothing that implies a rating.
   const changed = thisWeek.items.filter((i) => i.status === 'delivered').map((i) => ({ title: i.title, rank: i.rank, proof_url: i.proof_url, proof_note: i.proof_note }));
-  return { person: publicUser(target), week: cur, current: { score: thisWeek.score, pending: thisWeek.pending, quality: thisWeek.quality, coins: thisWeek.coins, alignment: thisWeek.alignment, leave: thisWeek.leave, breakdown: thisWeek.breakdown }, trend, coinNotes, changed, consistencyBonus };
+  return { person: publicUser(target), week: cur, current: { score: thisWeek.score, scoreLow: thisWeek.scoreLow, scoreHigh: thisWeek.scoreHigh, pending: thisWeek.pending, quality: thisWeek.quality, coins: thisWeek.coins, alignment: thisWeek.alignment, leave: thisWeek.leave, breakdown: thisWeek.breakdown, disagreements: thisWeek.disagreements }, trend, coinNotes, changed, consistencyBonus };
 }));
 
 app.get('/api/team', auth, wrap((req) => {
@@ -1396,7 +1421,7 @@ app.get('/api/team', auth, wrap((req) => {
     const stack = stackOf(req.ws.id, u.id, week);
     return {
       id: u.id, name: u.name, level: u.level, department: u.department, reports_to: u.reports_to, role: u.role, avatar: avatarRef(u),
-      score: c.score, pending: c.pending, qualityPct: rated ? Math.round((q.done_well / rated) * 100) : null, quality: q,
+      score: c.score, scoreLow: c.scoreLow, scoreHigh: c.scoreHigh, pending: c.pending, qualityPct: rated ? Math.round((q.done_well / rated) * 100) : null, quality: q,
       coins: c.coins, alignment: c.alignment, openBlockers, locked: !!(stack && stack.locked_at), onLeave: c.leave.days.length
     };
   });

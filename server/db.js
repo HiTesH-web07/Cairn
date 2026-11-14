@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS items (
   proof_url TEXT, proof_note TEXT, proof_source TEXT, delivered_at TEXT,
   parent_item_id TEXT REFERENCES items(id), second_rater_id TEXT REFERENCES users(id),
   kind TEXT NOT NULL DEFAULT 'work' CHECK (kind IN ('work','unplanned','helping')),
+  delivery_fraction REAL, delivery_proposed_by TEXT REFERENCES users(id), delivery_confirmed_by TEXT REFERENCES users(id), delivery_override_reason TEXT,
   created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS items_user_week ON items(workspace_id, user_id, week_start);
@@ -107,5 +108,11 @@ CREATE TABLE IF NOT EXISTS retrospectives (
   PRIMARY KEY (workspace_id, user_id, week_start)
 );
 `);
+
+// Migrations: add columns that may not exist in older databases.
+try { db.exec('ALTER TABLE items ADD COLUMN delivery_fraction REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN delivery_proposed_by TEXT REFERENCES users(id)'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN delivery_confirmed_by TEXT REFERENCES users(id)'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN delivery_override_reason TEXT'); } catch (_) {}
 
 module.exports = db;

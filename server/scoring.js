@@ -4,6 +4,8 @@ const DEFAULT_SETTINGS = {
   rankWeights: [35, 25, 20, 12, 8],
   quality: { done_well: 1.0, needs_fixes: 0.5, redo: 0 },
   stretchBonus: 0.5,
+  maxStretchItems: 2,
+  deliveryFractions: [0, 0.25, 0.5, 0.75, 1.0],
   secondRaterRanks: 2, // ranks 1..N need a second rater
   coinsPerWeek: 10,
   maxCoinsPerPerson: 3,
@@ -51,6 +53,7 @@ function validateSettings(s) {
   if (!(s.maxCoinsPerPerson >= 1 && s.maxCoinsPerPerson <= s.coinsPerWeek)) errors.push('maxCoinsPerPerson must be 1..coinsPerWeek');
   if (!Array.isArray(s.workingDays) || !s.workingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) errors.push('workingDays must be weekday numbers 0-6');
   if (!(s.stretchBonus >= 0 && s.stretchBonus <= 1)) errors.push('stretchBonus must be 0-1');
+  if (s.maxStretchItems !== undefined && (typeof s.maxStretchItems !== 'number' || s.maxStretchItems < 1 || s.maxStretchItems > 10)) errors.push('maxStretchItems must be 1-10');
   if (Object.keys(s.alertMoments).some((k) => !(k in DEFAULT_SETTINGS.alertMoments)) || Object.values(s.alertMoments).some((v) => typeof v !== 'boolean')) errors.push('alertMoments has unknown entries');
   const allowedSlack = { ...DEFAULT_SETTINGS.slackMessages };
   if (Object.keys(s.slackMessages).some((k) => !(k in allowedSlack)) || Object.values(s.slackMessages).some((v) => typeof v !== 'boolean')) errors.push('slackMessages has unknown entries');
@@ -78,21 +81,24 @@ function itemMultiplier(item, ratings, settings) {
 /**
  * items: ranked items of one person for one week, each with ratings[]
  * leave: { available, working } days
- * Returns { score|null, earned, possible, items[], pending }
+ * Returns { score|null, scoreLow|null, scoreHigh|null, earned, possible, items[], pending, disagreements[] }
  */
 function weeklyScore(items, settings, leave) {
   let earned = 0;
+  let earnedOptimistic = 0;
   let possible = 0;
   let pending = 0;
   const detail = [];
+  const disagreements = [];
   for (const it of items) {
     if (!it.rank) continue;
     const w = weightForRank(it.rank, settings);
-    const row = { id: it.id, rank: it.rank, weight: w, status: it.status, stretch: !!it.stretch, multiplier: null, earned: 0, counted: true };
+    const df = it.delivery_fraction != null ? it.delivery_fraction : (it.status === 'delivered' ? 1.0 : 0);
+    const row = { id: it.id, rank: it.rank, weight: w, status: it.status, stretch: !!it.stretch, delivery_fraction: df, multiplier: null, earned: 0, counted: true };
     if (it.status === 'blocked_external') {
-      row.counted = false; // raised early, not held against the person
+      row.counted = false;
     } else if (it.stretch && it.status !== 'delivered') {
-      row.counted = false; // stretch: no penalty if missed
+      row.counted = false;
     } else {
       possible += w;
       if (it.status === 'delivered') {
@@ -100,12 +106,16 @@ function weeklyScore(items, settings, leave) {
         if (m === null) {
           pending += 1;
           row.multiplier = null;
+          earnedOptimistic += w * 1.0 * settings.quality.done_well;
+          if (it.stretch) earnedOptimistic += w * settings.stretchBonus;
         } else {
           row.multiplier = m;
-          let e = w * m;
-          if (it.stretch && m === settings.quality.done_well) e += w * settings.stretchBonus;
+          let e = w * df * m;
+          if (it.stretch && df === 1.0 && m === settings.quality.done_well) e += w * settings.stretchBonus;
           row.earned = e;
           earned += e;
+          earnedOptimistic += e;
+          checkDisagreement(it, it.ratings || [], settings, disagreements);
         }
       }
     }
@@ -115,7 +125,16 @@ function weeklyScore(items, settings, leave) {
   if (leave && leave.working > 0) factor = Math.max(0.2, leave.available / leave.working);
   const effective = possible * factor;
   const score = effective > 0 ? Math.min(100, Math.round((earned / effective) * 100)) : null;
-  return { score, earned: Math.round(earned * 10) / 10, possible, leaveFactor: factor, pending, items: detail };
+  const scoreLow = pending > 0 && effective > 0 ? Math.min(100, Math.round((earned / effective) * 100)) : null;
+  const scoreHigh = pending > 0 && effective > 0 ? Math.min(100, Math.round((earnedOptimistic / effective) * 100)) : null;
+  return { score, scoreLow, scoreHigh, earned: Math.round(earned * 10) / 10, possible, leaveFactor: factor, pending, items: detail, disagreements };
+}
+
+function checkDisagreement(item, ratings, settings, out) {
+  if (ratings.length < 2) return;
+  const vals = ratings.map((r) => settings.quality[r.quality]);
+  const dist = Math.abs(vals[0] - vals[1]);
+  if (dist >= 0.9) out.push({ item_id: item.id, rank: item.rank, title: item.title, ratings: ratings.map((r) => ({ rater_id: r.rater_id, rater_name: r.rater_name, quality: r.quality })) });
 }
 
 function qualitySummary(ratings) {
@@ -152,6 +171,4 @@ function consistencyBonus(scores) {
   return Math.max(...valid) - Math.min(...valid) < 10 ? 5 : 0;
 }
 
-// Unplanned items (kind='unplanned') added after lock count at half weight (stretch bonus rate).
-// This is applied at the API layer, not here, since lock state lives outside scoring.
-module.exports = { DEFAULT_SETTINGS, mergeSettings, validateSettings, weightForRank, itemMultiplier, weeklyScore, qualitySummary, alignmentPct, checkCoinGift, consistencyBonus };
+module.exports = { DEFAULT_SETTINGS, mergeSettings, validateSettings, weightForRank, itemMultiplier, weeklyScore, qualitySummary, alignmentPct, checkCoinGift, consistencyBonus, checkDisagreement };
