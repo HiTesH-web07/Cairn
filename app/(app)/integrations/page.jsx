@@ -140,7 +140,7 @@ export default function IntegrationsPage() {
             </tbody></table></div>
           </>
         )}
-        {sl.connected && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && <SlackListenerSection />}
+        {sl.connected && me && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && <SlackListenerSection />}
       </div>
 
       <div className="card">
