@@ -26,7 +26,7 @@ export default function ScorePage() {
       </div>
       <div className="card"><div className="row spread" style={{ marginBottom: 'var(--space-100)' }}><h2 style={{ margin: 0 }}>This week&apos;s stack</h2></div>
         <Stack items={c.breakdown.map((b) => ({ rank: b.rank, title: `#${b.rank}`, status: b.status, mult: b.multiplier }))} settings={me.settings} /></div>
-      <div className="card"><h3>Last 5 weeks</h3><div className="bars">{s.trend.map((t) => <div key={t.week}><span style={{ height: `${t.score || 0}px` }} />{scoreText(t.score)}<br />{t.week.slice(5)}</div>)}</div></div>
+      <div className="card"><h3>Last 5 weeks</h3><div className="bars">{s.trend.map((t, i) => <div key={t.week} style={{ '--bar-k': i }}><span style={{ height: `${t.score || 0}%` }} /><span style={{ color: 'var(--muted)', fontSize: 11 }}>{scoreText(t.score)}</span><span style={{ color: 'var(--muted)', fontSize: 10 }}>{t.week.slice(5)}</span></div>)}</div></div>
       {c.disagreements && c.disagreements.length > 0 && (
         <div className="card" style={{ borderLeft: '3px solid var(--warn)' }}>
           <h3 style={{ margin: 0, color: 'var(--warn)' }}>Rater disagreement</h3>

@@ -317,6 +317,10 @@ main {
 /* page body */
 .content, .pagebody { flex: 1; padding: 0 32px 40px; }
 
+/* ── page-level animation: fade-up on mount ── */
+@keyframes pageIn { from { opacity: 0; transform: translateY(12px); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
+
 /* ── metric tile grid ── */
 .grid {
   display: grid;
@@ -686,6 +690,29 @@ tbody tr:hover td { background: var(--surface-2); }
 @media (max-width: 768px) {
   .settings-page { padding: 0 16px 32px; }
 }
+
+/* ── two-column card grid (reusable for any page with two equal sections) ── */
+.card-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 20px 32px 0;
+}
+.card-row .card { margin: 0; }
+@media (max-width: 860px) { .card-row { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .card-row { margin: 16px 16px 0; } }
+
+/* ── three-column metric row ── */
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 20px 32px 0;
+}
+.metric-row .tile { /* inherits tile styles */ }
+@media (max-width: 860px) { .metric-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 540px) { .metric-row { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .metric-row { margin: 16px 16px 0; } }
 
 /* ── empty state ── */
 .empty {
