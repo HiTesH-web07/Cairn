@@ -140,8 +140,18 @@ export default function IntegrationsPage() {
             </tbody></table></div>
           </>
         )}
-        {sl.connected && me && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && <SlackListenerSection />}
       </div>
+
+      {sl.connected && me && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && (
+        <div className="card">
+          <div className="row spread">
+            <h2 style={{ margin: 0 }}>Slack Intelligence</h2>
+            <span className="pill" style={{ background: '#4a154b', color: '#fff', fontSize: 11 }}>Beta</span>
+          </div>
+          <p className="small muted" style={{ marginTop: 0 }}>Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Map your team&apos;s channels below — Cairn subscribes to them automatically.</p>
+          <SlackListenerSection />
+        </div>
+      )}
 
       <div className="card">
         <div className="row spread"><h2 style={{ margin: 0 }}>Keka</h2><Pill c={ke} /></div>
@@ -290,9 +300,6 @@ function SlackListenerSection() {
 
   return (
     <>
-      <h3 style={{ marginTop: 'var(--space-200)' }}>Slack Listener Agent</h3>
-      <p className="small muted">Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Map Slack channels to your team below — Cairn subscribes to them automatically.</p>
-
       {isAdmin && sub && (
         <>
           <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Subscription status</h4>
