@@ -13,7 +13,8 @@ const APPS = {
     actions: {
       lookup: { key: 'Get_User_Information', version: 'v9' },
       dm: { key: 'Send_Direct_Message', version: 'v3' },
-      getChannels: { key: 'List_all_Public_Channels', version: 'v1' }
+      getChannels: { key: 'List_all_Public_Channels', version: 'v1' },
+      getPrivateChannels: { key: 'List_all_Private_Channels', version: 'v1' }
     }
   },
   keka: {

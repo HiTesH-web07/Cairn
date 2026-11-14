@@ -1796,15 +1796,20 @@ app.get('/api/slack/list-channels', auth, wrap(async (req) => {
   if (req.user.role !== 'manager' && !isAdmin(req.user)) throw forbidden();
   if (!integ || !integ.vs || !integ.vs.connected(req.ws.id, 'slack')) return { channels: [] };
   try {
-    const out = await integ.vs.run(req.ws.id, 'slack', 'getChannels', { maximumResults: 200, excludeArchivedChannels: 'Yes' });
-    // List_all_Public_Channels returns { channels: [{id, name, ...}] } or an array directly
-    const raw = out && (Array.isArray(out) ? out : (out.channels || out.data || []));
-    const list = Array.isArray(raw) ? raw : [];
+    const toList = (out) => {
+      const raw = out && (Array.isArray(out) ? out : (out.channels || out.data || []));
+      return Array.isArray(raw) ? raw : [];
+    };
+    const [pubOut, privOut] = await Promise.allSettled([
+      integ.vs.run(req.ws.id, 'slack', 'getChannels', { maximumResults: 200, excludeArchivedChannels: 'Yes' }),
+      integ.vs.run(req.ws.id, 'slack', 'getPrivateChannels', { maximumResults: 200, excludeArchivedChannels: 'Yes' })
+    ]);
+    const all = [...toList(pubOut.value), ...toList(privOut.value)];
+    const seen = new Set();
     return {
-      channels: list.map((c) => ({
-        id: c.id || c.channel_id || '',
-        name: c.name || c.channel_name || c.id || ''
-      })).filter((c) => c.id).sort((a, b) => a.name.localeCompare(b.name))
+      channels: all.map((c) => ({ id: c.id || c.channel_id || '', name: c.name || c.channel_name || c.id || '' }))
+        .filter((c) => c.id && !seen.has(c.id) && seen.add(c.id))
+        .sort((a, b) => a.name.localeCompare(b.name))
     };
   } catch (e) {
     // Non-fatal: UI falls back to manual text entry
