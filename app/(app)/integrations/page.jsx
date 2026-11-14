@@ -142,7 +142,7 @@ export default function IntegrationsPage() {
         )}
       </div>
 
-      {sl.connected && me && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && (
+      {sl.connected && me && (me.user?.role === 'owner' || me.user?.role === 'admin' || me.user?.role === 'manager') && (
         <div className="card">
           <div className="row spread">
             <h2 style={{ margin: 0 }}>Slack Intelligence</h2>
@@ -221,8 +221,8 @@ const OUTCOME_PILL = { processed: 'good', duplicate: '', no_assignments: '', par
 
 function SlackListenerSection() {
   const { me, toast } = useApp();
-  const isAdmin = me && (me.role === 'owner' || me.role === 'admin');
-  const isManager = me && (me.role === 'manager' || me.role === 'owner' || me.role === 'admin');
+  const isAdmin = me && (me.user?.role === 'owner' || me.user?.role === 'admin');
+  const isManager = me && (me.user?.role === 'manager' || me.user?.role === 'owner' || me.user?.role === 'admin');
   const [sub, setSub] = useState(null);
   const [teamChannels, setTeamChannels] = useState([]);
   const [legacyChannels, setLegacyChannels] = useState([]);
