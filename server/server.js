@@ -1791,6 +1791,28 @@ app.post('/api/slack/subscription/rebuild', auth, adminOnly, wrap(async (req) =>
   return { ok: true };
 }));
 
+// GET /api/slack/list-channels — fetch channel list from Slack via viaSocket (admin + manager).
+app.get('/api/slack/list-channels', auth, wrap(async (req) => {
+  if (req.user.role !== 'manager' && !isAdmin(req.user)) throw forbidden();
+  if (!integ || !integ.vs || !integ.vs.connected(req.ws.id, 'slack')) return { channels: [] };
+  try {
+    const out = await integ.vs.run(req.ws.id, 'slack', 'getChannels', { limit: 200, exclude_archived: true });
+    // viaSocket returns channels in various shapes depending on the action version
+    const raw = (out && (out.channels || out.data || out)) || [];
+    const list = Array.isArray(raw) ? raw : (Array.isArray(raw.channels) ? raw.channels : []);
+    return {
+      channels: list.map((c) => ({
+        id: c.id || c.channel_id || '',
+        name: c.name || c.channel_name || c.id || ''
+      })).filter((c) => c.id)
+    };
+  } catch (e) {
+    // Non-fatal: UI falls back to manual text entry
+    console.warn('slack list-channels failed:', scrub(e.message));
+    return { channels: [], error: 'Could not fetch channels from Slack' };
+  }
+}));
+
 // GET /api/slack/ingest-log — recent ingest events for this workspace (admin only).
 app.get('/api/slack/ingest-log', auth, wrap((req) => {
   if (!isAdmin(req.user)) throw forbidden();

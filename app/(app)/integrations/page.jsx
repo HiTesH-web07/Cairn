@@ -140,7 +140,7 @@ export default function IntegrationsPage() {
             </tbody></table></div>
           </>
         )}
-        {sl.connected && <SlackListenerSection />}
+        {sl.connected && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && <SlackListenerSection />}
       </div>
 
       <div className="card">
@@ -217,8 +217,9 @@ function SlackListenerSection() {
   const [teamChannels, setTeamChannels] = useState([]);
   const [legacyChannels, setLegacyChannels] = useState([]);
   const [log, setLog] = useState([]);
-  const [newCid, setNewCid] = useState('');
-  const [newCname, setNewCname] = useState('');
+  const [slackChannels, setSlackChannels] = useState(null); // null = not loaded yet
+  const [loadingChannels, setLoadingChannels] = useState(false);
+  const [selectedCid, setSelectedCid] = useState('');
   const [adding, setAdding] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
 
@@ -232,15 +233,31 @@ function SlackListenerSection() {
       api('GET', '/api/slack/team-channels').then((r) => setTeamChannels(r.channels)).catch(() => {});
     }
   };
-  useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadChannels = async () => {
+    if (slackChannels !== null) return; // already loaded
+    setLoadingChannels(true);
+    try {
+      const r = await api('GET', '/api/slack/list-channels');
+      setSlackChannels(r.channels || []);
+    } catch { setSlackChannels([]); }
+    setLoadingChannels(false);
+  };
+
+  useEffect(() => { refresh(); loadChannels(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The selected channel from dropdown (or manual fallback)
+  const selectedChannel = slackChannels && slackChannels.find((c) => c.id === selectedCid);
 
   const addTeamChannel = async (e) => {
     e.preventDefault();
-    if (!newCid.trim()) return;
+    const cid = selectedCid.trim().toUpperCase();
+    if (!cid) return;
     setAdding(true);
     try {
-      await api('POST', '/api/slack/team-channels', { channel_id: newCid.trim().toUpperCase(), channel_name: newCname.trim() || undefined });
-      setNewCid(''); setNewCname('');
+      const cname = selectedChannel ? selectedChannel.name : undefined;
+      await api('POST', '/api/slack/team-channels', { channel_id: cid, channel_name: cname });
+      setSelectedCid('');
       refresh();
       toast('Channel mapped to your team.');
     } catch (err) { toast(err.message); }
@@ -267,10 +284,14 @@ function SlackListenerSection() {
     setRebuilding(false);
   };
 
+  // Channels already mapped — filter them out of the dropdown
+  const mappedIds = new Set(teamChannels.map((c) => c.channel_id));
+  const availableChannels = slackChannels ? slackChannels.filter((c) => !mappedIds.has(c.id)) : [];
+
   return (
     <>
       <h3 style={{ marginTop: 'var(--space-200)' }}>Slack Listener Agent</h3>
-      <p className="small muted">Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Map Slack channels to teams below — Cairn subscribes to them automatically.</p>
+      <p className="small muted">Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Map Slack channels to your team below — Cairn subscribes to them automatically.</p>
 
       {isAdmin && sub && (
         <>
@@ -290,18 +311,18 @@ function SlackListenerSection() {
       <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Team channel mapping</h4>
       <p className="small muted" style={{ marginBottom: 'var(--space-100)' }}>
         {teamChannels.length === 0
-          ? 'No channels mapped yet. Add a Slack channel ID and Cairn will route messages from that channel to your team.'
+          ? 'No channels mapped yet. Pick a Slack channel and Cairn will route its messages to your team.'
           : `${teamChannels.length} channel${teamChannels.length === 1 ? '' : 's'} mapped.`}
       </p>
 
       {teamChannels.length > 0 && (
         <div className="tablewrap" style={{ marginBottom: 'var(--space-100)' }}>
-          <table><thead><tr><th>Channel ID</th><th>Name</th>{isAdmin && <th>Team manager</th>}<th></th></tr></thead>
+          <table><thead><tr><th>Channel</th><th>ID</th>{isAdmin && <th>Team manager</th>}<th></th></tr></thead>
             <tbody>
               {teamChannels.map((c) => (
                 <tr key={c.channel_id}>
-                  <td><code className="small">{c.channel_id}</code></td>
-                  <td className="small">{c.channel_name || <span className="muted">unnamed</span>}</td>
+                  <td className="small">{c.channel_name ? <strong>#{c.channel_name}</strong> : <span className="muted">unnamed</span>}</td>
+                  <td><code className="small muted">{c.channel_id}</code></td>
                   {isAdmin && <td className="small">{c.manager_name || c.manager_id}</td>}
                   <td><button className="ghost danger small" onClick={() => removeTeamChannel(c.channel_id)}>Remove</button></td>
                 </tr>
@@ -313,14 +334,36 @@ function SlackListenerSection() {
 
       <form onSubmit={addTeamChannel} style={{ display: 'flex', gap: 'var(--space-50)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <label className="small">Slack channel ID <span className="muted">(e.g. C0123ABC456)</span></label>
-          <input value={newCid} onChange={(e) => setNewCid(e.target.value)} placeholder="C0123ABC456" style={{ width: 180, fontFamily: 'monospace', fontSize: 13 }} />
+          <label className="small">
+            Slack channel
+            {loadingChannels && <span className="muted"> — loading…</span>}
+          </label>
+          {slackChannels && slackChannels.length > 0 ? (
+            <select
+              value={selectedCid}
+              onChange={(e) => setSelectedCid(e.target.value)}
+              style={{ minWidth: 220, fontSize: 13, height: 36 }}
+            >
+              <option value="">— pick a channel —</option>
+              {availableChannels.map((c) => (
+                <option key={c.id} value={c.id}>#{c.name}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={selectedCid}
+              onChange={(e) => setSelectedCid(e.target.value)}
+              placeholder="C0123ABC456"
+              style={{ width: 200, fontFamily: 'monospace', fontSize: 13 }}
+            />
+          )}
+          {slackChannels && slackChannels.length === 0 && !loadingChannels && (
+            <span className="small muted">Enter channel ID manually</span>
+          )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <label className="small">Channel name <span className="muted">(optional)</span></label>
-          <input value={newCname} onChange={(e) => setNewCname(e.target.value)} placeholder="engineering" style={{ width: 160, fontSize: 13 }} />
-        </div>
-        <button type="submit" disabled={adding || !newCid.trim()} style={{ marginBottom: 1 }}>Map channel</button>
+        <button type="submit" disabled={adding || !selectedCid.trim()} style={{ marginBottom: 1 }}>
+          {adding ? 'Adding…' : 'Map channel'}
+        </button>
       </form>
 
       {isAdmin && legacyChannels.length > 0 && (
