@@ -654,6 +654,39 @@ tbody tr:hover td { background: var(--surface-2); }
 /* ── topbar (mobile) ── */
 .topbar { display: none; }
 
+/* ── settings page — full-width two-column layout ── */
+.settings-page {
+  padding: 0 32px 40px;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.settings-grid .card {
+  margin: 0;
+}
+.sect-head {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sect-head h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.sect-head p { margin: 0; }
+@media (max-width: 900px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .settings-page { padding: 0 16px 32px; }
+}
+
 /* ── empty state ── */
 .empty {
   display: flex; flex-direction: column;

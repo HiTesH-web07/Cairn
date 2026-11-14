@@ -508,6 +508,37 @@ a.btn, button { -webkit-tap-highlight-color: transparent; }
 @keyframes sxFloat { 50% { transform: translate(30px, -24px) scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .sx-track .fill::after, .sx-gauge i::after, .sx-score::after {display: none;} }
 
+/* Slack Intelligence section */
+.slack-features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: var(--space-400);
+}
+.slack-feat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-200);
+  padding: var(--space-300);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--rad-2xl);
+  box-shadow: none;
+}
+.slack-ico {
+  width: 36px; height: 36px;
+  border-radius: var(--rad-xl);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.slack-feat > div { display: grid; gap: var(--space-50); }
+.slack-feat b { font-size: var(--text-sm); font-weight: 600; line-height: var(--lh-sm); }
+.slack-feat span { font-size: var(--text-xs); color: var(--muted); line-height: var(--lh-sm); }
+@media (max-width: 680px) { .slack-features { grid-template-columns: 1fr; } }
+
 /* M91 phone-alert section */
 .m91 { display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--space-500); align-items: center; }
 .m91-list { list-style: none; padding: 0; margin: var(--space-300) 0 0; display: grid; gap: var(--space-100); }

@@ -35,7 +35,7 @@ const FAQ = [
   ['Can everyone see how the score works?', 'Yes. The formula and the weights are open to everyone in the workspace.'],
 ];
 const TAGLINE = 'Measure what mattered, not how busy anyone looked. One fair score for every team, rated by the people who used the work.';
-const NAV_LINKS = [['hp-how', 'How it works'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-where', 'Where you work']];
+const NAV_LINKS = [['hp-how', 'How it works'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-slack', 'Slack'], ['hp-where', 'Where you work']];
 const TASKS = ['Answered a Slack thread', 'Renamed a file', 'Updated a ticket', 'Joined a standup', 'Tidied the board', 'Sent a reminder', 'Reordered tabs', 'Replied "thanks"', 'Cleared notifications', 'Moved a meeting'];
 
 function Scenes() {
@@ -517,6 +517,18 @@ export default function Home({ signedIn }) {
           </div>
         </div></section>
 
+        <section className="hp-sec" id="hp-slack"><div className="hp-wrap">
+          <div className="hp-kicker reveal">Slack Intelligence</div>
+          <h2 className="hp-h2 reveal">Your team&apos;s work, surfaced from Slack automatically.</h2>
+          <p className="hp-sub reveal">Managers map their team&apos;s channels once. Cairn reads those channels and matches messages to the right person — so nothing slips through unlogged.</p>
+          <div className="slack-features reveal">
+            <div className="slack-feat"><div className="slack-ico" style={{ background: '#4a154b' }}>S</div><div><b>Team channel mapping</b><span>Each manager picks which Slack channels belong to their team. Only those channels are read.</span></div></div>
+            <div className="slack-feat"><div className="slack-ico" style={{ background: 'var(--accent)' }}>#</div><div><b>Automatic routing</b><span>Messages are matched to the right person in the right team, even when names overlap across the org.</span></div></div>
+            <div className="slack-feat"><div className="slack-ico" style={{ background: 'var(--good)' }}>✓</div><div><b>Out-of-team flagged</b><span>If a message is resolved outside the team&apos;s channels, it&apos;s flagged so managers always know who is covering what.</span></div></div>
+            <div className="slack-feat"><div className="slack-ico" style={{ background: 'var(--warn)' }}>→</div><div><b>Live subscriptions</b><span>When channels change, subscriptions update instantly. No manual webhook setup, ever.</span></div></div>
+          </div>
+        </div></section>
+
         <section className="hp-sec tag" id="hp-tag" aria-label="What Cairn is for"><div className="hp-wrap">
           <p className="tag-text" data-words="" aria-label={words.join(' ')}>{words.map((w, i) => <Fragment key={i}>{i > 0 && ' '}<span className="tw" aria-hidden="true">{w}</span></Fragment>)}</p>
         </div></section>
@@ -573,7 +585,7 @@ export default function Home({ signedIn }) {
             </div>
             <div className="wk-stage" aria-live="polite">
               <div className="wk-p wk-p0"><div className="wk-title">Integrations · admin</div>
-                {[['Slack', 'Private messages to your team', '#4a154b', 'S'], ['Keka', 'Read people and teams, never salary', '#ef4d5e', 'K'], ['M91', 'Phone rings for serious events', '#0d9488', 'M']].map((c, k) => <div key={c[0]} className="wk-conn" style={{ '--k': k }}><span className="lg" style={{ background: c[2] }}>{c[3]}</span><div><b>{c[0]}</b><small>{c[1]}</small></div><div className="wk-btn"><span className="b1">Connect</span><span className="b2">✓ Connected</span></div></div>)}
+                {[['Slack', 'Messages + team channel intelligence', '#4a154b', 'S'], ['Keka', 'Read people and teams, never salary', '#ef4d5e', 'K'], ['M91', 'Phone rings for serious events', '#0d9488', 'M']].map((c, k) => <div key={c[0]} className="wk-conn" style={{ '--k': k }}><span className="lg" style={{ background: c[2] }}>{c[3]}</span><div><b>{c[0]}</b><small>{c[1]}</small></div><div className="wk-btn"><span className="b1">Connect</span><span className="b2">✓ Connected</span></div></div>)}
                 <p className="wk-note">Connections are stored encrypted. You can disconnect any of them at any time.</p></div>
               <div className="wk-p wk-p1"><div className="wk-title">People · 12 added</div>
                 <div className="wk-src"><span>CSV</span><span>Keka sync</span><span>Invite link</span></div>
@@ -603,7 +615,7 @@ export default function Home({ signedIn }) {
           <div className="hp-fbrand"><Link className="brand" href="/home"><Logo />{brand.name}</Link>
             <p>{brand.tagline} A weekly priority stack, rated by the people who used the work, for every team in the company.</p>
             <div className="hp-tags"><span>No screenshots</span><span>No time tracking</span><span>Open formula</span></div></div>
-          <div><h4>Product</h4><ul><li><a href="/home" data-go="hp-how">How it works</a></li><li><a href="/home" data-go="hp-vs">Why it&apos;s different</a></li><li><a href="/home" data-go="hp-fair">Fairness</a></li><li><a href="/home" data-go="hp-where">Where you work</a></li></ul></div>
+          <div><h4>Product</h4><ul><li><a href="/home" data-go="hp-how">How it works</a></li><li><a href="/home" data-go="hp-vs">Why it&apos;s different</a></li><li><a href="/home" data-go="hp-fair">Fairness</a></li><li><a href="/home" data-go="hp-slack">Slack Intelligence</a></li><li><a href="/home" data-go="hp-where">Where you work</a></li></ul></div>
           <div><h4>{signedIn ? 'Your workspace' : 'Get started'}</h4><ul>{signedIn
             ? <><li><Link href="/week">My Week</Link></li><li><Link href="/how">How we score</Link></li><li><Link href="/team">Team</Link></li></>
             : <><li><Link href="/signup">Create a workspace</Link></li><li><Link href="/signin">Sign in</Link></li></>}</ul></div>

@@ -41,47 +41,60 @@ export default function SettingsPage() {
   return (
     <>
       <Head eyebrow="Manage" title="Settings" sub="How scoring, people and alerts work in this workspace." />
-      <form className="form settings" id="sform" key={version} onSubmit={submit}>
-        <section className="card sect"><h3>Company</h3><p className="small muted">Basic details for this workspace.</p>
-          <label>Company name</label><input name="name" defaultValue={ws.name} required />
-          <label>Time zone</label><input name="timezone" defaultValue={ws.timezone} />
-          <label>Only allow emails from this domain</label><input name="allowed_domain" defaultValue={ws.allowed_domain || ''} placeholder="yourcompany.com" />
-        </section>
-        <section className="card sect"><h3>How the score works</h3><p className="small muted">The weights and quality multipliers behind every score. Everyone can read these on the “How we score” page.</p>
-          <label>Rank weights in % (#1 first, must add up to 100)</label><input name="rankWeights" defaultValue={s.rankWeights.join(', ')} />
-          <div className="inline">
-            <div><label>Done well ×</label><input name="q_done_well" type="number" step="0.05" min="0" max="1" defaultValue={s.quality.done_well} /></div>
-            <div><label>Needs fixes ×</label><input name="q_needs_fixes" type="number" step="0.05" min="0" max="1" defaultValue={s.quality.needs_fixes} /></div>
-            <div><label>Redo ×</label><input name="q_redo" type="number" step="0.05" min="0" max="1" defaultValue={s.quality.redo} /></div>
-          </div>
-          <div className="inline">
-            <div><label>Second rater for ranks #1 to #</label><input name="secondRaterRanks" type="number" min="0" max="10" defaultValue={s.secondRaterRanks} /></div>
-            <div><label>Stretch bonus (0–1)</label><input name="stretchBonus" type="number" step="0.05" min="0" max="1" defaultValue={s.stretchBonus} /></div>
-          </div>
-        </section>
-        <section className="card sect"><h3>Coins and working days</h3><p className="small muted">Coins are thanks between colleagues. They sit beside the score and never change it.</p>
-          <div className="inline">
-            <div><label>Coins per week</label><input name="coinsPerWeek" type="number" min="0" max="100" defaultValue={s.coinsPerWeek} /></div>
-            <div><label>Max coins to one person</label><input name="maxCoinsPerPerson" type="number" min="1" defaultValue={s.maxCoinsPerPerson} /></div>
-          </div>
-          <label>Working days</label>
-          <div className="row">{DAYS.map((d, i) => <label key={d} style={{ margin: 0 }}><input type="checkbox" name={`wd${i}`} defaultChecked={s.workingDays.includes(i)} style={{ width: 'auto' }} /> {d}</label>)}</div>
-        </section>
-        <section className="card sect"><h3>Who adds people</h3>
-          <label style={opt}><input type="radio" name="managersAddTeam" value="1" defaultChecked={!!s.managersAddTeam} style={{ width: 'auto' }} /> <b>Managers add their own team</b> <span className="small muted">Admins add managers/TLs; each manager adds, moves and offboards people in their team.</span></label>
-          <label style={opt}><input type="radio" name="managersAddTeam" value="" defaultChecked={!s.managersAddTeam} style={{ width: 'auto' }} /> <b>Only admins</b> <span className="small muted">Managers rank and rate their team but cannot add or remove people.</span></label>
-        </section>
-        <section className="card sect"><h3>People &amp; leave source</h3><p className="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p>
-          {SOURCES.map(([v, t, h]) => <label key={v} style={opt}><input type="radio" name="peopleSource" value={v} defaultChecked={s.peopleSource === v} onChange={() => setSource(v)} style={{ width: 'auto' }} /> <b>{t}</b> <span className="small muted">{h}</span></label>)}
-          <div id="hrf" style={source === 'keka' ? undefined : { display: 'none' }}>
-            <label>Fields Keka may share</label>
-            {HR.map(([k, t]) => <label key={k} style={{ margin: 'var(--space-50) 0', color: 'var(--text)' }}><input type="checkbox" name={`hr_${k}`} defaultChecked={!!s.hrFields[k] && k !== 'leave'} disabled={k === 'leave'} style={{ width: 'auto' }} /> {t}</label>)}
-            <p className="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p>
-          </div>
-        </section>
-        <section className="card sect"><h3>Alerts</h3>
-          <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" defaultValue={s.blockerEscalationHours} />
-        </section>
+      <form className="settings-page" id="sform" key={version} onSubmit={submit}>
+        <div className="settings-grid">
+          <section className="card sect">
+            <div className="sect-head"><h3>Company</h3><p className="small muted">Basic details for this workspace.</p></div>
+            <label>Company name</label><input name="name" defaultValue={ws.name} required />
+            <label>Time zone</label><input name="timezone" defaultValue={ws.timezone} />
+            <label>Only allow emails from this domain</label><input name="allowed_domain" defaultValue={ws.allowed_domain || ''} placeholder="yourcompany.com" />
+          </section>
+
+          <section className="card sect">
+            <div className="sect-head"><h3>How the score works</h3><p className="small muted">The weights and quality multipliers behind every score. Everyone can read these on the &ldquo;How we score&rdquo; page.</p></div>
+            <label>Rank weights in % (#1 first, must add up to 100)</label><input name="rankWeights" defaultValue={s.rankWeights.join(', ')} />
+            <div className="inline">
+              <div><label>Done well ×</label><input name="q_done_well" type="number" step="0.05" min="0" max="1" defaultValue={s.quality.done_well} /></div>
+              <div><label>Needs fixes ×</label><input name="q_needs_fixes" type="number" step="0.05" min="0" max="1" defaultValue={s.quality.needs_fixes} /></div>
+              <div><label>Redo ×</label><input name="q_redo" type="number" step="0.05" min="0" max="1" defaultValue={s.quality.redo} /></div>
+            </div>
+            <div className="inline">
+              <div><label>Second rater for ranks #1 to #</label><input name="secondRaterRanks" type="number" min="0" max="10" defaultValue={s.secondRaterRanks} /></div>
+              <div><label>Stretch bonus (0–1)</label><input name="stretchBonus" type="number" step="0.05" min="0" max="1" defaultValue={s.stretchBonus} /></div>
+            </div>
+          </section>
+
+          <section className="card sect">
+            <div className="sect-head"><h3>Coins and working days</h3><p className="small muted">Coins are thanks between colleagues. They sit beside the score and never change it.</p></div>
+            <div className="inline">
+              <div><label>Coins per week</label><input name="coinsPerWeek" type="number" min="0" max="100" defaultValue={s.coinsPerWeek} /></div>
+              <div><label>Max coins to one person</label><input name="maxCoinsPerPerson" type="number" min="1" defaultValue={s.maxCoinsPerPerson} /></div>
+            </div>
+            <label>Working days</label>
+            <div className="row">{DAYS.map((d, i) => <label key={d} style={{ margin: 0 }}><input type="checkbox" name={`wd${i}`} defaultChecked={s.workingDays.includes(i)} style={{ width: 'auto' }} /> {d}</label>)}</div>
+          </section>
+
+          <section className="card sect">
+            <div className="sect-head"><h3>Who adds people</h3><p className="small muted">Control whether managers can add their own direct reports or only admins can manage the roster.</p></div>
+            <label style={opt}><input type="radio" name="managersAddTeam" value="1" defaultChecked={!!s.managersAddTeam} style={{ width: 'auto' }} /> <b>Managers add their own team</b> <span className="small muted">Admins add managers/TLs; each manager adds, moves and offboards people in their team.</span></label>
+            <label style={opt}><input type="radio" name="managersAddTeam" value="" defaultChecked={!s.managersAddTeam} style={{ width: 'auto' }} /> <b>Only admins</b> <span className="small muted">Managers rank and rate their team but cannot add or remove people.</span></label>
+          </section>
+
+          <section className="card sect">
+            <div className="sect-head"><h3>People &amp; leave source</h3><p className="small muted">Choose where people, reporting lines and leave come from. You can change this any time.</p></div>
+            {SOURCES.map(([v, t, h]) => <label key={v} style={opt}><input type="radio" name="peopleSource" value={v} defaultChecked={s.peopleSource === v} onChange={() => setSource(v)} style={{ width: 'auto' }} /> <b>{t}</b> <span className="small muted">{h}</span></label>)}
+            <div id="hrf" style={source === 'keka' ? undefined : { display: 'none' }}>
+              <label>Fields Keka may share</label>
+              {HR.map(([k, t]) => <label key={k} style={{ margin: 'var(--space-50) 0', color: 'var(--text)' }}><input type="checkbox" name={`hr_${k}`} defaultChecked={!!s.hrFields[k] && k !== 'leave'} disabled={k === 'leave'} style={{ width: 'auto' }} /> {t}</label>)}
+              <p className="small muted">Never read, whatever is ticked: salary, payroll, bank, tax, documents, attendance.</p>
+            </div>
+          </section>
+
+          <section className="card sect">
+            <div className="sect-head"><h3>Alerts</h3><p className="small muted">When blockers on top priorities should escalate to the manager by phone.</p></div>
+            <label>Escalate blockers on top priorities after (hours)</label><input name="blockerEscalationHours" type="number" min="1" max="168" defaultValue={s.blockerEscalationHours} />
+          </section>
+        </div>
         <div className="savebar"><p className="err" id="serr">{err}</p><button className="primary" disabled={busy}>Save settings</button></div>
       </form>
       <PhoneAlertsCard />
