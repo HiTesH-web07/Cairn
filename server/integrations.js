@@ -10,6 +10,9 @@ function init(ctx) {
   const slack = slackMod.create({ ...ctx, vs });
   const keka = kekaMod.create({ ...ctx, vs, slack });
 
+  function appUrl() { return process.env.APP_URL || ''; }
+  function ingestUrl(wsId) { return `${appUrl()}/api/slack/ingest/${wsId}`; }
+
   const friendly = (e) => {
     if (e instanceof viasocket.VsError) {
       if (e.code === 'NOT_CONFIGURED') return 'viaSocket is not set up on the server yet.';
@@ -39,6 +42,13 @@ function init(ctx) {
     if (!a) throw bad('Choose slack or keka');
     const r = await vs.connect(req.ws.id, a, req.body.authId, req.user.id);
     audit(req.ws.id, req.user.id, 'integration.connected', 'integration', a, { reconnected: r.reconnected });
+    // Phase 2: programmatically subscribe if Slack just connected
+    if (a === 'slack') {
+      const channels = db.prepare('SELECT channel_id FROM slack_team_channels WHERE workspace_id = ?').all(req.ws.id).map(r => r.channel_id);
+      vs.rebuildSubscription(req.ws.id, channels, ingestUrl(req.ws.id)).catch(e => {
+        console.error('slack subscribe after connect failed:', e.message);
+      });
+    }
     return { ok: true };
   }));
 

@@ -134,7 +134,54 @@ function create({ db, now }) {
   const markVerified = (wsId, app) => db.prepare('UPDATE vs_connections SET verified_at = ?, last_error = NULL, last_error_at = NULL WHERE workspace_id = ? AND app = ?').run(now(), wsId, app);
   const confirm = (wsId, app) => db.prepare('UPDATE vs_connections SET confirmed_at = COALESCE(confirmed_at, ?) WHERE workspace_id = ? AND app = ?').run(now(), wsId, app);
 
-  return { APPS, connected, status, tokenFor, connect, disconnect, run, markVerified, confirm };
+  // Programmatic Slack subscription management (Phase 2).
+  // Uses webhook mode: viaSocket POSTs to our ingest endpoint, we handle routing.
+  async function subscribeSlack(wsId, channelIds, webhookUrl) {
+    const c = conn(wsId, 'slack');
+    if (!c) throw new VsError('NOT_CONNECTED', 'Slack is not connected');
+    const user = client().user(wsId);
+    const channelList = Array.isArray(channelIds) ? channelIds.filter(Boolean) : [];
+    const inputData = channelList.length ? { channel_id: channelList } : {};
+    try {
+      const sub = await user.subscribe('slack', 'New_Message', {
+        authId: c.authId,
+        inputData,
+        webhook: webhookUrl,
+        meta: { cairn_workspace_id: wsId }
+      });
+      return sub;
+    } catch (e) {
+      const msg = scrub((e && e.message) || 'subscribe failed');
+      throw new VsError('SUBSCRIBE_FAILED', msg, e && e.status);
+    }
+  }
+
+  // create-first, delete-after: if the new subscribe call fails, old subscription is untouched.
+  async function rebuildSubscription(wsId, channelIds, webhookUrl) {
+    const r = db.prepare('SELECT subscription_script_id FROM vs_connections WHERE workspace_id = ? AND app = ?').get(wsId, 'slack');
+    const oldScriptId = r && r.subscription_script_id;
+    let sub;
+    try {
+      sub = await subscribeSlack(wsId, channelIds, webhookUrl);
+    } catch (e) {
+      db.prepare('UPDATE vs_connections SET subscription_error = ?, subscription_error_at = ? WHERE workspace_id = ? AND app = ?')
+        .run(scrub(e.message), now(), wsId, 'slack');
+      throw e;
+    }
+    db.prepare(`UPDATE vs_connections SET
+      subscription_script_id = ?, subscription_channels_json = ?,
+      subscription_updated_at = ?, subscription_error = NULL, subscription_error_at = NULL
+      WHERE workspace_id = ? AND app = ?`)
+      .run(sub.scriptId, JSON.stringify(channelIds), now(), wsId, 'slack');
+    if (oldScriptId && oldScriptId !== sub.scriptId) {
+      try { await client().user(wsId).setFlowStatus(oldScriptId, 0); } catch (e2) {
+        console.error('viasocket: could not delete old subscription', scrub(e2.message));
+      }
+    }
+    return sub;
+  }
+
+  return { APPS, connected, status, tokenFor, connect, disconnect, run, markVerified, confirm, subscribeSlack, rebuildSubscription };
 }
 
 module.exports = { create, APPS, VsError, scrub, setClientForTests, keysPresent };

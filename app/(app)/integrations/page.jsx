@@ -210,106 +210,138 @@ const OUTCOME_LABEL = { processed: 'Processed', duplicate: 'Duplicate', no_assig
 const OUTCOME_PILL = { processed: 'good', duplicate: '', no_assignments: '', parse_failed: 'warn', channel_blocked: 'warn', rate_limited: 'warn' };
 
 function SlackListenerSection() {
-  const { toast } = useApp();
-  const [info, setInfo] = useState(null);
-  const [channels, setChannels] = useState([]);
+  const { me, toast } = useApp();
+  const isAdmin = me && (me.role === 'owner' || me.role === 'admin');
+  const isManager = me && me.role === 'manager';
+  const [sub, setSub] = useState(null);
+  const [teamChannels, setTeamChannels] = useState([]);
+  const [legacyChannels, setLegacyChannels] = useState([]);
   const [log, setLog] = useState([]);
-  const [copied, setCopied] = useState('');
   const [newCid, setNewCid] = useState('');
   const [newCname, setNewCname] = useState('');
   const [adding, setAdding] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
 
   const refresh = () => {
-    api('GET', '/api/slack/ingest-url').then(setInfo).catch(() => {});
-    api('GET', '/api/slack/channels').then((r) => setChannels(r.channels)).catch(() => {});
-    api('GET', '/api/slack/ingest-log').then((r) => setLog(r.events)).catch(() => {});
+    if (isAdmin) {
+      api('GET', '/api/slack/subscription-status').then(setSub).catch(() => {});
+      api('GET', '/api/slack/channels').then((r) => setLegacyChannels(r.channels)).catch(() => {});
+      api('GET', '/api/slack/ingest-log').then((r) => setLog(r.events)).catch(() => {});
+    }
+    if (isAdmin || isManager) {
+      api('GET', '/api/slack/team-channels').then((r) => setTeamChannels(r.channels)).catch(() => {});
+    }
   };
   useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!info) return null;
-  const copy = (val, key) => { navigator.clipboard.writeText(val).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000); }); };
-
-  const addChannel = async (e) => {
+  const addTeamChannel = async (e) => {
     e.preventDefault();
     if (!newCid.trim()) return;
     setAdding(true);
     try {
-      await api('POST', '/api/slack/channels', { channel_id: newCid.trim().toUpperCase(), channel_name: newCname.trim() || undefined });
+      await api('POST', '/api/slack/team-channels', { channel_id: newCid.trim().toUpperCase(), channel_name: newCname.trim() || undefined });
       setNewCid(''); setNewCname('');
       refresh();
-      toast('Channel added to allow-list.');
+      toast('Channel mapped to your team.');
     } catch (err) { toast(err.message); }
     setAdding(false);
   };
 
-  const removeChannel = async (channelId) => {
-    if (!confirm(`Remove channel ${channelId} from the allow-list?`)) return;
+  const removeTeamChannel = async (channelId) => {
+    if (!confirm(`Remove channel ${channelId} from team mapping?`)) return;
     try {
-      await api('DELETE', `/api/slack/channels/${channelId}`, {});
+      await api('DELETE', `/api/slack/team-channels/${channelId}`, {});
       refresh();
       toast('Channel removed.');
     } catch (err) { toast(err.message); }
   };
 
+  const rebuild = async () => {
+    if (!confirm('Rebuild the viaSocket subscription? A brief duplicate window may occur.')) return;
+    setRebuilding(true);
+    try {
+      await api('POST', '/api/slack/subscription/rebuild', {});
+      refresh();
+      toast('Subscription rebuilt.');
+    } catch (err) { toast(err.message); }
+    setRebuilding(false);
+  };
+
   return (
     <>
       <h3 style={{ marginTop: 'var(--space-200)' }}>Slack Listener Agent</h3>
-      <p className="small muted">Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Set up a viaSocket flow: trigger on new Slack messages → POST to this webhook.</p>
+      <p className="small muted">Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Map Slack channels to teams below — Cairn subscribes to them automatically.</p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-50)' }}>
-        <label className="small">Webhook URL</label>
-        <div className="row">
-          <code className="small" style={{ background: 'var(--surface)', padding: '4px 8px', borderRadius: 4, flex: 1, wordBreak: 'break-all' }}>{info.url}</code>
-          <button className="ghost" onClick={() => copy(info.url, 'url')}>{copied === 'url' ? '✓ Copied' : 'Copy'}</button>
-        </div>
-        <label className="small">Webhook Secret</label>
-        <div className="row">
-          <code className="small" style={{ background: 'var(--surface)', padding: '4px 8px', borderRadius: 4, flex: 1 }}>{'•'.repeat(16)}</code>
-          <button className="ghost" onClick={() => copy(info.secret, 'secret')}>{copied === 'secret' ? '✓ Copied' : 'Copy secret'}</button>
-        </div>
-      </div>
+      {isAdmin && sub && (
+        <>
+          <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Subscription status</h4>
+          <div style={{ display: 'flex', gap: 'var(--space-100)', alignItems: 'center', flexWrap: 'wrap' }}>
+            {sub.scriptId
+              ? <span className="pill good">Active — {sub.channels ? sub.channels.length : 0} channel{sub.channels && sub.channels.length === 1 ? '' : 's'}</span>
+              : <span className="pill warn">No subscription yet</span>}
+            {sub.error && <span className="pill warn" title={sub.error}>Last error</span>}
+            {sub.updatedAt && <span className="small muted">Updated {fmtTime(sub.updatedAt)}</span>}
+            <button className="ghost small" onClick={rebuild} disabled={rebuilding}>{rebuilding ? 'Rebuilding…' : 'Rebuild'}</button>
+          </div>
+          {sub.error && <p className="small muted" style={{ color: 'var(--warn)', marginTop: 4 }}>{sub.error}</p>}
+        </>
+      )}
 
-      <details className="small muted" style={{ marginTop: 'var(--space-100)' }}>
-        <summary style={{ cursor: 'pointer' }}>viaSocket flow body format</summary>
-        <pre style={{ marginTop: 8, fontSize: 12 }}>{`{\n  "secret": "<paste secret here>",\n  "channel_id": "{{trigger.channel_id}}",\n  "channel_name": "{{trigger.channel_name}}",\n  "message_ts": "{{trigger.ts}}",\n  "sender_name": "{{trigger.user_name}}",\n  "text": "{{trigger.text}}"\n}`}</pre>
-        <p style={{ marginTop: 4 }}><code>channel_id</code> and <code>message_ts</code> are required for duplicate prevention. Find the channel ID in Slack: right-click the channel → View channel details → scroll to bottom.</p>
-      </details>
-
-      <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Channel allow-list</h4>
+      <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Team channel mapping</h4>
       <p className="small muted" style={{ marginBottom: 'var(--space-100)' }}>
-        {channels.length === 0
-          ? 'No channels configured — all channels are accepted. Add at least one channel ID to restrict which channels are processed.'
-          : `${channels.length} channel${channels.length === 1 ? '' : 's'} allowed. Only messages from these channels will be processed.`}
+        {teamChannels.length === 0
+          ? 'No channels mapped yet. Add a Slack channel ID and Cairn will route messages from that channel to your team.'
+          : `${teamChannels.length} channel${teamChannels.length === 1 ? '' : 's'} mapped.`}
       </p>
 
-      {channels.length > 0 && (
+      {teamChannels.length > 0 && (
         <div className="tablewrap" style={{ marginBottom: 'var(--space-100)' }}>
-          <table><tbody>
-            {channels.map((c) => (
-              <tr key={c.channel_id}>
-                <td><code className="small">{c.channel_id}</code></td>
-                <td className="small">{c.channel_name || <span className="muted">unnamed</span>}</td>
-                <td><span className={`pill ${c.enabled ? 'good' : 'warn'}`}>{c.enabled ? 'allowed' : 'blocked'}</span></td>
-                <td><button className="ghost danger small" onClick={() => removeChannel(c.channel_id)}>Remove</button></td>
-              </tr>
-            ))}
-          </tbody></table>
+          <table><thead><tr><th>Channel ID</th><th>Name</th>{isAdmin && <th>Team manager</th>}<th></th></tr></thead>
+            <tbody>
+              {teamChannels.map((c) => (
+                <tr key={c.channel_id}>
+                  <td><code className="small">{c.channel_id}</code></td>
+                  <td className="small">{c.channel_name || <span className="muted">unnamed</span>}</td>
+                  {isAdmin && <td className="small">{c.manager_name || c.manager_id}</td>}
+                  <td><button className="ghost danger small" onClick={() => removeTeamChannel(c.channel_id)}>Remove</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <form onSubmit={addChannel} style={{ display: 'flex', gap: 'var(--space-50)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <form onSubmit={addTeamChannel} style={{ display: 'flex', gap: 'var(--space-50)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <label className="small">Slack channel ID <span className="muted">(e.g. C0123ABC456)</span></label>
           <input value={newCid} onChange={(e) => setNewCid(e.target.value)} placeholder="C0123ABC456" style={{ width: 180, fontFamily: 'monospace', fontSize: 13 }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <label className="small">Channel name <span className="muted">(optional, display only)</span></label>
+          <label className="small">Channel name <span className="muted">(optional)</span></label>
           <input value={newCname} onChange={(e) => setNewCname(e.target.value)} placeholder="engineering" style={{ width: 160, fontSize: 13 }} />
         </div>
-        <button type="submit" disabled={adding || !newCid.trim()} style={{ marginBottom: 1 }}>Add channel</button>
+        <button type="submit" disabled={adding || !newCid.trim()} style={{ marginBottom: 1 }}>Map channel</button>
       </form>
 
-      {log.length > 0 && (
+      {isAdmin && legacyChannels.length > 0 && (
+        <details className="small muted" style={{ marginTop: 'var(--space-200)' }}>
+          <summary style={{ cursor: 'pointer' }}>Legacy allow-list ({legacyChannels.length} channels — deprecated)</summary>
+          <p style={{ marginTop: 8 }}>These channels were configured before team mapping. They are still used as a fallback when no team channels are mapped. Migrate them by adding them above with a team manager.</p>
+          <div className="tablewrap" style={{ marginTop: 8 }}>
+            <table><tbody>
+              {legacyChannels.map((c) => (
+                <tr key={c.channel_id}>
+                  <td><code className="small">{c.channel_id}</code></td>
+                  <td className="small">{c.channel_name || <span className="muted">unnamed</span>}</td>
+                  <td><span className={`pill ${c.enabled ? '' : 'warn'}`}>{c.enabled ? 'allowed' : 'blocked'}</span></td>
+                </tr>
+              ))}
+            </tbody></table>
+          </div>
+        </details>
+      )}
+
+      {isAdmin && log.length > 0 && (
         <>
           <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Recent activity</h4>
           <div className="tablewrap">

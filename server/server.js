@@ -1692,6 +1692,105 @@ app.delete('/api/slack/channels/:channelId', auth, wrap((req) => {
   return { ok: true };
 }));
 
+// ── Slack Team Channel Management (Phase 2) ──────────────────────────────────
+
+// GET /api/slack/team-channels — list team-channel mappings.
+app.get('/api/slack/team-channels', auth, wrap((req) => {
+  const channels = slackIngest.listTeamChannels(req.ws.id);
+  if (isAdmin(req.user)) return { channels };
+  if (req.user.role !== 'manager') throw forbidden('Only managers and admins can manage team channels');
+  const mySubtree = new Set([req.user.id, ...subtreeIds(req.ws.id, req.user.id)]);
+  return { channels: channels.filter(c => mySubtree.has(c.manager_id)) };
+}));
+
+// POST /api/slack/team-channels — claim a channel for a team.
+app.post('/api/slack/team-channels', auth, wrap(async (req) => {
+  if (req.user.role !== 'manager' && !isAdmin(req.user)) throw forbidden('Only managers and admins can manage team channels');
+  const channelId = str(req.body.channel_id, 'channel_id', { max: 32 });
+  if (!/^[A-Z0-9]+$/.test(channelId)) throw bad('channel_id must be a Slack channel ID (uppercase letters and digits, e.g. C0123ABC456)');
+  const channelName = req.body.channel_name ? str(req.body.channel_name, 'channel_name', { max: 80, optional: true }) : null;
+  const managerId = req.body.manager_id ? String(req.body.manager_id) : req.user.id;
+  const targetManager = userIn(req.ws.id, managerId);
+  if (!targetManager || !targetManager.active) throw bad('Manager not found');
+  if (!isAdmin(req.user)) {
+    if (targetManager.id !== req.user.id && !isAncestorOf(req.user, targetManager)) throw forbidden('You can only manage channels for your own team');
+  }
+  const existing = slackIngest.getTeamChannel(req.ws.id, channelId);
+  if (existing) {
+    const owner = userIn(req.ws.id, existing.manager_id);
+    throw bad(`Channel ${channelId} is already mapped to ${owner ? owner.name : 'another manager'}'s team`);
+  }
+  slackIngest.addTeamChannel(req.ws.id, channelId, channelName, managerId, req.user.id);
+  audit(req.ws.id, req.user.id, 'slack_team_channel.added', 'slack_team_channel', channelId, { manager_id: managerId, name: channelName });
+  const appUrlBase = process.env.APP_URL || '';
+  const channelIds = slackIngest.allTeamChannelIds(req.ws.id);
+  if (integ && integ.vs && integ.vs.connected(req.ws.id, 'slack')) {
+    integ.vs.rebuildSubscription(req.ws.id, channelIds, `${appUrlBase}/api/slack/ingest/${req.ws.id}`).catch(e => {
+      console.error('rebuild subscription after team channel add:', e.message);
+    });
+  }
+  return { ok: true };
+}));
+
+// DELETE /api/slack/team-channels/:channelId — remove a team channel mapping.
+app.delete('/api/slack/team-channels/:channelId', auth, wrap(async (req) => {
+  if (req.user.role !== 'manager' && !isAdmin(req.user)) throw forbidden('Only managers and admins can manage team channels');
+  const channelId = String(req.params.channelId).slice(0, 32);
+  const existing = slackIngest.getTeamChannel(req.ws.id, channelId);
+  if (!existing) throw notFound('Channel mapping not found');
+  if (!isAdmin(req.user)) {
+    const mySubtree = new Set([req.user.id, ...subtreeIds(req.ws.id, req.user.id)]);
+    if (!mySubtree.has(existing.manager_id)) throw forbidden('This channel belongs to a team you do not manage');
+  }
+  slackIngest.removeTeamChannel(req.ws.id, channelId);
+  audit(req.ws.id, req.user.id, 'slack_team_channel.removed', 'slack_team_channel', channelId, { was_manager_id: existing.manager_id });
+  const appUrlBase = process.env.APP_URL || '';
+  const channelIds = slackIngest.allTeamChannelIds(req.ws.id);
+  if (integ && integ.vs && integ.vs.connected(req.ws.id, 'slack')) {
+    integ.vs.rebuildSubscription(req.ws.id, channelIds, `${appUrlBase}/api/slack/ingest/${req.ws.id}`).catch(e => {
+      console.error('rebuild subscription after team channel remove:', e.message);
+    });
+  }
+  return { ok: true };
+}));
+
+// PUT /api/slack/team-channels/:channelId/reassign — move a channel to a different team (admin only).
+app.put('/api/slack/team-channels/:channelId/reassign', auth, adminOnly, wrap(async (req) => {
+  const channelId = String(req.params.channelId).slice(0, 32);
+  const existing = slackIngest.getTeamChannel(req.ws.id, channelId);
+  if (!existing) throw notFound('Channel mapping not found');
+  const newManagerId = str(req.body.manager_id, 'manager_id', { max: 50 });
+  const newManager = userIn(req.ws.id, newManagerId);
+  if (!newManager || !newManager.active) throw bad('Manager not found');
+  db.prepare('UPDATE slack_team_channels SET manager_id = ?, added_by = ?, added_at = ? WHERE workspace_id = ? AND channel_id = ?')
+    .run(newManagerId, req.user.id, now(), req.ws.id, channelId);
+  audit(req.ws.id, req.user.id, 'slack_team_channel.reassigned', 'slack_team_channel', channelId, { from: existing.manager_id, to: newManagerId });
+  return { ok: true };
+}));
+
+// GET /api/slack/subscription-status — current subscription state (admin only).
+app.get('/api/slack/subscription-status', auth, adminOnly, wrap((req) => {
+  const row = db.prepare('SELECT subscription_script_id, subscription_channels_json, subscription_updated_at, subscription_error, subscription_error_at FROM vs_connections WHERE workspace_id = ? AND app = ?').get(req.ws.id, 'slack');
+  if (!row) return { connected: false };
+  return {
+    connected: true,
+    scriptId: row.subscription_script_id || null,
+    channels: row.subscription_channels_json ? JSON.parse(row.subscription_channels_json) : [],
+    updatedAt: row.subscription_updated_at || null,
+    error: row.subscription_error || null,
+    errorAt: row.subscription_error_at || null
+  };
+}));
+
+// POST /api/slack/subscription/rebuild — manual rebuild trigger (admin only).
+app.post('/api/slack/subscription/rebuild', auth, adminOnly, wrap(async (req) => {
+  if (!integ || !integ.vs || !integ.vs.connected(req.ws.id, 'slack')) throw bad('Slack is not connected');
+  const appUrlBase = process.env.APP_URL || '';
+  const channelIds = slackIngest.allTeamChannelIds(req.ws.id);
+  await integ.vs.rebuildSubscription(req.ws.id, channelIds, `${appUrlBase}/api/slack/ingest/${req.ws.id}`);
+  return { ok: true };
+}));
+
 // GET /api/slack/ingest-log — recent ingest events for this workspace (admin only).
 app.get('/api/slack/ingest-log', auth, wrap((req) => {
   if (!isAdmin(req.user)) throw forbidden();

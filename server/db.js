@@ -163,4 +163,30 @@ CREATE INDEX IF NOT EXISTS ingest_log_ws ON slack_ingest_log(workspace_id, logge
 CREATE UNIQUE INDEX IF NOT EXISTS ingest_log_dedup ON slack_ingest_log(workspace_id, channel_id, message_ts);
 `);
 
+// Phase 2: team-scoped channel mappings
+db.exec(`
+CREATE TABLE IF NOT EXISTS slack_team_channels (
+  id           TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+  channel_id   TEXT NOT NULL,
+  channel_name TEXT,
+  manager_id   TEXT NOT NULL REFERENCES users(id),
+  added_by     TEXT REFERENCES users(id),
+  added_at     TEXT NOT NULL,
+  UNIQUE (workspace_id, channel_id)
+);
+CREATE INDEX IF NOT EXISTS stc_workspace ON slack_team_channels(workspace_id);
+CREATE INDEX IF NOT EXISTS stc_manager   ON slack_team_channels(workspace_id, manager_id);
+`);
+
+// Phase 2: subscription lifecycle tracking on vs_connections
+try { db.exec('ALTER TABLE vs_connections ADD COLUMN subscription_script_id TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE vs_connections ADD COLUMN subscription_channels_json TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE vs_connections ADD COLUMN subscription_updated_at TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE vs_connections ADD COLUMN subscription_error TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE vs_connections ADD COLUMN subscription_error_at TEXT'); } catch (_) {}
+
+// Phase 2: team attribution on ingest log
+try { db.exec('ALTER TABLE slack_ingest_log ADD COLUMN team_manager_id TEXT REFERENCES users(id)'); } catch (_) {}
+
 module.exports = db;

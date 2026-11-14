@@ -81,19 +81,54 @@ function create(ctx) {
     ).run(wsId, channelId);
   }
 
+  // Team-channel mapping helpers (Phase 2).
+  function getTeamChannel(wsId, channelId) {
+    if (!channelId) return null;
+    return db.prepare('SELECT * FROM slack_team_channels WHERE workspace_id = ? AND channel_id = ?').get(wsId, channelId);
+  }
+
+  function listTeamChannels(wsId) {
+    return db.prepare('SELECT tc.*, u.name AS manager_name FROM slack_team_channels tc LEFT JOIN users u ON u.id = tc.manager_id WHERE tc.workspace_id = ? ORDER BY tc.added_at').all(wsId);
+  }
+
+  function addTeamChannel(wsId, channelId, channelName, managerId, addedBy) {
+    const id = require('crypto').randomBytes(9).toString('base64url');
+    db.prepare(`INSERT INTO slack_team_channels (id, workspace_id, channel_id, channel_name, manager_id, added_by, added_at)
+      VALUES (?,?,?,?,?,?,?)`).run(`stc_${id}`, wsId, channelId, channelName || null, managerId, addedBy || null, now());
+  }
+
+  function removeTeamChannel(wsId, channelId) {
+    db.prepare('DELETE FROM slack_team_channels WHERE workspace_id = ? AND channel_id = ?').run(wsId, channelId);
+  }
+
+  function allTeamChannelIds(wsId) {
+    return db.prepare('SELECT channel_id FROM slack_team_channels WHERE workspace_id = ?').all(wsId).map(r => r.channel_id);
+  }
+
   // Resolve an assignee name/mention to a workspace user.
-  // Returns { user } on match or { unresolved: nameAsWritten } when not found.
-  function resolveAssignee(wsId, name) {
+  // Returns { user } on match, { user, outOfTeam: true } when found outside the team scope,
+  // or { unresolved: nameAsWritten } when not found.
+  function resolveAssignee(wsId, name, scopeIds) {
     if (!name) return { unresolved: name };
     const clean = name.replace(/^@/, '').trim().toLowerCase();
     const people = db.prepare('SELECT * FROM users WHERE workspace_id = ? AND active = 1').all(wsId);
-    const found = people.find((p) => p.email.toLowerCase() === clean)
-      || people.find((p) => p.name.toLowerCase() === clean)
-      || people.find((p) => {
+    const match = (pool) => pool.find((p) => p.email.toLowerCase() === clean)
+      || pool.find((p) => p.name.toLowerCase() === clean)
+      || pool.find((p) => {
         const firstName = p.name.toLowerCase().split(' ')[0];
         return p.name.toLowerCase().startsWith(clean) || clean.startsWith(firstName);
       });
-    return found ? { user: found } : { unresolved: name };
+    if (scopeIds && scopeIds.length) {
+      const scoped = people.filter(p => scopeIds.includes(p.id));
+      const inTeam = match(scoped);
+      if (inTeam) return { user: inTeam };
+      const anywhere = match(people);
+      if (anywhere) return { user: anywhere, outOfTeam: true };
+    } else {
+      const found = match(people);
+      if (found) return { user: found };
+    }
+    return { unresolved: name };
   }
 
   async function parseAssignments(message, teamNames) {
@@ -118,8 +153,8 @@ function create(ctx) {
   function writeLog(fields) {
     const expires = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
     db.prepare(`INSERT OR IGNORE INTO slack_ingest_log
-      (id, workspace_id, channel_id, channel_name, message_ts, sender_name, outcome, created_count, unresolved_json, error_text, message_text, expires_at, logged_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      (id, workspace_id, channel_id, channel_name, message_ts, sender_name, outcome, created_count, unresolved_json, error_text, message_text, team_manager_id, expires_at, logged_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(
         newId('sil'), fields.workspace_id, fields.channel_id || null, fields.channel_name || null,
         fields.message_ts || null, fields.sender_name || null,
@@ -127,6 +162,7 @@ function create(ctx) {
         fields.unresolved_json ? JSON.stringify(fields.unresolved_json) : null,
         fields.error_text || null,
         fields.message_text || null,
+        fields.team_manager_id || null,
         expires, now()
       );
   }
@@ -148,10 +184,30 @@ function create(ctx) {
       if (existing) return { ok: true, reason: 'duplicate', outcome: existing.outcome };
     }
 
-    // Channel allow-list check.
-    if (channelId && !isChannelAllowed(wsId, channelId)) {
-      writeLog({ workspace_id: wsId, channel_id: channelId, channel_name: channelName, message_ts: messageTs, sender_name: senderName, outcome: 'channel_blocked', message_text: null });
-      return { ok: false, reason: 'channel_not_allowed' };
+    // Phase 2: Team channel routing. If slack_team_channels has entries, use them.
+    // Fall back to slack_allowed_channels (Phase 1 backward compat).
+    let teamManagerId = null;
+    let scopeIds = null;
+    const teamChannelCount = db.prepare('SELECT COUNT(*) AS n FROM slack_team_channels WHERE workspace_id = ?').get(wsId).n;
+    if (teamChannelCount > 0) {
+      const teamChannel = channelId ? getTeamChannel(wsId, channelId) : null;
+      if (!teamChannel) {
+        writeLog({ workspace_id: wsId, channel_id: channelId, channel_name: channelName, message_ts: messageTs, sender_name: senderName, outcome: 'channel_blocked', message_text: null, team_manager_id: null });
+        return { ok: false, reason: 'channel_not_in_any_team' };
+      }
+      teamManagerId = teamChannel.manager_id;
+      const allUsers = db.prepare('SELECT id, reports_to FROM users WHERE workspace_id = ? AND active = 1').all(wsId);
+      const kids = new Map();
+      for (const u of allUsers) { if (!kids.has(u.reports_to)) kids.set(u.reports_to, []); kids.get(u.reports_to).push(u.id); }
+      const subtree = [];
+      const stack = [...(kids.get(teamManagerId) || [])];
+      while (stack.length) { const id = stack.pop(); if (!subtree.includes(id)) { subtree.push(id); stack.push(...(kids.get(id) || [])); } }
+      scopeIds = [teamManagerId, ...subtree];
+    } else {
+      if (channelId && !isChannelAllowed(wsId, channelId)) {
+        writeLog({ workspace_id: wsId, channel_id: channelId, channel_name: channelName, message_ts: messageTs, sender_name: senderName, outcome: 'channel_blocked', message_text: null, team_manager_id: null });
+        return { ok: false, reason: 'channel_not_allowed' };
+      }
     }
 
     const people = db.prepare('SELECT * FROM users WHERE workspace_id = ? AND active = 1').all(wsId);
@@ -177,7 +233,7 @@ function create(ctx) {
     const appUrl = process.env.APP_URL || '';
 
     for (const a of assignments) {
-      const resolved = resolveAssignee(wsId, a.assignee);
+      const resolved = resolveAssignee(wsId, a.assignee, scopeIds);
 
       if (resolved.unresolved) {
         unresolved.push({ assignee: a.assignee, title: a.title, confidence: a.confidence });
@@ -190,6 +246,8 @@ function create(ctx) {
       const slackUrl = channelId && messageTs
         ? `https://slack.com/archives/${channelId}/p${messageTs.replace('.', '')}`
         : null;
+      const flags = [...a.confidence_flags];
+      if (resolved.outOfTeam) flags.push('out_of_team_resolution');
 
       db.prepare(`INSERT INTO items
         (id, workspace_id, user_id, week_start, title, details, kind, source, draft,
@@ -205,7 +263,7 @@ function create(ctx) {
           messageTs || null,
           slackUrl,
           a.confidence,
-          a.confidence_flags.length ? JSON.stringify(a.confidence_flags) : null,
+          flags.length ? JSON.stringify(flags) : null,
           'system', t, t);
 
       audit(wsId, null, 'item.draft_created', 'item', id, {
@@ -231,7 +289,8 @@ function create(ctx) {
       message_ts: messageTs, sender_name: senderName,
       outcome: 'processed', created_count: created,
       unresolved_json: unresolved.length ? unresolved : null,
-      message_text: null // not stored; only logged on parse failure for debugging
+      message_text: null, // not stored; only logged on parse failure for debugging
+      team_manager_id: teamManagerId
     });
 
     return { ok: true, created, total: assignments.length, unresolved: unresolved.length, unresolved_names: unresolved.map((u) => u.assignee) };
@@ -239,14 +298,16 @@ function create(ctx) {
 
   function recentLogs(wsId, limit = 20) {
     return db.prepare(
-      'SELECT id, channel_id, channel_name, message_ts, sender_name, outcome, created_count, unresolved_json, error_text, logged_at FROM slack_ingest_log WHERE workspace_id = ? ORDER BY logged_at DESC LIMIT ?'
+      'SELECT id, channel_id, channel_name, message_ts, sender_name, outcome, created_count, unresolved_json, error_text, team_manager_id, logged_at FROM slack_ingest_log WHERE workspace_id = ? ORDER BY logged_at DESC LIMIT ?'
     ).all(wsId, limit).map((r) => ({
       ...r,
       unresolved: r.unresolved_json ? JSON.parse(r.unresolved_json) : []
     }));
   }
 
-  return { secretFor, verifySecret, isChannelAllowed, listChannels, addChannel, removeChannel, ingest, recentLogs };
+  return { secretFor, verifySecret, isChannelAllowed, listChannels, addChannel, removeChannel,
+    getTeamChannel, listTeamChannels, addTeamChannel, removeTeamChannel, allTeamChannelIds,
+    ingest, recentLogs };
 }
 
 function currentMonday() {
