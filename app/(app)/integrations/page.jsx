@@ -297,10 +297,6 @@ function SlackListenerSection() {
 
   return (
     <>
-      {isAdmin && sub && sub.error && (
-        <p className="small" style={{ color: 'var(--warn)', marginTop: 0 }}>{sub.error}</p>
-      )}
-
       {teamChannels.length > 0 && (
         <div className="tablewrap" style={{ marginBottom: 'var(--space-150)' }}>
           <table><thead><tr><th>Channel</th>{isAdmin && <th>Manager</th>}<th></th></tr></thead>

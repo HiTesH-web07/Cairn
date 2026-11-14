@@ -1627,7 +1627,7 @@ const slackIngest = slackIngestMod.create({ db, now, newId, audit });
 app.get('/api/slack/ingest-url', auth, wrap((req) => {
   if (!isAdmin(req.user)) throw forbidden();
   const secret = slackIngest.secretFor(req.ws.id);
-  const appUrl = process.env.APP_URL || '';
+  const appUrl = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
   return {
     url: `${appUrl}/api/slack/ingest/${req.ws.id}`,
     secret,
@@ -1722,7 +1722,7 @@ app.post('/api/slack/team-channels', auth, wrap(async (req) => {
   }
   slackIngest.addTeamChannel(req.ws.id, channelId, channelName, managerId, req.user.id);
   audit(req.ws.id, req.user.id, 'slack_team_channel.added', 'slack_team_channel', channelId, { manager_id: managerId, name: channelName });
-  const appUrlBase = process.env.APP_URL || '';
+  const appUrlBase = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
   const channelIds = slackIngest.allTeamChannelIds(req.ws.id);
   if (integ && integ.vs && integ.vs.connected(req.ws.id, 'slack')) {
     integ.vs.rebuildSubscription(req.ws.id, channelIds, `${appUrlBase}/api/slack/ingest/${req.ws.id}`).catch(e => {
@@ -1744,7 +1744,7 @@ app.delete('/api/slack/team-channels/:channelId', auth, wrap(async (req) => {
   }
   slackIngest.removeTeamChannel(req.ws.id, channelId);
   audit(req.ws.id, req.user.id, 'slack_team_channel.removed', 'slack_team_channel', channelId, { was_manager_id: existing.manager_id });
-  const appUrlBase = process.env.APP_URL || '';
+  const appUrlBase = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
   const channelIds = slackIngest.allTeamChannelIds(req.ws.id);
   if (integ && integ.vs && integ.vs.connected(req.ws.id, 'slack')) {
     integ.vs.rebuildSubscription(req.ws.id, channelIds, `${appUrlBase}/api/slack/ingest/${req.ws.id}`).catch(e => {
@@ -1785,7 +1785,7 @@ app.get('/api/slack/subscription-status', auth, adminOnly, wrap((req) => {
 // POST /api/slack/subscription/rebuild — manual rebuild trigger (admin only).
 app.post('/api/slack/subscription/rebuild', auth, adminOnly, wrap(async (req) => {
   if (!integ || !integ.vs || !integ.vs.connected(req.ws.id, 'slack')) throw bad('Slack is not connected');
-  const appUrlBase = process.env.APP_URL || '';
+  const appUrlBase = process.env.APP_URL || (process.env.APP_NAME ? `https://${process.env.APP_NAME}.embarko.app` : '');
   const channelIds = slackIngest.allTeamChannelIds(req.ws.id);
   await integ.vs.rebuildSubscription(req.ws.id, channelIds, `${appUrlBase}/api/slack/ingest/${req.ws.id}`);
   return { ok: true };
