@@ -517,34 +517,38 @@ export default function Home({ signedIn }) {
           </div>
         </div></section>
 
-        <section className="hp-sec" id="hp-slack"><div className="hp-wrap">
-          <div className="hp-kicker reveal">Slack Intelligence</div>
-          <h2 className="hp-h2 reveal">Your team&apos;s work, surfaced from Slack automatically.</h2>
-          <p className="hp-sub reveal">Managers map their team&apos;s channels once. Cairn reads those channels and matches messages to the right person — so nothing slips through unlogged.</p>
-          <div className="slack-features reveal">
-            <div className="slack-feat">
-              <div className="slack-ico" style={{ background: '#4a154b' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
-              </div>
-              <div><b>Team channel mapping</b><span>Each manager picks which Slack channels belong to their team. Only those channels are read.</span></div>
+        <section className="hp-sec hp-sec-slack" id="hp-slack"><div className="hp-wrap">
+          <div className="slack-layout">
+            <div className="slack-copy">
+              <div className="hp-kicker reveal">Slack Intelligence</div>
+              <h2 className="hp-h2 reveal">Your team&apos;s work, surfaced from Slack automatically.</h2>
+              <p className="hp-sub reveal" style={{ marginBottom: 0 }}>Managers map their team&apos;s channels once. Cairn reads those channels and matches messages to the right person — so nothing slips through unlogged.</p>
             </div>
-            <div className="slack-feat">
-              <div className="slack-ico" style={{ background: 'var(--accent)' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <div className="slack-features reveal">
+              <div className="slack-feat">
+                <div className="slack-ico" style={{ background: '#4a154b' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+                </div>
+                <div><b>Team channel mapping</b><span>Each manager picks which Slack channels belong to their team. Only those channels are read.</span></div>
               </div>
-              <div><b>Automatic routing</b><span>Messages are matched to the right person in the right team, even when names overlap across the org.</span></div>
-            </div>
-            <div className="slack-feat">
-              <div className="slack-ico" style={{ background: 'var(--good)' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <div className="slack-feat">
+                <div className="slack-ico" style={{ background: 'var(--accent)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+                <div><b>Automatic routing</b><span>Messages are matched to the right person in the right team, even when names overlap across the org.</span></div>
               </div>
-              <div><b>Out-of-team flagged</b><span>If a message is resolved outside the team&apos;s channels, it&apos;s flagged so managers always know who is covering what.</span></div>
-            </div>
-            <div className="slack-feat">
-              <div className="slack-ico" style={{ background: 'var(--warn)' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <div className="slack-feat">
+                <div className="slack-ico" style={{ background: 'var(--good)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <div><b>Out-of-team flagged</b><span>If a message is resolved outside the team&apos;s channels, it&apos;s flagged so managers always know who is covering what.</span></div>
               </div>
-              <div><b>Live subscriptions</b><span>When channels change, subscriptions update instantly. No manual webhook setup, ever.</span></div>
+              <div className="slack-feat">
+                <div className="slack-ico" style={{ background: 'var(--warn)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <div><b>Live subscriptions</b><span>When channels change, subscriptions update instantly. No manual webhook setup, ever.</span></div>
+              </div>
             </div>
           </div>
         </div></section>

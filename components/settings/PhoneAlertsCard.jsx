@@ -46,40 +46,46 @@ export default function PhoneAlertsCard() {
   });
 
   return (
-    <div className="card form" id="alertsCard">
-      <h2 style={{ marginTop: 0 }}>Phone alerts</h2>
-      <p>{brand.name} rings your managers&apos; phones when someone is stuck on a top priority, or when work is waiting on them for days.</p>
-      <ol className="small">
-        <li>Install M91: <a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener">App Store</a> · <a href="https://play.google.com/store/apps/details?id=com.msg91.m91" target="_blank" rel="noopener">Google Play</a></li>
-        <li>In the app, create a channel and add the managers and TLs who should answer.</li>
-        <li>Tap the paper plane on that channel, copy the link and paste it here.</li>
-      </ol>
-      {a.configured ? (
-        <>
-          <p className="ok-line"><Ph name="check-circle" />Connected to <b>{a.channel}</b></p>
-          <div className="row">
-            <button type="button" id="testAlert" className="primary" onClick={test}>Ring our phones to test</button>
-            <button type="button" id="dropAlert" className="ghost danger" onClick={(e) => run(e, async () => { if (confirm('Stop phone alerts?')) { await api('DELETE', '/api/alerts/link'); reload(); } })}>Disconnect</button>
+    <div className="card" id="alertsCard">
+      <div className="m91-layout">
+        <div className="m91-left">
+          <h2 style={{ marginTop: 0 }}>Phone alerts</h2>
+          <p className="small">{brand.name} rings your managers&apos; phones when someone is stuck on a top priority, or when work is waiting on them for days.</p>
+          <ol className="small" style={{ marginBottom: 0 }}>
+            <li>Install M91: <a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener">App Store</a> · <a href="https://play.google.com/store/apps/details?id=com.msg91.m91" target="_blank" rel="noopener">Google Play</a></li>
+            <li>In the app, create a channel and add the managers and TLs who should answer.</li>
+            <li>Tap the paper plane on that channel, copy the link and paste it here.</li>
+          </ol>
+          <p className="small muted" style={{ marginTop: 'var(--space-200)' }}>Alerts name the person they are for. Everyone in the channel needs M91 installed and the invite accepted.</p>
+        </div>
+        <div className="m91-right">
+          {a.configured ? (
+            <>
+              <p className="ok-line" style={{ marginTop: 0 }}><Ph name="check-circle" />Connected to <b>{a.channel}</b></p>
+              <div className="row">
+                <button type="button" id="testAlert" className="primary" onClick={test}>Ring our phones to test</button>
+                <button type="button" id="dropAlert" className="ghost danger" onClick={(e) => run(e, async () => { if (confirm('Stop phone alerts?')) { await api('DELETE', '/api/alerts/link'); reload(); } })}>Disconnect</button>
+              </div>
+              <p className="small" id="testOut">{testOut}</p>
+            </>
+          ) : (
+            <>
+              <label htmlFor="m91link">Channel link</label>
+              <div className="inline">
+                <input id="m91link" placeholder="Paste the link from M91" autoComplete="off" value={link} onChange={(e) => setLink(e.target.value)} />
+                <button type="button" className="primary" id="saveLink" style={{ flex: '0 0 auto' }} onClick={(e) => run(e, async () => { try { setLinkErr(''); await api('POST', '/api/alerts/link', { link }); toast('Connected'); reload(); } catch (x) { setLinkErr(x.message); } })}>Connect</button>
+              </div>
+              <p className="err" id="linkErr">{linkErr}</p>
+            </>
+          )}
+          <h3 style={{ marginTop: 'var(--space-300)' }}>You&apos;ll be asked when…</h3>
+          <div onChange={(e) => { if (e.target.closest('[data-moment]')) saveMoments(e.currentTarget); }}>
+            {a.moments.map((x) => (
+              <label key={x.key} style={{ margin: 'var(--space-50) 0', color: 'var(--text)' }}><input type="checkbox" data-moment={x.key} defaultChecked={!!x.on} style={{ width: 'auto' }} /> {x.text} <span className="small muted">→ {ANSWERS[x.key]}</span></label>
+            ))}
           </div>
-          <p className="small" id="testOut">{testOut}</p>
-        </>
-      ) : (
-        <>
-          <label htmlFor="m91link">Channel link</label>
-          <div className="inline">
-            <input id="m91link" placeholder="Paste the link from M91" autoComplete="off" value={link} onChange={(e) => setLink(e.target.value)} />
-            <button type="button" className="primary" id="saveLink" style={{ flex: '0 0 auto' }} onClick={(e) => run(e, async () => { try { setLinkErr(''); await api('POST', '/api/alerts/link', { link }); toast('Connected'); reload(); } catch (x) { setLinkErr(x.message); } })}>Connect</button>
-          </div>
-          <p className="err" id="linkErr">{linkErr}</p>
-        </>
-      )}
-      <h3 style={{ marginTop: 'var(--space-200)' }}>You&apos;ll be asked when…</h3>
-      <div onChange={(e) => { if (e.target.closest('[data-moment]')) saveMoments(e.currentTarget); }}>
-        {a.moments.map((x) => (
-          <label key={x.key} style={{ margin: 'var(--space-50) 0', color: 'var(--text)' }}><input type="checkbox" data-moment={x.key} defaultChecked={!!x.on} style={{ width: 'auto' }} /> {x.text} <span className="small muted">→ {ANSWERS[x.key]}</span></label>
-        ))}
+        </div>
       </div>
-      <p className="small muted">Alerts name the person they are for. Everyone in the channel needs M91 installed and the invite accepted, or their phone stays silent.</p>
     </div>
   );
 }

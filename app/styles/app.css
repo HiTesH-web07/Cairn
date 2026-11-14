@@ -714,6 +714,17 @@ tbody tr:hover td { background: var(--surface-2); }
 @media (max-width: 540px) { .metric-row { grid-template-columns: 1fr; } }
 @media (max-width: 768px) { .metric-row { margin: 16px 16px 0; } }
 
+/* ── M91 phone alerts 2-col layout ── */
+.m91-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: var(--space-400);
+  align-items: start;
+}
+.m91-left { display: flex; flex-direction: column; gap: var(--space-100); }
+.m91-right { display: flex; flex-direction: column; }
+@media (max-width: 860px) { .m91-layout { grid-template-columns: 1fr; gap: var(--space-200); } }
+
 /* ── empty state ── */
 .empty {
   display: flex; flex-direction: column;
