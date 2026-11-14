@@ -114,5 +114,53 @@ try { db.exec('ALTER TABLE items ADD COLUMN delivery_fraction REAL'); } catch (_
 try { db.exec('ALTER TABLE items ADD COLUMN delivery_proposed_by TEXT REFERENCES users(id)'); } catch (_) {}
 try { db.exec('ALTER TABLE items ADD COLUMN delivery_confirmed_by TEXT REFERENCES users(id)'); } catch (_) {}
 try { db.exec('ALTER TABLE items ADD COLUMN delivery_override_reason TEXT'); } catch (_) {}
+// Slack listener agent: source tracks where an item came from; draft=1 means awaiting confirmation.
+try { db.exec("ALTER TABLE items ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'"); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN draft INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN draft_channel TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN draft_from TEXT'); } catch (_) {}
+// Per-workspace Slack ingest secret for authenticating viaSocket flows.
+try { db.exec('ALTER TABLE workspaces ADD COLUMN slack_ingest_secret TEXT'); } catch (_) {}
+
+// Phase 1: source traceability, confidence scoring.
+try { db.exec('ALTER TABLE items ADD COLUMN slack_message_ts TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN slack_message_url TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN confidence REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN confidence_flags TEXT'); } catch (_) {}
+
+// Channel allow-list: only explicitly listed channels are processed per workspace.
+db.exec(`
+CREATE TABLE IF NOT EXISTS slack_allowed_channels (
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+  channel_id   TEXT NOT NULL,
+  channel_name TEXT,
+  enabled      INTEGER NOT NULL DEFAULT 1,
+  added_by     TEXT REFERENCES users(id),
+  added_at     TEXT NOT NULL,
+  PRIMARY KEY (workspace_id, channel_id)
+);
+`);
+
+// Ingest event log: one row per webhook call for debugging and digest.
+// message_text is stored for 90 days, then cleared by the cleanup job.
+db.exec(`
+CREATE TABLE IF NOT EXISTS slack_ingest_log (
+  id              TEXT PRIMARY KEY,
+  workspace_id    TEXT NOT NULL REFERENCES workspaces(id),
+  channel_id      TEXT,
+  channel_name    TEXT,
+  message_ts      TEXT,
+  sender_name     TEXT,
+  outcome         TEXT NOT NULL,
+  created_count   INTEGER NOT NULL DEFAULT 0,
+  unresolved_json TEXT,
+  error_text      TEXT,
+  message_text    TEXT,
+  expires_at      TEXT NOT NULL,
+  logged_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ingest_log_ws ON slack_ingest_log(workspace_id, logged_at);
+CREATE UNIQUE INDEX IF NOT EXISTS ingest_log_dedup ON slack_ingest_log(workspace_id, channel_id, message_ts);
+`);
 
 module.exports = db;

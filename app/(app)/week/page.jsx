@@ -24,16 +24,20 @@ export default function WeekPage() {
     const retroQ = new URLSearchParams({ week: w.week });
     if (user) retroQ.set('user', user);
     const retro = await api('GET', `/api/retrospective?${retroQ}`).catch(() => ({ retro: null }));
-    return { w, people: dir.people, retro: retro.retro };
+    // Only fetch drafts for self — these are suggestions assigned to this person from Slack.
+    const draftsQ = week ? `?week=${week}` : '';
+    const draftsRes = !user ? await api('GET', `/api/slack/drafts${draftsQ}`).catch(() => ({ drafts: [] })) : { drafts: [] };
+    return { w, people: dir.people, retro: retro.retro, drafts: draftsRes.drafts };
   }, [user, week]);
   if (!data) return <ScreenStatus error={error} />;
-  return <Week w={data.w} people={data.people} user={user} reload={reload} retroExisting={data.retro} />;
+  return <Week w={data.w} people={data.people} user={user} reload={reload} retroExisting={data.retro} drafts={data.drafts} />;
 }
 
-function Week({ w, people, user, reload, retroExisting }) {
+function Week({ w, people, user, reload, retroExisting, drafts = [] }) {
   const { me, toast, run, modal } = useApp();
   const [ranking, setRanking] = useState(false);
   const [showRetro, setShowRetro] = useState(false);
+  const [localDrafts, setLocalDrafts] = useState(drafts);
 
   // Auto-prompt for retrospective on Friday if week is locked and user hasn't filled it yet.
   useEffect(() => {
@@ -90,6 +94,18 @@ function Week({ w, people, user, reload, retroExisting }) {
     async (fd) => { await api('POST', '/api/items', { ...fd, user_id: w.person.id, week: w.week, parent_item_id: fd.parent_item_id || undefined }, { idem: key }); reload(); });
   };
   const addLeave = () => modal(<><h3>Add a leave day</h3><label>Date</label><input type="date" name="day" required /></>, async (fd) => { await api('POST', '/api/leave', { days: [fd.day] }); reload(); });
+
+  const confirmDraft = async (e, id) => run(e, async () => {
+    await api('POST', `/api/slack/drafts/${id}/confirm`, {});
+    setLocalDrafts((d) => d.filter((x) => x.id !== id));
+    toast('Added to your stack. Rank it when you\'re ready.');
+    reload();
+  });
+  const dismissDraft = async (e, id) => run(e, async () => {
+    if (!confirm('Remove this suggestion?')) return;
+    await api('POST', `/api/slack/drafts/${id}/dismiss`, {});
+    setLocalDrafts((d) => d.filter((x) => x.id !== id));
+  });
 
   const itemRow = (it) => {
     const statusCls = it.status === 'delivered' ? 'good' : it.status === 'missed' ? 'bad' : it.status === 'blocked_external' ? 'warn' : '';
@@ -157,6 +173,41 @@ function Week({ w, people, user, reload, retroExisting }) {
         </div>
         {ranked.length ? ranked.map(itemRow) : <Empty title="Nothing ranked yet" text={w.canRank ? 'Add work below, then rank the top items. The first one counts the most.' : 'Your manager has not ranked this week yet. Add what you plan to work on below.'} />}
       </div>
+      {localDrafts.length > 0 && (
+        <div className="card" style={{ borderLeft: '3px solid var(--acc)' }}>
+          <div className="row spread" style={{ marginBottom: 'var(--space-100)' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>💬 Suggested from Slack</h3>
+              <p className="small muted" style={{ margin: 0 }}>Tasks assigned to you in Slack. Add them to your stack or dismiss.</p>
+            </div>
+          </div>
+          {localDrafts.map((d) => {
+            const lowConf = d.confidence !== null && d.confidence !== undefined && d.confidence < 0.6;
+            const flags = Array.isArray(d.confidence_flags) ? d.confidence_flags : [];
+            return (
+              <div key={d.id} className="item" style={{ borderLeft: `2px solid ${lowConf ? 'var(--warn)' : 'var(--acc)'}`, paddingLeft: 'var(--space-100)' }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>{d.title}</h3>
+                  {d.details && <p className="small muted" style={{ marginTop: 2 }}>{d.details}</p>}
+                  <p className="small muted" style={{ marginTop: 2 }}>
+                    {d.from ? `From ${d.from}` : 'From Slack'}{d.channel ? ` in #${d.channel.replace(/^#/, '')}` : ''}
+                    {d.slack_message_url && <>{' · '}<a href={d.slack_message_url} target="_blank" rel="noreferrer" className="small">View in Slack</a></>}
+                  </p>
+                  {lowConf && (
+                    <p className="small" style={{ color: 'var(--warn)', marginTop: 4 }}>
+                      Low confidence — review carefully before adding.{flags.length > 0 && ` (${flags.join(', ')})`}
+                    </p>
+                  )}
+                </div>
+                <div className="actions">
+                  <button className="primary" onClick={(e) => confirmDraft(e, d.id)}>Add to stack</button>
+                  <button className="ghost danger" onClick={(e) => dismissDraft(e, d.id)}>Dismiss</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {w.disagreements && w.disagreements.length > 0 && (
         <div className="card" style={{ borderLeft: '3px solid var(--warn)' }}>
           <h3 style={{ margin: 0, color: 'var(--warn)' }}>Rater disagreement</h3>

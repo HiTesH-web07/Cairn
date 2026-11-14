@@ -168,7 +168,7 @@ function currentUser(req) {
 
 // CSRF: every state-changing API call must come from our own page (custom header, SameSite cookie).
 app.use('/api', (req, res, next) => {
-  if (req.method !== 'GET' && !req.path.startsWith('/api/m91/callback/') && req.get('x-requested-with') !== 'impact') return next(forbidden('Missing request header'));
+  if (req.method !== 'GET' && !req.path.startsWith('/api/m91/callback/') && !req.path.startsWith('/api/slack/ingest/') && req.get('x-requested-with') !== 'impact') return next(forbidden('Missing request header'));
   next();
 });
 
@@ -1617,6 +1617,122 @@ app.get('/tasks/hourly', async (req, res) => {
   db.prepare('DELETE FROM m91_callbacks WHERE at < ?').run(new Date(Date.now() - 30 * 864e5).toISOString());
   res.send(`Scores refreshed for ${n} person-weeks. Alerts: ${alertReports.join('; ') || 'no workspace has phone alerts'}. Integrations: ${integReport.join('; ') || 'none connected'}`);
 });
+
+// ── Slack Listener Agent ──────────────────────────────────────────────────────
+
+const slackIngestMod = require('./slack-ingest');
+const slackIngest = slackIngestMod.create({ db, now, newId, audit });
+
+// GET /api/slack/ingest-url — returns the webhook URL and secret for this workspace (admin only).
+app.get('/api/slack/ingest-url', auth, wrap((req) => {
+  if (!isAdmin(req.user)) throw forbidden();
+  const secret = slackIngest.secretFor(req.ws.id);
+  const appUrl = process.env.APP_URL || '';
+  return {
+    url: `${appUrl}/api/slack/ingest/${req.ws.id}`,
+    secret,
+    configured: !!req.ws.slack_ingest_secret
+  };
+}));
+
+// POST /api/slack/ingest/:wsId — called by a viaSocket flow on every new Slack message.
+// Body: { secret, channel_id, channel_name?, message_ts, sender_name, text }
+// channel and channel_id are both accepted; channel_id is preferred.
+app.post('/api/slack/ingest/:wsId', async (req, res) => {
+  try {
+    const wsId = String(req.params.wsId).slice(0, 32);
+    const b = req.body || {};
+    if (!slackIngest.verifySecret(wsId, b.secret)) return res.status(401).json({ error: 'invalid secret' });
+    if (!gemini.configured()) return res.json({ ok: false, reason: 'ai not configured' });
+    const slackCtx = integ && integ.slack ? integ.slack : null;
+    const channelId = b.channel_id ? String(b.channel_id).slice(0, 32) : null;
+    // channel_name: accept new field or legacy "channel" field
+    const channelName = (b.channel_name || b.channel) ? String(b.channel_name || b.channel).slice(0, 80) : null;
+    const messageTs = b.message_ts ? String(b.message_ts).slice(0, 32) : null;
+    const result = await slackIngest.ingest({
+      wsId,
+      channelId,
+      channelName,
+      messageTs,
+      senderName: b.sender_name ? String(b.sender_name).slice(0, 100) : null,
+      messageText: String(b.text || '').slice(0, 2000),
+      slack: slackCtx
+    });
+    res.json(result);
+  } catch (e) {
+    console.error('slack ingest failed', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/slack/channels — list allowed channels for this workspace (admin only).
+app.get('/api/slack/channels', auth, wrap((req) => {
+  if (!isAdmin(req.user)) throw forbidden();
+  return { channels: slackIngest.listChannels(req.ws.id) };
+}));
+
+// POST /api/slack/channels — add a channel to the allow-list (admin only).
+// Body: { channel_id, channel_name? }
+app.post('/api/slack/channels', auth, wrap((req) => {
+  if (!isAdmin(req.user)) throw forbidden();
+  const channelId = str(req.body.channel_id, 'channel_id', { max: 32 });
+  if (!/^[A-Z0-9]+$/.test(channelId)) throw bad('channel_id must be a Slack channel ID (uppercase letters and digits, e.g. C0123ABC456)');
+  const channelName = req.body.channel_name ? str(req.body.channel_name, 'channel_name', { max: 80, optional: true }) : null;
+  slackIngest.addChannel(req.ws.id, channelId, channelName, req.user.id);
+  audit(req.ws.id, req.user.id, 'slack_channel.added', 'slack_channel', channelId, { name: channelName });
+  return { ok: true };
+}));
+
+// DELETE /api/slack/channels/:channelId — remove a channel from the allow-list (admin only).
+app.delete('/api/slack/channels/:channelId', auth, wrap((req) => {
+  if (!isAdmin(req.user)) throw forbidden();
+  const channelId = String(req.params.channelId).slice(0, 32);
+  slackIngest.removeChannel(req.ws.id, channelId);
+  audit(req.ws.id, req.user.id, 'slack_channel.removed', 'slack_channel', channelId, {});
+  return { ok: true };
+}));
+
+// GET /api/slack/ingest-log — recent ingest events for this workspace (admin only).
+app.get('/api/slack/ingest-log', auth, wrap((req) => {
+  if (!isAdmin(req.user)) throw forbidden();
+  return { events: slackIngest.recentLogs(req.ws.id, 30) };
+}));
+
+// GET /api/slack/drafts — draft items (source=slack, draft=1) for the current user this week.
+app.get('/api/slack/drafts', auth, wrap((req) => {
+  const week = weekParam(req.ws, req.query.week);
+  const rows = db.prepare(`SELECT * FROM items WHERE workspace_id = ? AND user_id = ? AND week_start = ? AND draft = 1 ORDER BY created_at`)
+    .all(req.ws.id, req.user.id, week);
+  return {
+    drafts: rows.map((r) => ({
+      id: r.id, title: r.title, details: r.details, source: r.source,
+      channel: r.draft_channel, from: r.draft_from,
+      confidence: r.confidence, confidence_flags: r.confidence_flags ? JSON.parse(r.confidence_flags) : [],
+      slack_message_url: r.slack_message_url,
+      created_at: r.created_at
+    }))
+  };
+}));
+
+// POST /api/slack/drafts/:id/confirm — accept a draft item (clears draft flag; optionally assign rank).
+app.post('/api/slack/drafts/:id/confirm', auth, wrap((req) => {
+  const it = db.prepare('SELECT * FROM items WHERE id = ? AND workspace_id = ? AND draft = 1').get(req.params.id, req.ws.id);
+  if (!it) throw notFound('Draft not found');
+  if (it.user_id !== req.user.id) throw forbidden();
+  db.prepare('UPDATE items SET draft = 0, updated_at = ? WHERE id = ?').run(now(), it.id);
+  audit(req.ws.id, req.user.id, 'item.draft_confirmed', 'item', it.id, { source: it.source });
+  return { ok: true };
+}));
+
+// POST /api/slack/drafts/:id/dismiss — delete a draft item.
+app.post('/api/slack/drafts/:id/dismiss', auth, wrap((req) => {
+  const it = db.prepare('SELECT * FROM items WHERE id = ? AND workspace_id = ? AND draft = 1').get(req.params.id, req.ws.id);
+  if (!it) throw notFound('Draft not found');
+  if (it.user_id !== req.user.id) throw forbidden();
+  db.prepare('DELETE FROM items WHERE id = ?').run(it.id);
+  audit(req.ws.id, req.user.id, 'item.draft_dismissed', 'item', it.id, { source: it.source });
+  return { ok: true };
+}));
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 

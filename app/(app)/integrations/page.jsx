@@ -140,6 +140,7 @@ export default function IntegrationsPage() {
             </tbody></table></div>
           </>
         )}
+        {sl.connected && <SlackListenerSection />}
       </div>
 
       <div className="card">
@@ -201,6 +202,134 @@ export default function IntegrationsPage() {
         <div className="row spread"><h2 style={{ margin: 0 }}>Phone alerts (M91)</h2><span className={`pill ${s.m91.configured ? 'good' : 'warn'}`}>{s.m91.configured ? 'Connected' : 'Not set up'}</span></div>
         <p className="small">{s.m91.configured ? <>Rings &quot;{s.m91.channel}&quot; for serious problems. Test it in <Link href="/settings">Settings</Link>.</> : <>Add your channel link in <Link href="/settings">Settings</Link>.</>}</p>
       </div>
+    </>
+  );
+}
+
+const OUTCOME_LABEL = { processed: 'Processed', duplicate: 'Duplicate', no_assignments: 'No tasks', parse_failed: 'AI error', channel_blocked: 'Channel blocked', rate_limited: 'Rate limited' };
+const OUTCOME_PILL = { processed: 'good', duplicate: '', no_assignments: '', parse_failed: 'warn', channel_blocked: 'warn', rate_limited: 'warn' };
+
+function SlackListenerSection() {
+  const { toast } = useApp();
+  const [info, setInfo] = useState(null);
+  const [channels, setChannels] = useState([]);
+  const [log, setLog] = useState([]);
+  const [copied, setCopied] = useState('');
+  const [newCid, setNewCid] = useState('');
+  const [newCname, setNewCname] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const refresh = () => {
+    api('GET', '/api/slack/ingest-url').then(setInfo).catch(() => {});
+    api('GET', '/api/slack/channels').then((r) => setChannels(r.channels)).catch(() => {});
+    api('GET', '/api/slack/ingest-log').then((r) => setLog(r.events)).catch(() => {});
+  };
+  useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!info) return null;
+  const copy = (val, key) => { navigator.clipboard.writeText(val).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000); }); };
+
+  const addChannel = async (e) => {
+    e.preventDefault();
+    if (!newCid.trim()) return;
+    setAdding(true);
+    try {
+      await api('POST', '/api/slack/channels', { channel_id: newCid.trim().toUpperCase(), channel_name: newCname.trim() || undefined });
+      setNewCid(''); setNewCname('');
+      refresh();
+      toast('Channel added to allow-list.');
+    } catch (err) { toast(err.message); }
+    setAdding(false);
+  };
+
+  const removeChannel = async (channelId) => {
+    if (!confirm(`Remove channel ${channelId} from the allow-list?`)) return;
+    try {
+      await api('DELETE', `/api/slack/channels/${channelId}`, {});
+      refresh();
+      toast('Channel removed.');
+    } catch (err) { toast(err.message); }
+  };
+
+  return (
+    <>
+      <h3 style={{ marginTop: 'var(--space-200)' }}>Slack Listener Agent</h3>
+      <p className="small muted">Automatically picks up task assignments from Slack and suggests them in each person&apos;s stack. Set up a viaSocket flow: trigger on new Slack messages → POST to this webhook.</p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-50)' }}>
+        <label className="small">Webhook URL</label>
+        <div className="row">
+          <code className="small" style={{ background: 'var(--surface)', padding: '4px 8px', borderRadius: 4, flex: 1, wordBreak: 'break-all' }}>{info.url}</code>
+          <button className="ghost" onClick={() => copy(info.url, 'url')}>{copied === 'url' ? '✓ Copied' : 'Copy'}</button>
+        </div>
+        <label className="small">Webhook Secret</label>
+        <div className="row">
+          <code className="small" style={{ background: 'var(--surface)', padding: '4px 8px', borderRadius: 4, flex: 1 }}>{'•'.repeat(16)}</code>
+          <button className="ghost" onClick={() => copy(info.secret, 'secret')}>{copied === 'secret' ? '✓ Copied' : 'Copy secret'}</button>
+        </div>
+      </div>
+
+      <details className="small muted" style={{ marginTop: 'var(--space-100)' }}>
+        <summary style={{ cursor: 'pointer' }}>viaSocket flow body format</summary>
+        <pre style={{ marginTop: 8, fontSize: 12 }}>{`{\n  "secret": "<paste secret here>",\n  "channel_id": "{{trigger.channel_id}}",\n  "channel_name": "{{trigger.channel_name}}",\n  "message_ts": "{{trigger.ts}}",\n  "sender_name": "{{trigger.user_name}}",\n  "text": "{{trigger.text}}"\n}`}</pre>
+        <p style={{ marginTop: 4 }}><code>channel_id</code> and <code>message_ts</code> are required for duplicate prevention. Find the channel ID in Slack: right-click the channel → View channel details → scroll to bottom.</p>
+      </details>
+
+      <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Channel allow-list</h4>
+      <p className="small muted" style={{ marginBottom: 'var(--space-100)' }}>
+        {channels.length === 0
+          ? 'No channels configured — all channels are accepted. Add at least one channel ID to restrict which channels are processed.'
+          : `${channels.length} channel${channels.length === 1 ? '' : 's'} allowed. Only messages from these channels will be processed.`}
+      </p>
+
+      {channels.length > 0 && (
+        <div className="tablewrap" style={{ marginBottom: 'var(--space-100)' }}>
+          <table><tbody>
+            {channels.map((c) => (
+              <tr key={c.channel_id}>
+                <td><code className="small">{c.channel_id}</code></td>
+                <td className="small">{c.channel_name || <span className="muted">unnamed</span>}</td>
+                <td><span className={`pill ${c.enabled ? 'good' : 'warn'}`}>{c.enabled ? 'allowed' : 'blocked'}</span></td>
+                <td><button className="ghost danger small" onClick={() => removeChannel(c.channel_id)}>Remove</button></td>
+              </tr>
+            ))}
+          </tbody></table>
+        </div>
+      )}
+
+      <form onSubmit={addChannel} style={{ display: 'flex', gap: 'var(--space-50)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <label className="small">Slack channel ID <span className="muted">(e.g. C0123ABC456)</span></label>
+          <input value={newCid} onChange={(e) => setNewCid(e.target.value)} placeholder="C0123ABC456" style={{ width: 180, fontFamily: 'monospace', fontSize: 13 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <label className="small">Channel name <span className="muted">(optional, display only)</span></label>
+          <input value={newCname} onChange={(e) => setNewCname(e.target.value)} placeholder="engineering" style={{ width: 160, fontSize: 13 }} />
+        </div>
+        <button type="submit" disabled={adding || !newCid.trim()} style={{ marginBottom: 1 }}>Add channel</button>
+      </form>
+
+      {log.length > 0 && (
+        <>
+          <h4 style={{ margin: 'var(--space-200) 0 var(--space-50)' }}>Recent activity</h4>
+          <div className="tablewrap">
+            <table><thead><tr><th>Time</th><th>Channel</th><th>Sender</th><th>Outcome</th><th>Created</th><th>Unresolved</th></tr></thead>
+              <tbody>
+                {log.slice(0, 10).map((ev) => (
+                  <tr key={ev.id}>
+                    <td className="small muted">{fmtTime(ev.logged_at)}</td>
+                    <td className="small">{ev.channel_name ? `#${ev.channel_name}` : ev.channel_id || '—'}</td>
+                    <td className="small">{ev.sender_name || '—'}</td>
+                    <td><span className={`pill ${OUTCOME_PILL[ev.outcome] || ''}`}>{OUTCOME_LABEL[ev.outcome] || ev.outcome}</span></td>
+                    <td className="small">{ev.created_count || 0}</td>
+                    <td className="small">{ev.unresolved && ev.unresolved.length ? <span className="muted" title={ev.unresolved.map((u) => u.assignee).join(', ')}>{ev.unresolved.length} unresolved</span> : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </>
   );
 }
