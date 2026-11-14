@@ -142,7 +142,7 @@ export default function IntegrationsPage() {
         )}
       </div>
 
-      {sl.connected && (
+      {sl.connected && me && (me.role === 'owner' || me.role === 'admin' || me.role === 'manager') && (
         <div className="card">
           <div className="row spread">
             <h2 style={{ margin: 0 }}>Slack Intelligence</h2>
