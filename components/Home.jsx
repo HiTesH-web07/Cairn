@@ -10,7 +10,7 @@ const EX = {
   label: 'Product', person: 'Riya Shah', first: 'Riya', mgr: 'Amit', role: 'Engineer', rater2: 'Sonal',
   t1: 'Ship the new onboarding flow', t2: 'Write the help guide for it', t3: 'Fix the sign in timeout bug', s1: 'Onboarding flow', s2: 'Help guide', s3: 'Sign in bug',
   n1: 'Replied to 40 emails', n2: 'Fixed a typo', n3: 'Joined 12 meetings', n4: 'Updated the wiki', proof: 'github.com/acme/app/pull/231',
-  coin: '3 coins from Aman: "covered my on call shift"', blocker: 'Waiting on API keys for 4h',
+  coin: '3 coins from Aman: “covered my on call shift”', blocker: 'Waiting on API keys for 4h',
 };
 const X = ({ k }) => <span data-ex={k}>{EX[k]}</span>;
 const heroSr = (e) => `Example week for ${e.first}, ${e.role}. Three ranked priorities worth 35, 25 and 20 points were delivered and rated: ${e.t1}, ${e.t2} and ${e.t3}. ${e.first} earned 70 of 80 points, a score of 88 out of 100. Everything else is logged and earns zero.`;
@@ -35,7 +35,7 @@ const FAQ = [
   ['Can everyone see how the score works?', 'Yes. The formula and the weights are open to everyone in the workspace.'],
 ];
 const TAGLINE = 'Measure what mattered, not how busy anyone looked. One fair score for every team, rated by the people who used the work.';
-const NAV_LINKS = [['hp-demo', 'Demo'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-slack', 'Slack'], ['hp-where', 'Where you work']];
+const NAV_LINKS = [['hp-how', 'How it works'], ['hp-vs', "Why it's different"], ['hp-fair', 'Fairness'], ['hp-slack', 'Slack'], ['hp-where', 'Where you work']];
 const TASKS = ['Answered a Slack thread', 'Renamed a file', 'Updated a ticket', 'Joined a standup', 'Tidied the board', 'Sent a reminder', 'Reordered tabs', 'Replied "thanks"', 'Cleared notifications', 'Moved a meeting'];
 
 function Scenes() {
@@ -66,7 +66,7 @@ function Scenes() {
           <div className="rater sc-pop" style={{ '--dl': '.25s' }}><span className="av">S</span><div><b><X k="rater2" /></b> <small>used the work</small><div className="opts"><span className="pick" style={{ '--dl': '1.1s' }}>Done well</span><span>Needs fixes</span><span>Redo</span></div></div></div>
         </div>
         <div className="done"><Ph name="check-circle" />Rated by 2 people</div>
-        <div className="dm sc-pop" style={{ '--dl': '.5s' }}><span className="av">PI</span><div><p><b><X k="first" /> delivered "<X k="t1" />".</b> Rate it: proof attached.</p><small>Slack · sent to both raters</small></div></div>
+        <div className="dm sc-pop" style={{ '--dl': '.5s' }}><span className="av">PI</span><div><p><b><X k="first" /> delivered “<X k="t1" />”.</b> Rate it: proof attached.</p><small>Slack · sent to both raters</small></div></div>
       </div>
       <div className="sc sc4" data-sc="3">
         <div className="sc-title"><X k="first" />&apos;s week</div>
@@ -293,7 +293,7 @@ export default function Home({ signedIn }) {
         if (on) {
           sx.classList.add('paused'); sx.dataset.s = '4'; numEl.classList.remove('dim');
           dots.forEach((d) => d.classList.remove('on')); noEl.textContent = 'Your turn';
-          capEl.textContent = 'Tap a rating on each priority and watch the score move. Then press "Log 10 more tasks" to try to game it.';
+          capEl.textContent = 'Tap a rating on each priority and watch the score move. Then press “Log 10 more tasks” to try to game it.';
           recompute();
         } else {
           rows.forEach((r) => { r.dataset.q = r.dataset.q0; });
@@ -352,6 +352,34 @@ export default function Home({ signedIn }) {
     el.querySelectorAll('.reveal').forEach((n) => rv.observe(n));
     observers.push(rv);
 
+    // the step player
+    const box = el.querySelector('#hpSteps');
+    const btns = [...box.querySelectorAll('.hp-step')];
+    const scs = [...box.querySelectorAll('.sc')];
+    const DUR = 3000;
+    let cur = 0; let visible = false; const hover = false;
+    let stepTimers = [];
+    const schedule = () => {
+      stepTimers.forEach(clearTimeout); stepTimers = [];
+      box.classList.toggle('paused', hover || !visible || reduce);
+      if (reduce || hover || !visible) return;
+      stepTimers.push(setTimeout(() => show((cur + 1) % STEPS.length), DUR)); // eslint-disable-line no-use-before-define
+    };
+    const show = (i) => {
+      cur = i;
+      const stepCap = el.querySelector('.hp-stepcap'); if (stepCap) stepCap.textContent = STEPS[i].d;
+      btns.forEach((b, k) => { b.classList.toggle('on', k === i); b.setAttribute('aria-selected', k === i); });
+      scs.forEach((s, k) => s.classList.toggle('on', k === i));
+      box.style.setProperty('--dur', `${DUR}ms`);
+      if (i === 3) countUp(scs[3].querySelector('[data-count]'), 88, 1500);
+      schedule();
+    };
+    btns.forEach((b, i) => listen(b, 'click', () => show(i)));
+    const vis = new IntersectionObserver((entries) => { const v = entries[0].isIntersecting; if (v !== visible) { visible = v; if (v) show(cur); else schedule(); } }, { threshold: 0.2 });
+    vis.observe(box); observers.push(vis);
+    cleanups.push(() => stepTimers.forEach(clearTimeout));
+    show(0);
+
     return () => {
       timers.forEach(clearTimeout);
       cleanups.forEach((f) => f());
@@ -389,7 +417,7 @@ export default function Home({ signedIn }) {
             <p className="hero-eyebrow"><span aria-hidden="true" />Measure value, not busyness</p>
             <h1 className="hero-h1" id="hero-h1"><span className="nb">Measure the value</span> <span className="nb">of work,</span> <span className="nb">not the number</span> <span className="nb">of tasks.</span></h1>
             <p className="hero-sub">Each week your manager picks the few things that matter most. You deliver them with proof, the people who used your work rate them, and you get one fair score.</p>
-            <div className="hero-cta">{primary(true)}<button className="btn ghost btn-lg" data-go="hp-demo" type="button">See how it works<Ph name="arrow-down" /></button></div>
+            <div className="hero-cta">{primary(true)}<button className="btn ghost btn-lg" data-go="hp-how" type="button">See how it works<Ph name="arrow-down" /></button></div>
             <ul className="hero-proof"><li><Ph name="check-circle" />No screenshots or time tracking</li><li><Ph name="check-circle" />Task count never counts</li><li><Ph name="check-circle" />Every rating has a reason</li></ul>
           </div>
           <div className="hv">
@@ -412,15 +440,51 @@ export default function Home({ signedIn }) {
           </div>
         </section>
 
-        <section className="hp-sec alt" id="hp-demo"><div className="hp-wrap">
-          <div className="hp-kicker reveal">See it in action</div>
-          <h2 className="hp-h2 reveal">How Cairn works — in 25 seconds</h2>
-          <p className="hp-sub reveal">From Monday priorities to Friday scorecard. No time tracking, no busywork — just the work that matters.</p>
-          <div className="demo-video reveal">
-            <video autoPlay muted loop playsInline preload="auto" aria-label="Animated walkthrough of Cairn: plan priorities, get rated, see your scorecard">
-              <source src="/cairn-demo.mp4" type="video/mp4" />
-              <source src="/cairn-demo.webm" type="video/webm" />
-            </video>
+        <section className="hp-sec" id="hp-stack"><div className="hp-wrap">
+          <div className="hp-kicker reveal">The score</div>
+          <h2 className="hp-h2 reveal">Watch one week become one number.</h2>
+          <p className="hp-sub reveal">This is <X k="first" />&apos;s week. Follow it from the manager&apos;s plan to the final score: no formulas to read, just watch.</p>
+          <div className="sx reveal" id="sx" data-s="0">
+            <div className="sx-board">
+              <div className="sx-head"><span><X k="first" />&apos;s priorities this week</span><span>Worth</span></div>
+              {[['#1', 't1', 35, 100, 'Done well', 35], ['#2', 't2', 25, 100, 'Done well', 25], ['#3', 't3', 20, 50, 'Needs fixes', 10]].map((r, k) => {
+                const q0 = r[3] === 100 ? 'well' : 'fix';
+                return (
+                  <div key={r[0]} className="sx-row" data-w={r[2]} data-q0={q0} style={{ '--k': k, '--w': r[2], '--fn': r[3] / 100 }}>
+                    <b className={`sx-rk${k === 0 ? ' r1' : ''}`}>{r[0]}</b>
+                    <div className="sx-main"><div className="sx-title"><X k={r[1]} /></div>
+                      <div className="sx-line"><div className="sx-track"><i className="fill" /></div><span className="worth">{r[2]} pts</span></div>
+                      <div className="sx-rate" role="group" aria-label={`Rate ${EX[r[1]]}`}>{[['well', 'Done well'], ['fix', 'Needs fixes'], ['redo', 'Redo']].map((qq) => <button key={qq[0]} type="button" data-q={qq[0]} className={q0 === qq[0] ? 'on' : undefined}>{qq[1]}</button>)}</div></div>
+                    <div className="sx-state"><span className="pill p-a">Planned</span><span className="pill warn p-b">Delivered</span><span className={`pill ${r[3] === 100 ? 'good' : 'warn'} p-c`}>{r[4]}</span></div>
+                    <div className="sx-earn">+{r[5]}</div>
+                  </div>
+                );
+              })}
+              {[4, 5].map((n) => <div key={n} className="sx-row sx-empty"><b className="sx-rk">#{n}</b><div className="sx-main"><div className="sx-title">Empty slot</div><div className="sx-line"><div className="sx-track dashed" /></div></div><div className="sx-state"><span className="pill">Not ranked</span></div><div /></div>)}
+              <div className="sx-else"><div className="lab">Everything else <X k="first" /> did</div>
+                <div className="sx-chips"><span style={{ '--k': 0 }}><X k="n1" /><em>0 pts</em></span><span style={{ '--k': 1 }}><X k="n2" /><em>0 pts</em></span><span style={{ '--k': 2 }}><X k="n3" /><em>0 pts</em></span></div>
+                <div className="sx-spam"><button type="button" className="btn sm" data-spam="">+ Log 10 more tasks</button><span className="sx-logged">Tasks logged: <b data-logged="">3</b></span><span className="sx-same" data-same="">Score unchanged</span></div></div>
+            </div>
+            <aside className="sx-score">
+              <div><div className="sx-lab">Points earned</div><div className="sx-earned"><b data-earn="">0</b><span>of 80 possible</span></div></div>
+              <div className="sx-eq"><span>70</span><i>÷</i><span>80</span><i>=</i></div>
+              <div><div className="sx-lab"><X k="first" />&apos;s score</div><div className="sx-num"><b data-n="">?</b><small>/ 100</small></div></div>
+            </aside>
+            <div className="sx-gauge" aria-hidden="true"><i data-gauge="" /></div>
+            <div className="sx-modes" role="group" aria-label="Mode"><button type="button" className="on" data-mode="auto">Watch it play</button><button type="button" data-mode="play">Try it yourself</button></div>
+            <div className="sx-cap"><span className="sx-step" data-stepno="">1 / 5</span><p data-cap="" /></div>
+            <div className="sx-dots" role="tablist">{['Rank', 'Weigh', 'Deliver & rate', 'The rest', 'Score'].map((t, i) => <button key={t} type="button" role="tab" className={`sx-dot${i === 0 ? ' on' : ''}`} data-i={i}><i /><span>{i + 1}. {t}</span></button>)}</div>
+          </div>
+        </div></section>
+
+        <section className="hp-sec alt" id="hp-how"><div className="hp-wrap">
+          <div className="hp-kicker reveal">How it works</div>
+          <h2 className="hp-h2 reveal">Four steps, every week.</h2>
+          <p className="hp-sub reveal">Click a step, or just watch. It plays by itself.</p>
+          <div className="hp-steps reveal" id="hpSteps">
+            <div className="hp-stepnav" role="tablist">{STEPS.map((s, i) => <button key={s.n} className={`hp-step${i === 0 ? ' on' : ''}`} role="tab" data-i={i} type="button"><span className="n">{s.n}</span><span><b>{s.t}</b><span className="t">{s.d}</span></span><i className="pb" /></button>)}</div>
+            <p className="hp-stepcap" aria-live="polite" />
+            <div className="hp-stage" aria-live="polite"><Scenes /></div>
           </div>
         </div></section>
 
@@ -489,6 +553,10 @@ export default function Home({ signedIn }) {
           </div>
         </div></section>
 
+        <section className="hp-sec tag" id="hp-tag" aria-label="What Cairn is for"><div className="hp-wrap">
+          <p className="tag-text" data-words="" aria-label={words.join(' ')}>{words.map((w, i) => <Fragment key={i}>{i > 0 && ' '}<span className="tw" aria-hidden="true">{w}</span></Fragment>)}</p>
+        </div></section>
+
         <section className="hp-sec alt" id="hp-fair"><div className="hp-wrap">
           <div className="hp-kicker reveal">Fairness</div>
           <h2 className="hp-h2 reveal">Built so one opinion can&apos;t decide.</h2>
@@ -507,6 +575,27 @@ export default function Home({ signedIn }) {
               <li className="reveal" style={{ '--rd': '.1s' }}><Ph name="scales" /><div><h3>Disagree? Say so</h3><p>Dispute a rating and the rater&apos;s manager decides. Both views stay on record.</p></div></li>
               <li className="reveal" style={{ '--rd': '.2s' }}><Ph name="calendar-check" /><div><h3>Life happens</h3><p>Leave days lower what&apos;s expected. Work blocked by others isn&apos;t held against you.</p></div></li>
             </ul>
+          </div>
+        </div></section>
+
+        <section className="hp-sec alt" id="hp-m91"><div className="hp-wrap m91">
+          <div className="m91-copy">
+            <div className="hp-kicker reveal">Phone alerts · powered by M91</div>
+            <h2 className="hp-h2 reveal">When work is stuck and needs a human.</h2>
+            <p className="hp-sub reveal">Cairn notifies the right person&apos;s phone so they can unblock, decide or act, and keeps ringing until somebody responds.</p>
+            <ul className="m91-list reveal">
+              <li><Ph name="warning-circle" /><div><b>Blocked on a top priority</b><span>The manager&apos;s phone rings until someone takes it.</span></div></li>
+              <li><Ph name="clock-counter-clockwise" /><div><b>Work nobody has rated</b><span>A nudge before the week&apos;s score goes stale.</span></div></li>
+              <li><Ph name="scales" /><div><b>A dispute stuck for days</b><span>Goes up a level, and the phone with it.</span></div></li>
+            </ul>
+            <p className="m91-note reveal">Serious events only. Everything else stays in Slack.</p>
+          </div>
+          <div className="m91-stage reveal" aria-hidden="true">
+            <div className="m91-tl"><span style={{ '--k': 0 }}>10:02 · <X k="first" /> is blocked on #1</span><span style={{ '--k': 1 }}>10:03 · Phone rings for <X k="mgr" /></span><span style={{ '--k': 2 }}>10:03 · Still ringing…</span><span style={{ '--k': 3 }}>10:05 · <X k="mgr" /> taps “I&apos;ll unblock it”</span></div>
+            <div className="m91-phone"><div className="waves"><i /><i /><i /></div>
+              <div className="m91-card"><small>CAIRN · URGENT</small><b><X k="first" /> is blocked on #1</b><span><X k="blocker" /></span>
+                <div className="bt"><i>I&apos;ll unblock it</i><i>Seen</i></div></div>
+              <div className="m91-ok"><Ph name="check-circle" /><b>Answered</b><span>Ringing stopped</span></div></div>
           </div>
         </div></section>
 
@@ -550,7 +639,7 @@ export default function Home({ signedIn }) {
           <div className="hp-fbrand"><Link className="brand" href="/home"><Logo />{brand.name}</Link>
             <p>{brand.tagline} A weekly priority stack, rated by the people who used the work, for every team in the company.</p>
             <div className="hp-tags"><span>No screenshots</span><span>No time tracking</span><span>Open formula</span></div></div>
-          <div><h4>Product</h4><ul><li><a href="/home" data-go="hp-demo">Demo</a></li><li><a href="/home" data-go="hp-vs">Why it&apos;s different</a></li><li><a href="/home" data-go="hp-fair">Fairness</a></li><li><a href="/home" data-go="hp-slack">Slack Intelligence</a></li><li><a href="/home" data-go="hp-where">Where you work</a></li></ul></div>
+          <div><h4>Product</h4><ul><li><a href="/home" data-go="hp-how">How it works</a></li><li><a href="/home" data-go="hp-vs">Why it&apos;s different</a></li><li><a href="/home" data-go="hp-fair">Fairness</a></li><li><a href="/home" data-go="hp-slack">Slack Intelligence</a></li><li><a href="/home" data-go="hp-where">Where you work</a></li></ul></div>
           <div><h4>{signedIn ? 'Your workspace' : 'Get started'}</h4><ul>{signedIn
             ? <><li><Link href="/week">My Week</Link></li><li><Link href="/how">How we score</Link></li><li><Link href="/team">Team</Link></li></>
             : <><li><Link href="/signup">Create a workspace</Link></li><li><Link href="/signin">Sign in</Link></li></>}</ul></div>
