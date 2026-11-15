@@ -508,6 +508,26 @@ a.btn, button { -webkit-tap-highlight-color: transparent; }
 @keyframes sxFloat { 50% { transform: translate(30px, -24px) scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .sx-track .fill::after, .sx-gauge i::after, .sx-score::after {display: none;} }
 
+/* Demo video section */
+.demo-video {
+  margin-top: var(--space-300);
+  border-radius: var(--rad-xl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 40px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
+  max-width: 880px;
+  margin-left: auto;
+  margin-right: auto;
+  aspect-ratio: 16/9;
+  background: var(--surface);
+}
+.demo-video video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 /* Slack Intelligence section — 2-col: copy left, feature grid right */
 .hp-sec-slack { padding: var(--space-600) 0; }
 .slack-layout {

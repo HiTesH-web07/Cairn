@@ -440,6 +440,18 @@ export default function Home({ signedIn }) {
           </div>
         </section>
 
+        <section className="hp-sec alt" id="hp-demo"><div className="hp-wrap">
+          <div className="hp-kicker reveal">See it in action</div>
+          <h2 className="hp-h2 reveal">How Cairn works — in 25 seconds</h2>
+          <p className="hp-sub reveal">From Monday priorities to Friday scorecard. No time tracking, no busywork — just the work that matters.</p>
+          <div className="demo-video reveal">
+            <video autoPlay muted loop playsInline preload="auto" aria-label="Animated walkthrough of Cairn: plan priorities, get rated, see your scorecard">
+              <source src="/cairn-demo.mp4" type="video/mp4" />
+              <source src="/cairn-demo.webm" type="video/webm" />
+            </video>
+          </div>
+        </div></section>
+
         <section className="hp-sec" id="hp-stack"><div className="hp-wrap">
           <div className="hp-kicker reveal">The score</div>
           <h2 className="hp-h2 reveal">Watch one week become one number.</h2>
