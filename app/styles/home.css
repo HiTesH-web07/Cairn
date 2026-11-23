@@ -67,7 +67,7 @@ html.nv-lock { overflow: hidden; }
 .hero-eyebrow { display: inline-flex; align-items: center; gap: var(--space-75); margin: 0 0 var(--space-300); padding: var(--space-50) var(--space-100); border: 1px solid var(--border); border-radius: var(--rad-full); background: var(--surface); color: var(--muted); font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: 500; }
 .hero-eyebrow span { width: 6px; height: 6px; border-radius: var(--rad-full); background: var(--accent); }
 .hero-h1 { max-width: 680px; margin: 0 0 var(--space-300); padding-bottom: var(--space-50); font-size: var(--text-4xl); line-height: var(--lh-4xl); font-weight: 600; letter-spacing: -.02em; text-wrap: balance;
-  background: linear-gradient(90deg, #000000 0%, #666666 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+  background: linear-gradient(90deg, #17201F 0%, #5A6B68 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 :root[data-theme="dark"] .hero-h1 { background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%); -webkit-background-clip: text; background-clip: text; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero-h1 { background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%); -webkit-background-clip: text; background-clip: text; } }
 .hero-h1 .nb { white-space: nowrap; }

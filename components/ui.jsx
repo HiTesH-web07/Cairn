@@ -124,7 +124,7 @@ export function ThemeButton({ id }) {
     const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     const next = cur === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
-    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = next === 'dark' ? '#0B0D17' : '#4f46e5';
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = next === 'dark' ? '#0E1312' : '#4F8F8A';
     try { localStorage.setItem(THEME_KEY, next); } catch { /* not saved */ }
   };
   return <button type="button" className="theme-btn" id={id} onClick={toggle} aria-label="Switch between light and dark" title="Light / dark"><Ph name="sun" className="sun" /><Ph name="moon" className="moon" /></button>;

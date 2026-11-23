@@ -43,7 +43,7 @@ nav.side::-webkit-scrollbar { display: none; }
   align-items: center;
   gap: 9px;
   text-decoration: none;
-  color: #fff;
+  color: var(--text);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -.025em;
@@ -165,7 +165,7 @@ nav.side > a.on::before {
   height: 18px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--accent-2, #14B8A6);
+  background: var(--accent-2, #63A39D);
 }
 /* svg icons from Phosphor */
 nav.side > a svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .6; transition: opacity var(--dur-hover) var(--ease); }
@@ -231,7 +231,7 @@ main {
 
 /* ── hello / greeting banner (actual class from week/page.jsx) ── */
 .hello {
-  background: linear-gradient(135deg, #0C5B54 0%, #0F766E 50%, #0D9488 100%);
+  background: linear-gradient(135deg, #3F7672 0%, #4F8F8A 50%, #63A39D 100%);
   padding: 24px 32px;
   display: flex;
   align-items: center;
@@ -369,11 +369,7 @@ main {
 .t-acc  { background: var(--accent-soft); color: var(--accent); }
 .t-good { background: var(--good-bg);    color: var(--good); }
 .t-warn { background: var(--warn-bg);    color: var(--warn); }
-.t-teal { background: #CCFBF1;           color: #0D9488; }
-[data-theme="dark"] .t-teal { background: #0A2E2B; color: #2DD4BF; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .t-teal { background: #0A2E2B; color: #2DD4BF; }
-}
+.t-teal { background: var(--accent-soft);  color: var(--accent); }
 
 .tile .k { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: .01em; }
 .tile .v {

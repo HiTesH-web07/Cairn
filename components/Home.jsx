@@ -609,7 +609,7 @@ export default function Home({ signedIn }) {
             </div>
             <div className="wk-stage" aria-live="polite">
               <div className="wk-p wk-p0"><div className="wk-title">Integrations · admin</div>
-                {[['Slack', 'Messages + team channel intelligence', '#4a154b', 'S'], ['Keka', 'Read people and teams, never salary', '#ef4d5e', 'K'], ['M91', 'Phone rings for serious events', '#0d9488', 'M']].map((c, k) => <div key={c[0]} className="wk-conn" style={{ '--k': k }}><span className="lg" style={{ background: c[2] }}>{c[3]}</span><div><b>{c[0]}</b><small>{c[1]}</small></div><div className="wk-btn"><span className="b1">Connect</span><span className="b2">✓ Connected</span></div></div>)}
+                {[['Slack', 'Messages + team channel intelligence', '#4a154b', 'S'], ['Keka', 'Read people and teams, never salary', '#ef4d5e', 'K'], ['M91', 'Phone rings for serious events', '#4F8F8A', 'M']].map((c, k) => <div key={c[0]} className="wk-conn" style={{ '--k': k }}><span className="lg" style={{ background: c[2] }}>{c[3]}</span><div><b>{c[0]}</b><small>{c[1]}</small></div><div className="wk-btn"><span className="b1">Connect</span><span className="b2">✓ Connected</span></div></div>)}
                 <p className="wk-note">Connections are stored encrypted. You can disconnect any of them at any time.</p></div>
               <div className="wk-p wk-p1"><div className="wk-title">People · 12 added</div>
                 <div className="wk-src"><span>CSV</span><span>Keka sync</span><span>Invite link</span></div>
