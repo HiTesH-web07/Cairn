@@ -20,11 +20,17 @@ html.nv-lock { overflow: hidden; }
   transition: color var(--dur-hover) var(--ease), background-color var(--dur-hover) var(--ease); }
 .nv-link:hover, .nv-link[aria-current] { color: var(--text); background: var(--surface-2); }
 .nv-actions { display: flex; align-items: center; gap: var(--space-75); margin-left: var(--space-100); }
-.nv-actions .theme-btn { width: 36px; height: 36px; border-radius: var(--rad-lg); }
 
-.theme-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: var(--rad-lg); background: transparent; border: 1px solid var(--border); color: var(--text); }
-.theme-btn svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
-.theme-btn:hover { background: var(--surface-2); transform: none; }
+/* Home nav theme toggle. Scoped tightly so the app shell's white-on-dark
+   .theme-btn rules (loaded later in app.css) can't make the icon invisible
+   on the light home page. */
+.nv-actions .theme-btn, .nv-mtheme .theme-btn {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; min-height: 0;
+  padding: 0; border-radius: var(--rad-lg); background: transparent;
+  border: 1px solid var(--border); color: var(--text); box-shadow: none; cursor: pointer;
+}
+.nv-actions .theme-btn svg, .nv-mtheme .theme-btn svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.nv-actions .theme-btn:hover, .nv-mtheme .theme-btn:hover { background: var(--surface-2); color: var(--text); transform: none; }
 
 .nv-toggle { display: none; position: relative; width: 44px; height: 44px; padding: 0; min-height: 0; border: 0; border-radius: var(--rad-lg); background: transparent; color: var(--text); }
 .nv-toggle:hover { background: var(--surface-2); }
