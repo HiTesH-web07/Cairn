@@ -14,6 +14,7 @@ const NAV = [
   ['week', 'My Week', () => true],
   ['rate', 'Rate Work', () => true],
   ['team', 'Team', isManager],
+  ['company', 'Company', () => true],
   ['score', 'Scorecard', () => true],
   ['coins', 'Coins', () => true],
   ['disputes', 'Disputes', () => true],

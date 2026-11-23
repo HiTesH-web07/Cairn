@@ -65,6 +65,8 @@ const urlOf = (v) => {
   return u;
 };
 const ROLES = ['owner', 'admin', 'manager', 'member'];
+// Suggested career levels for onboarding. Not enforced — people may type their own.
+const LEVELS = ['Intern', 'Junior', 'Mid', 'Senior', 'Lead', 'Manager', 'Director', 'VP', 'C-level'];
 const validTz = (tz) => { try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; } };
 
 // ---------- dates (per workspace time zone) ----------
@@ -232,7 +234,7 @@ app.post('/api/auth/signup', wrap((req, res) => {
     db.prepare('INSERT INTO workspaces (id, name, timezone, country, allowed_domain, settings_json, created_at) VALUES (?,?,?,?,?,?,?)')
       .run(wsId, company, tz, req.body.country ? String(req.body.country).slice(0, 60) : null, domain, '{}', now());
     db.prepare('INSERT INTO users (id, workspace_id, email, name, pw_hash, role, level, department, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-      .run(uid, wsId, email, name, hashPassword(password), 'owner', req.body.level ? String(req.body.level).slice(0, 40) : 'Founder', null, now());
+      .run(uid, wsId, email, name, hashPassword(password), 'owner', req.body.level ? String(req.body.level).slice(0, 40) : 'Founder', req.body.department ? String(req.body.department).trim().slice(0, 80) : null, now());
     audit(wsId, uid, 'workspace.created', 'workspace', wsId, { name: company });
   })();
   startSession(res, uid);
@@ -265,7 +267,9 @@ app.post('/api/auth/logout', wrap((req, res) => {
 app.get('/api/invites/:token', wrap((req) => {
   const inv = db.prepare('SELECT * FROM invites WHERE token_hash = ?').get(sha(req.params.token));
   if (!inv || inv.used_at || inv.expires_at < now()) throw notFound('This invite link is not valid any more');
-  return { email: inv.email, workspace: getWs(inv.workspace_id).name, role: inv.role };
+  // Existing teams in this workspace, so a joiner can pick their own from the list.
+  const departments = db.prepare("SELECT DISTINCT department d FROM users WHERE workspace_id = ? AND active = 1 AND department IS NOT NULL AND department <> '' ORDER BY department").all(inv.workspace_id).map((r) => r.d);
+  return { email: inv.email, workspace: getWs(inv.workspace_id).name, role: inv.role, department: inv.department, level: inv.level, departments, levels: LEVELS };
 }));
 
 
@@ -289,6 +293,9 @@ app.patch('/api/profile', auth, wrap((req) => {
     else if (typeof v === 'string' && v.length <= 90000 && AVATAR_RE.test(v)) upd.avatar = v;
     else throw bad('Pick a JPEG, PNG or WebP picture under about 60 KB, or one of the avatars');
   }
+  // Transparency onboarding: each person says which team and level they are.
+  if (b.department !== undefined) upd.department = b.department ? String(b.department).trim().slice(0, 80) : null;
+  if (b.level !== undefined) upd.level = b.level ? String(b.level).trim().slice(0, 40) : null;
   const ks = Object.keys(upd);
   if (!ks.length) return { ok: true, user: publicUser(req.user) };
   db.prepare(`UPDATE users SET ${ks.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...ks.map((k) => upd[k]), req.user.id);
@@ -583,16 +590,19 @@ app.post('/api/invites/:token/accept', wrap((req, res) => {
   if (!inv || inv.used_at || inv.expires_at < now()) throw notFound('This invite link is not valid any more');
   const name = str(req.body.name, 'Your name', { max: 120 });
   const password = str(req.body.password, 'Password', { min: 10, max: 200 });
+  // The joiner says which team and level they are. Falls back to anything the inviter preset.
+  const department = req.body.department !== undefined ? (req.body.department ? String(req.body.department).trim().slice(0, 80) : null) : inv.department;
+  const level = req.body.level !== undefined ? (req.body.level ? String(req.body.level).trim().slice(0, 40) : null) : inv.level;
   const exists = db.prepare('SELECT id, pw_hash FROM users WHERE workspace_id = ? AND email = ?').get(inv.workspace_id, inv.email);
   if (exists && exists.pw_hash) throw bad('This email already has an account here. Sign in instead.');
   const uid = exists ? exists.id : newId('u');
   db.transaction(() => {
     if (exists) {
-      // Created by a people import: the row (and its reporting line) already exists; the person sets a password.
-      db.prepare('UPDATE users SET name = ?, pw_hash = ? WHERE id = ?').run(name, hashPassword(password), uid);
+      // Created by a people import: the row (and its reporting line) already exists; the person sets a password and their team/level.
+      db.prepare('UPDATE users SET name = ?, pw_hash = ?, department = ?, level = ? WHERE id = ?').run(name, hashPassword(password), department, level, uid);
     } else {
       db.prepare('INSERT INTO users (id, workspace_id, email, name, pw_hash, role, level, department, reports_to, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-        .run(uid, inv.workspace_id, inv.email, name, hashPassword(password), inv.role, inv.level, inv.department, inv.reports_to, now());
+        .run(uid, inv.workspace_id, inv.email, name, hashPassword(password), inv.role, level, department, inv.reports_to, now());
     }
     db.prepare('UPDATE invites SET used_at = ? WHERE token_hash = ?').run(now(), inv.token_hash);
     audit(inv.workspace_id, uid, 'user.joined', 'user', uid, { invited_by: inv.created_by });
@@ -1025,7 +1035,7 @@ function computeWeek(ws, settings, userId, week) {
 function itemView(it, actor) {
   const ratings = (it.ratings || ratingsFor(it.id)).map((r) => ({ id: r.id, rater: r.rater_name, rater_id: r.rater_id, role: r.rater_role, quality: r.quality, note: r.note, at: r.created_at }));
   const blockers = db.prepare('SELECT id, description, raised_at, resolved_at, escalated, claimed_by FROM blockers WHERE item_id = ? ORDER BY raised_at').all(it.id);
-  return { ...it, stretch: !!it.stretch, delivery_fraction: it.delivery_fraction, delivery_confirmed_by: it.delivery_confirmed_by, delivery_override_reason: it.delivery_override_reason, ratings, blockers, mine: it.user_id === actor.id };
+  return { ...it, stretch: !!it.stretch, private: !!it.private, delivery_fraction: it.delivery_fraction, delivery_confirmed_by: it.delivery_confirmed_by, delivery_override_reason: it.delivery_override_reason, ratings, blockers, mine: it.user_id === actor.id };
 }
 
 app.get('/api/week', auth, wrap((req) => {
@@ -1060,8 +1070,8 @@ app.post('/api/items', auth, idempotent, wrap((req, res) => {
   }
   const id = newId('it');
   const t = now();
-  db.prepare('INSERT INTO items (id, workspace_id, user_id, week_start, title, details, kind, parent_item_id, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .run(id, req.ws.id, target.id, week, str(b.title, 'Title', { max: 200 }), str(b.details, 'Details', { max: 2000, optional: true }), kind, parent ? parent.id : null, req.user.id, t, t);
+  db.prepare('INSERT INTO items (id, workspace_id, user_id, week_start, title, details, kind, parent_item_id, private, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(id, req.ws.id, target.id, week, str(b.title, 'Title', { max: 200 }), str(b.details, 'Details', { max: 2000, optional: true }), kind, parent ? parent.id : null, b.private ? 1 : 0, req.user.id, t, t);
   audit(req.ws.id, req.user.id, 'item.created', 'item', id, { for: target.id, week, kind });
   res.status(201);
   return { id };
@@ -1094,6 +1104,7 @@ app.patch('/api/items/:id', auth, wrap((req) => {
     if (it.status === 'delivered' && db.prepare('SELECT 1 FROM ratings WHERE item_id = ?').get(it.id)) throw bad('Rated work cannot change status');
     upd.status = b.status;
   }
+  if (b.private !== undefined) upd.private = b.private ? 1 : 0;
   const keys = Object.keys(upd);
   if (!keys.length) return { ok: true };
   upd.updated_at = now();
@@ -1448,6 +1459,39 @@ app.get('/api/team', auth, wrap((req) => {
     departments: Object.values(depts).map((d) => ({ department: d.department, people: d.people, blockers: d.blockers, avgScore: d.scored ? Math.round(d.total / d.scored) : null })),
     raters: Object.values(dist)
   };
+}));
+
+// Transparency, always on and core to Cairn: everyone can see everyone's weekly
+// focus and score — an intern can see the CEO's. Only the ranked priority titles
+// and the number are exposed here; daily logs, proof and ratings stay within the
+// reporting line. A priority marked private shows as "Private priority" to anyone
+// outside that person's own manager chain.
+app.get('/api/company', auth, wrap((req) => {
+  const week = weekParam(req.ws, req.query.week);
+  const all = db.prepare('SELECT * FROM users WHERE workspace_id = ? AND active = 1 ORDER BY name').all(req.ws.id);
+  const people = all.map((u) => {
+    const c = computeWeek(req.ws, req.settings, u.id, week);
+    const reveal = canSee(req.user, u); // self, manager chain or admin see private titles
+    const focus = c.items
+      .filter((i) => i.rank != null)
+      .sort((a, b) => a.rank - b.rank)
+      .map((i) => ({ rank: i.rank, title: (i.private && !reveal) ? 'Private priority' : i.title, private: !!i.private, status: i.status }));
+    return {
+      id: u.id, name: u.name, avatar: avatarRef(u), role: u.role, level: u.level, department: u.department,
+      score: c.score, pending: c.pending, focus, isSelf: u.id === req.user.id
+    };
+  });
+  const teams = {};
+  for (const p of people) {
+    const k = p.department || 'No team';
+    teams[k] = teams[k] || { department: k, people: [], scored: 0, total: 0 };
+    teams[k].people.push(p);
+    if (p.score !== null) { teams[k].scored += 1; teams[k].total += p.score; }
+  }
+  const groups = Object.values(teams)
+    .map((t) => ({ department: t.department, count: t.people.length, avgScore: t.scored ? Math.round(t.total / t.scored) : null, people: t.people }))
+    .sort((a, b) => a.department.localeCompare(b.department));
+  return { week, me: req.user.id, total: people.length, people, groups, levels: LEVELS };
 }));
 
 app.get('/api/audit', auth, wrap((req) => {

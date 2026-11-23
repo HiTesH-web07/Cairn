@@ -4,7 +4,7 @@ import { PH } from '@/lib/phosphor';
 
 export const brand = { name: 'Cairn', tagline: 'Measure what mattered.' };
 
-const PHMAP = { home: 'house', week: 'calendar-check', rate: 'check-circle', team: 'users-three', score: 'chart-line-up', coins: 'coins', disputes: 'scales', incidents: 'bell', people: 'user-plus', integrations: 'plugs-connected', settings: 'sliders-horizontal', audit: 'clock-counter-clockwise', how: 'question', profile: 'user-circle', link: 'link-simple', shield: 'shield-check', scale: 'scales', check: 'check', lock: 'lock-simple', star: 'star', eye: 'eye', sun: 'sun', slack: 'slack-logo' };
+const PHMAP = { home: 'house', week: 'calendar-check', rate: 'check-circle', team: 'users-three', company: 'ranking', score: 'chart-line-up', coins: 'coins', disputes: 'scales', incidents: 'bell', people: 'user-plus', integrations: 'plugs-connected', settings: 'sliders-horizontal', audit: 'clock-counter-clockwise', how: 'question', profile: 'user-circle', link: 'link-simple', shield: 'shield-check', scale: 'scales', check: 'check', lock: 'lock-simple', star: 'star', eye: 'eye', sun: 'sun', slack: 'slack-logo' };
 
 /** A Phosphor icon that takes its colour from the text around it. Paths are static, bundled data. */
 export function Ph({ name, className = '' }) {

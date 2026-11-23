@@ -122,6 +122,10 @@ try { db.exec('ALTER TABLE items ADD COLUMN draft_from TEXT'); } catch (_) {}
 // Per-workspace Slack ingest secret for authenticating viaSocket flows.
 try { db.exec('ALTER TABLE workspaces ADD COLUMN slack_ingest_secret TEXT'); } catch (_) {}
 
+// Transparency: a private priority still counts toward the person's own score,
+// but its title is masked to viewers outside their reporting line.
+try { db.exec('ALTER TABLE items ADD COLUMN private INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+
 // Phase 1: source traceability, confidence scoring.
 try { db.exec('ALTER TABLE items ADD COLUMN slack_message_ts TEXT'); } catch (_) {}
 try { db.exec('ALTER TABLE items ADD COLUMN slack_message_url TEXT'); } catch (_) {}

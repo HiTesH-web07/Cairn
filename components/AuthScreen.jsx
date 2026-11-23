@@ -82,6 +82,7 @@ export default function AuthScreen({ mode, token }) {
     <label htmlFor="a-company">Company name</label><input id="a-company" name="company" required maxLength={120} />
     <label htmlFor="a-name">Your name</label><input id="a-name" name="name" required maxLength={120} />
     <label htmlFor="a-email">Work email</label><input id="a-email" name="email" type="email" required autoComplete="email" />
+    <label htmlFor="a-team">Your team (optional)</label><input id="a-team" name="department" placeholder="e.g. Leadership" maxLength={80} autoComplete="off" />
     <label htmlFor="a-pw">Password (10+ characters)</label><Password id="a-pw" name="password" minLength={10} required autoComplete="new-password" />
     <label htmlFor="a-dom">Only allow emails from this domain (optional)</label><input id="a-dom" name="allowed_domain" placeholder="yourcompany.com" />
     <label htmlFor="a-tz">Time zone</label><input id="a-tz" name="timezone" defaultValue={tz} />
@@ -89,6 +90,15 @@ export default function AuthScreen({ mode, token }) {
   else if (mode === 'join') fields = (<>
     {invite && <p>You&apos;re invited to <b>{invite.workspace}</b> as {invite.email}.</p>}
     <label htmlFor="a-name">Your name</label><input id="a-name" name="name" required maxLength={120} />
+    <label htmlFor="a-team">Your team</label>
+    <input id="a-team" name="department" list="team-options" defaultValue={invite?.department || ''} placeholder="e.g. Engineering" maxLength={80} autoComplete="off" />
+    <datalist id="team-options">{(invite?.departments || []).map((d) => <option key={d} value={d} />)}</datalist>
+    <label htmlFor="a-level">Your level</label>
+    <select id="a-level" name="level" defaultValue={invite?.level || ''}>
+      <option value="">Prefer not to say</option>
+      {(invite?.levels || []).map((l) => <option key={l} value={l}>{l}</option>)}
+    </select>
+    <p className="small muted">Everyone at {invite?.workspace || 'your company'} can see each other&apos;s weekly focus and score — transparency is part of Cairn. Your team and level help people place your work.</p>
     <label htmlFor="a-pw">Choose a password (10+ characters)</label><Password id="a-pw" name="password" minLength={10} required autoComplete="new-password" />
   </>);
   else if (mode === 'forgot') fields = (<>
@@ -130,7 +140,7 @@ export default function AuthScreen({ mode, token }) {
           {sentMsg ? (
             <div className="card"><p className="notice ok">{sentMsg}</p><Link className="btn" href="/signin">Back to sign in</Link></div>
           ) : (
-            <form className="card" id="authform" onSubmit={submit}>
+            <form className="card" id="authform" onSubmit={submit} key={mode === 'join' ? `join-${invite ? invite.email : 'loading'}` : mode}>
               {fields}
               <p className="err" id="autherr">{err}</p>
               <button className="primary" disabled={busy}>{label}</button>

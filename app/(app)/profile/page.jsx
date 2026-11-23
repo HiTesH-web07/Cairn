@@ -6,6 +6,8 @@ import { Avatar, Head, PresetAvatar, PRESET_COUNT } from '@/components/ui';
 import PwInput from '@/components/profile/PwInput';
 import { api } from '@/lib/client';
 
+const LEVELS = ['Intern', 'Junior', 'Mid', 'Senior', 'Lead', 'Manager', 'Director', 'VP', 'C-level'];
+
 export default function ProfilePage() {
   const { me, loadMe, toast } = useApp();
   const u = me.user;
@@ -32,7 +34,7 @@ export default function ProfilePage() {
   };
   const onBasics = async (e) => {
     e.preventDefault(); const fd = Object.fromEntries(new FormData(e.currentTarget).entries());
-    try { await save({ name: fd.name, phone: fd.phone }, 'Saved'); setBerr(''); } catch (err) { setBerr(err.message); }
+    try { await save({ name: fd.name, phone: fd.phone, department: fd.department, level: fd.level }, 'Saved'); setBerr(''); } catch (err) { setBerr(err.message); }
   };
   const onPw = async (e) => {
     e.preventDefault(); const form = e.currentTarget; const fd = Object.fromEntries(new FormData(form).entries());
@@ -59,10 +61,12 @@ export default function ProfilePage() {
             })}
           </div>
         </section>
-        <form className="card sect" id="basics" onSubmit={onBasics} key={`b-${u.name}-${u.phone}`}><h3>Basics</h3><p className="small muted">Your name and phone show to people in your workspace. Role, level and team are set by your admin or manager.</p>
+        <form className="card sect" id="basics" onSubmit={onBasics} key={`b-${u.name}-${u.phone}-${u.level}-${u.department}`}><h3>Basics</h3><p className="small muted">Your name, team and level show to everyone at your company — transparency is part of Cairn. Your role and who you report to are set by your admin or manager.</p>
           <div className="inline"><div><label>Name</label><input name="name" defaultValue={u.name} required maxLength={120} autoComplete="name" /></div>
             <div><label>Phone (optional)</label><input name="phone" defaultValue={u.phone || ''} placeholder="+91 98765 43210" autoComplete="tel" /></div></div>
-          <div className="inline"><div><label>Email</label><input value={u.email} readOnly /></div><div><label>Role</label><input value={[u.role, u.level, u.department].filter(Boolean).join(' · ')} readOnly /></div></div>
+          <div className="inline"><div><label>Your team</label><input name="department" defaultValue={u.department || ''} placeholder="e.g. Engineering" maxLength={80} autoComplete="off" /></div>
+            <div><label>Your level</label><select name="level" defaultValue={u.level || ''}><option value="">Prefer not to say</option>{LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}</select></div></div>
+          <div className="inline"><div><label>Email</label><input value={u.email} readOnly /></div><div><label>Role</label><input value={u.role} readOnly /></div></div>
           <p className="err" id="berr">{berr}</p><button className="primary">Save changes</button></form>
         <form className="card sect" id="pwform" onSubmit={onPw}><h3>Change password</h3><p className="small muted">You will stay signed in here. Other devices are signed out.</p>
           <label>Current password</label><PwInput name="current" required autoComplete="current-password" />
