@@ -765,10 +765,15 @@ tbody tr:hover td { background: var(--surface-2); }
 .co-search { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; height: 38px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); min-width: 240px; flex: 1 1 240px; max-width: 420px; }
 .co-search svg { width: 16px; height: 16px; color: var(--muted); flex: none; fill: currentColor; }
 .co-search input { border: 0; background: transparent; outline: none; color: var(--text); width: 100%; font-size: 0.9rem; min-height: 0; padding: 0; }
-.co-group { margin-top: 20px; }
-.co-ghead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
-.co-ghead h2 { margin: 0; font-size: 1.05rem; }
-.co-gmeta { color: var(--muted); font-size: 0.82rem; }
+.co-team { margin-top: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.co-team.own { border-color: var(--accent); }
+.co-thead { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 16px; background: transparent; border: 0; cursor: pointer; text-align: left; color: var(--text); min-height: 0; }
+.co-thead:hover { background: var(--surface-2); }
+.co-thead h2 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+.co-caret { width: 15px; height: 15px; flex: none; color: var(--muted); fill: currentColor; transition: transform var(--dur-move, .2s) var(--ease, ease); }
+.co-caret.open { transform: rotate(180deg); }
+.co-mine { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 1px 6px; }
+.co-gmeta { color: var(--muted); font-size: 0.82rem; margin-left: auto; }
 .co-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .co-card { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .co-card.me { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
